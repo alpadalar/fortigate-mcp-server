@@ -73,7 +73,7 @@ class TestDeviceTools:
         result = self.device_tools.test_device_connection("test_device")
         
         assert "Connection Test" in result[0].text
-        assert "CONNECTED" in result[0].text
+        assert "established successfully" in result[0].text
         mock_api.test_connection.assert_called_once()
     
     def test_add_device_success(self):
@@ -181,7 +181,7 @@ class TestFirewallTools:
         
         result = self.firewall_tools.get_policy_detail("test_device", "35")
         
-        assert "Policy Detaylı Analizi" in result[0].text
+        assert "Policy Detail" in result[0].text
         assert "35" in result[0].text
         assert "WAN->ManDown-Project" in result[0].text
         mock_api.get_firewall_policy_detail.assert_called_once_with("35", vdom=None)
