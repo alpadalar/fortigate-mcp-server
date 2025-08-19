@@ -343,14 +343,14 @@ class TestFortiGateFormatters:
     
     def test_format_error(self):
         """Error formatter test"""
-        result = FortiGateFormatters.format_error(
-            "Test error message", "test_device", "test_operation"
+        result = FortiGateFormatters.format_error_response(
+            "test_operation", "test_device", "Test error message"
         )
         
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
-        assert "Error in operation" in result[0].text
+        assert "Error" in result[0].text
         assert "Test error message" in result[0].text
         assert "test_device" in result[0].text
         assert "test_operation" in result[0].text

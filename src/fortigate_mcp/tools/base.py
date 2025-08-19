@@ -158,7 +158,7 @@ class FortiGateTool:
         elif "connection" in error_msg.lower():
             error_msg = "Connection failed. Check device network settings."
         
-        return FortiGateFormatters.format_error(error_msg, device_id, operation)
+        return FortiGateFormatters.format_error_response(operation, device_id, error_msg)
 
     async def _execute_with_logging(self, operation: str, device_id: str, 
                                    func, *args, **kwargs) -> List[Content]:
