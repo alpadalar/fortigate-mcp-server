@@ -43,7 +43,8 @@ class RoutingTools(FortiGateTool):
             self._validate_device_exists(device_id)
             api_client = self._get_device_api(device_id)
             routing_data = api_client.get_routing_table(vdom=vdom)
-            return self._format_response(routing_data, "routing_table")
+            from ..formatting import FortiGateFormatters
+            return FortiGateFormatters.format_routing_table(routing_data)
         except Exception as e:
             return self._handle_error("get routing table", device_id, e)
     
@@ -68,6 +69,43 @@ class RoutingTools(FortiGateTool):
             return self._format_response((interface_name, interface_data), "interface_status")
         except Exception as e:
             return self._handle_error("get interface status", device_id, e)
+    
+    def update_static_route(self, device_id: str, route_id: str, route_data: Dict[str, Any], 
+                           vdom: Optional[str] = None) -> List[Content]:
+        """Update static route."""
+        try:
+            self._validate_device_exists(device_id)
+            self._validate_required_params(route_id=route_id)
+            
+            api_client = self._get_device_api(device_id)
+            result = api_client.update_static_route(route_id, route_data, vdom=vdom)
+            return self._format_operation_result("update static route", device_id, True, f"Static route {route_id} updated successfully")
+        except Exception as e:
+            return self._handle_error("update static route", device_id, e)
+    
+    def delete_static_route(self, device_id: str, route_id: str, vdom: Optional[str] = None) -> List[Content]:
+        """Delete static route."""
+        try:
+            self._validate_device_exists(device_id)
+            self._validate_required_params(route_id=route_id)
+            
+            api_client = self._get_device_api(device_id)
+            result = api_client.delete_static_route(route_id, vdom=vdom)
+            return self._format_operation_result("delete static route", device_id, True, f"Static route {route_id} deleted successfully")
+        except Exception as e:
+            return self._handle_error("delete static route", device_id, e)
+    
+    def get_static_route_detail(self, device_id: str, route_id: str, vdom: Optional[str] = None) -> List[Content]:
+        """Get static route detail."""
+        try:
+            self._validate_device_exists(device_id)
+            self._validate_required_params(route_id=route_id)
+            
+            api_client = self._get_device_api(device_id)
+            route_data = api_client.get_static_route_detail(route_id, vdom=vdom)
+            return self._format_response(route_data, "static_route_detail")
+        except Exception as e:
+            return self._handle_error("get static route detail", device_id, e)
     
     def get_schema_info(self) -> Dict[str, Any]:
         """Get schema information for routing tools.

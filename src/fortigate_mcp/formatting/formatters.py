@@ -104,6 +104,45 @@ class FortiGateFormatters:
         return [Content(type="text", text=formatted_text)]
     
     @staticmethod
+    def format_virtual_ips(vips_data: Dict[str, Any]) -> List[Content]:
+        """Format virtual IPs response.
+        
+        Args:
+            vips_data: Raw virtual IPs data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.virtual_ips(vips_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_virtual_ip_detail(vip_data: Dict[str, Any]) -> List[Content]:
+        """Format virtual IP detail response.
+        
+        Args:
+            vip_data: Raw virtual IP detail data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.virtual_ip_detail(vip_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_routing_table(routing_data: Dict[str, Any]) -> List[Content]:
+        """Format routing table response.
+        
+        Args:
+            routing_data: Raw routing table data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.routing_table(routing_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
     def format_static_routes(routes_data: Dict[str, Any]) -> List[Content]:
         """Format static routes response.
         
@@ -196,86 +235,42 @@ class FortiGateFormatters:
         return [Content(type="text", text=formatted_text)]
     
     @staticmethod
-    def format_error(error_message: str, device_id: str, operation: str) -> List[Content]:
+    def format_error_response(operation: str, device_id: str, error: str) -> List[Content]:
         """Format error response.
         
         Args:
-            error_message: Error message
-            device_id: Device identifier
-            operation: Operation that failed
+            operation: Name of the operation that failed
+            device_id: Target device identifier
+            error: Error message
             
         Returns:
             List containing formatted Content object
         """
-        lines = [
-            f"Error in operation: {operation}",
-            f"Device: {device_id}",
-            f"Error: {error_message}",
-            ""
-        ]
-        
-        return [Content(type="text", text="\n".join(lines))]
-    
+        error_data = {
+            "operation": operation,
+            "device_id": device_id,
+            "error": error,
+            "status": "failed"
+        }
+        return FortiGateFormatters.format_json_response(error_data, "Error")
+
     @staticmethod
-    def format_connection_test(device_id: str, success: bool, 
-                             error: Optional[str] = None) -> List[Content]:
+    def format_connection_test(device_id: str, success: bool, error: Optional[str] = None) -> List[Content]:
         """Format connection test result.
         
         Args:
             device_id: Device identifier
-            success: Whether connection succeeded
-            error: Error message if failed
+            success: Whether connection test succeeded
+            error: Error message if connection failed
             
         Returns:
             List containing formatted Content object
         """
-        status = "SUCCESS" if success else "FAILED"
-        
-        lines = [
-            f"Connection Test {status}",
-            f"Device: {device_id}",
-            ""
-        ]
-        
         if success:
-            lines.append("Connection established successfully")
-        elif error:
-            lines.append(f"Connection failed: {error}")
+            formatted_text = f"✅ Connection test successful for device '{device_id}'"
         else:
-            lines.append("Connection failed")
+            formatted_text = f"❌ Connection test failed for device '{device_id}'"
+            if error:
+                formatted_text += f"\nError: {error}"
         
-        return [Content(type="text", text="\n".join(lines))]
-    
-    @staticmethod
-    def format_validation_result(valid: bool, errors: List[str], 
-                               warnings: List[str]) -> List[Content]:
-        """Format validation result.
-        
-        Args:
-            valid: Whether validation passed
-            errors: List of validation errors
-            warnings: List of validation warnings
-            
-        Returns:
-            List containing formatted Content object
-        """
-        status = "VALID" if valid else "INVALID"
-        
-        lines = [f"Validation: {status}", ""]
-        
-        if errors:
-            lines.extend(["Errors:"])
-            for error in errors:
-                lines.append(f"  {error}")
-            lines.append("")
-        
-        if warnings:
-            lines.extend(["Warnings:"])
-            for warning in warnings:
-                lines.append(f"  {warning}")
-            lines.append("")
-        
-        if valid and not warnings:
-            lines.append("Configuration is valid!")
-        
-        return [Content(type="text", text="\n".join(lines))]
+        return [Content(type="text", text=formatted_text)]

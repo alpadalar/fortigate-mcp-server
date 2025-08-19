@@ -376,6 +376,90 @@ class FortiGateTemplates:
         return "\n".join(lines)
     
     @staticmethod
+    def virtual_ips(vips_data: Dict[str, Any]) -> str:
+        """Format virtual IPs list.
+        
+        Args:
+            vips_data: Virtual IPs response from FortiGate API
+            
+        Returns:
+            Formatted virtual IPs information
+        """
+        lines = ["Virtual IPs", ""]
+        
+        if "results" in vips_data and vips_data["results"]:
+            vips = vips_data["results"]
+            
+            for vip in vips:
+                lines.extend([
+                    f"Virtual IP: {vip.get('name', 'Unnamed')}",
+                    f"  External IP: {vip.get('extip', 'N/A')}",
+                    f"  Mapped IP: {vip.get('mappedip', 'N/A')}",
+                    f"  External Interface: {vip.get('extintf', 'N/A')}",
+                    f"  Port Forwarding: {vip.get('portforward', 'disable')}",
+                ])
+                
+                if vip.get("protocol"):
+                    lines.append(f"  Protocol: {vip['protocol']}")
+                
+                if vip.get("extport"):
+                    lines.append(f"  External Port: {vip['extport']}")
+                
+                if vip.get("mappedport"):
+                    lines.append(f"  Mapped Port: {vip['mappedport']}")
+                
+                if vip.get("comment"):
+                    lines.append(f"  Comment: {vip['comment']}")
+                
+                lines.append("")
+        else:
+            lines.append("No virtual IPs found")
+        
+        return "\n".join(lines)
+    
+    @staticmethod
+    def virtual_ip_detail(vip_data: Dict[str, Any]) -> str:
+        """Format virtual IP detail.
+        
+        Args:
+            vip_data: Virtual IP detail response from FortiGate API
+            
+        Returns:
+            Formatted virtual IP detail information
+        """
+        lines = ["Virtual IP Detail", ""]
+        
+        if "results" in vip_data and vip_data["results"]:
+            vip = vip_data["results"][0] if isinstance(vip_data["results"], list) else vip_data["results"]
+            
+            lines.extend([
+                f"Name: {vip.get('name', 'N/A')}",
+                f"External IP: {vip.get('extip', 'N/A')}",
+                f"Mapped IP: {vip.get('mappedip', 'N/A')}",
+                f"External Interface: {vip.get('extintf', 'N/A')}",
+                f"Port Forwarding: {vip.get('portforward', 'disable')}",
+            ])
+            
+            if vip.get("protocol"):
+                lines.append(f"Protocol: {vip['protocol']}")
+            
+            if vip.get("extport"):
+                lines.append(f"External Port: {vip['extport']}")
+            
+            if vip.get("mappedport"):
+                lines.append(f"Mapped Port: {vip['mappedport']}")
+            
+            if vip.get("comment"):
+                lines.append(f"Comment: {vip['comment']}")
+            
+            if vip.get("status"):
+                lines.append(f"Status: {vip['status']}")
+        else:
+            lines.append("Virtual IP not found")
+        
+        return "\n".join(lines)
+    
+    @staticmethod
     def service_objects(services_data: Dict[str, Any]) -> str:
         """Format service objects list.
         
@@ -412,6 +496,42 @@ class FortiGateTemplates:
                 
         else:
             lines.append("No service objects found")
+        
+        return "\n".join(lines)
+    
+    @staticmethod
+    def routing_table(routing_data: Dict[str, Any]) -> str:
+        """Format routing table.
+        
+        Args:
+            routing_data: Routing table response from FortiGate API
+            
+        Returns:
+            Formatted routing table information
+        """
+        lines = ["Routing Table", ""]
+        
+        if "results" in routing_data and routing_data["results"]:
+            routes = routing_data["results"]
+            
+            for route in routes:
+                lines.extend([
+                    f"Route: {route.get('dst', 'N/A')}",
+                    f"  Gateway: {route.get('gateway', 'N/A')}",
+                    f"  Interface: {route.get('interface', 'N/A')}",
+                    f"  Distance: {route.get('distance', 'N/A')}",
+                    f"  Priority: {route.get('priority', 'N/A')}",
+                ])
+                
+                if route.get("status"):
+                    lines.append(f"  Status: {route['status']}")
+                
+                if route.get("type"):
+                    lines.append(f"  Type: {route['type']}")
+                
+                lines.append("")
+        else:
+            lines.append("No routes found")
         
         return "\n".join(lines)
     

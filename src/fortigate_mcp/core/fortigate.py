@@ -259,9 +259,34 @@ class FortiGateAPI:
         """Delete static route."""
         return self._make_request("DELETE", f"cmdb/router/static/{route_id}", vdom=vdom)
     
+    def get_static_route_detail(self, route_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific static route."""
+        return self._make_request("GET", f"cmdb/router/static/{route_id}", vdom=vdom)
+    
     def get_routing_table(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get routing table."""
         return self._make_request("GET", "monitor/router/ipv4", vdom=vdom)
+    
+    # Virtual IP endpoints
+    def get_virtual_ips(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get virtual IPs."""
+        return self._make_request("GET", "cmdb/firewall/vip", vdom=vdom)
+    
+    def create_virtual_ip(self, vip_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Create new virtual IP."""
+        return self._make_request("POST", "cmdb/firewall/vip", data=vip_data, vdom=vdom)
+    
+    def update_virtual_ip(self, vip_name: str, vip_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Update existing virtual IP."""
+        return self._make_request("PUT", f"cmdb/firewall/vip/{vip_name}", data=vip_data, vdom=vdom)
+    
+    def delete_virtual_ip(self, vip_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete virtual IP."""
+        return self._make_request("DELETE", f"cmdb/firewall/vip/{vip_name}", vdom=vdom)
+    
+    def get_virtual_ip_detail(self, vip_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific virtual IP."""
+        return self._make_request("GET", f"cmdb/firewall/vip/{vip_name}", vdom=vdom)
 
 
 class FortiGateManager:
