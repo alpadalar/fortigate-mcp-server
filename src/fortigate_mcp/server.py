@@ -32,6 +32,7 @@ from .tools.device import DeviceTools
 from .tools.firewall import FirewallTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
+from .tools.virtual_ip import VirtualIPTools
 from .tools.definitions import *
 
 class FortiGateMCPServer:
@@ -58,6 +59,7 @@ class FortiGateMCPServer:
         self.firewall_tools = FirewallTools(self.fortigate_manager)
         self.network_tools = NetworkTools(self.fortigate_manager)
         self.routing_tools = RoutingTools(self.fortigate_manager)
+        self.virtual_ip_tools = VirtualIPTools(self.fortigate_manager)
         
         # Initialize MCP server
         self.mcp = FastMCP("FortiGateMCP")
@@ -213,6 +215,89 @@ class FortiGateMCPServer:
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
             return await self.routing_tools.list_interfaces(device_id, vdom)
+
+        @self.mcp.tool(description=GET_INTERFACE_STATUS_DESC)
+        async def get_interface_status(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            interface_name: Annotated[str, Field(description="Interface name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.routing_tools.get_interface_status(device_id, interface_name, vdom)
+
+        @self.mcp.tool(description=UPDATE_STATIC_ROUTE_DESC)
+        async def update_static_route(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            route_id: Annotated[str, Field(description="Route identifier")],
+            route_data: Annotated[dict, Field(description="Route configuration")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.routing_tools.update_static_route(device_id, route_id, route_data, vdom)
+
+        @self.mcp.tool(description=DELETE_STATIC_ROUTE_DESC)
+        async def delete_static_route(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            route_id: Annotated[str, Field(description="Route identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.routing_tools.delete_static_route(device_id, route_id, vdom)
+
+        @self.mcp.tool(description=GET_STATIC_ROUTE_DETAIL_DESC)
+        async def get_static_route_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            route_id: Annotated[str, Field(description="Route identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.routing_tools.get_static_route_detail(device_id, route_id, vdom)
+
+        # Virtual IP tools
+        @self.mcp.tool(description=LIST_VIRTUAL_IPS_DESC)
+        async def list_virtual_ips(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.virtual_ip_tools.list_virtual_ips(device_id, vdom)
+
+        @self.mcp.tool(description=CREATE_VIRTUAL_IP_DESC)
+        async def create_virtual_ip(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="Virtual IP name")],
+            extip: Annotated[str, Field(description="External IP address")],
+            mappedip: Annotated[str, Field(description="Mapped internal IP address")],
+            extintf: Annotated[str, Field(description="External interface name")],
+            portforward: Annotated[str, Field(description="Enable/disable port forwarding", default="disable")] = "disable",
+            protocol: Annotated[str, Field(description="Protocol type", default="tcp")] = "tcp",
+            extport: Annotated[Optional[str], Field(description="External port")] = None,
+            mappedport: Annotated[Optional[str], Field(description="Mapped port")] = None,
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.virtual_ip_tools.create_virtual_ip(
+                device_id, name, extip, mappedip, extintf, portforward, protocol, extport, mappedport, vdom
+            )
+
+        @self.mcp.tool(description=UPDATE_VIRTUAL_IP_DESC)
+        async def update_virtual_ip(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="Virtual IP name")],
+            vip_data: Annotated[dict, Field(description="Virtual IP configuration")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.virtual_ip_tools.update_virtual_ip(device_id, name, vip_data, vdom)
+
+        @self.mcp.tool(description=GET_VIRTUAL_IP_DETAIL_DESC)
+        async def get_virtual_ip_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="Virtual IP name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.virtual_ip_tools.get_virtual_ip_detail(device_id, name, vdom)
+
+        @self.mcp.tool(description=DELETE_VIRTUAL_IP_DESC)
+        async def delete_virtual_ip(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            name: Annotated[str, Field(description="Virtual IP name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.virtual_ip_tools.delete_virtual_ip(device_id, name, vdom)
 
         # System tools
         @self.mcp.tool(description=HEALTH_CHECK_DESC)

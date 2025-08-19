@@ -30,6 +30,7 @@ from .tools.device import DeviceTools
 from .tools.firewall import FirewallTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
+from .tools.virtual_ip import VirtualIPTools
 
 logger = logging.getLogger("fortigate-mcp.http")
 
@@ -85,6 +86,7 @@ class FortiGateMCPHTTPServer:
         self.firewall_tools = FirewallTools(self.fortigate_manager)
         self.network_tools = NetworkTools(self.fortigate_manager)
         self.routing_tools = RoutingTools(self.fortigate_manager)
+        self.virtual_ip_tools = VirtualIPTools(self.fortigate_manager)
         
         # Initialize FastMCP
         self.mcp = FastMCP("FortiGateMCP-HTTP")
@@ -192,6 +194,10 @@ class FortiGateMCPHTTPServer:
         def create_static_route(device_id: str, dst: str, gateway: str, device: Optional[str] = None, vdom: Optional[str] = None):
             return self.routing_tools.create_static_route(device_id, dst, gateway, device, vdom)
 
+        @self.mcp.tool(description="Get routing table")
+        def get_routing_table(device_id: str, vdom: Optional[str] = None):
+            return self.routing_tools.get_routing_table(device_id, vdom)
+
         @self.mcp.tool(description="List network interfaces")
         def list_interfaces(device_id: str, vdom: Optional[str] = None):
             return self.routing_tools.list_interfaces(device_id, vdom)
@@ -199,6 +205,44 @@ class FortiGateMCPHTTPServer:
         @self.mcp.tool(description="Get interface status")
         def get_interface_status(device_id: str, interface_name: str, vdom: Optional[str] = None):
             return self.routing_tools.get_interface_status(device_id, interface_name, vdom)
+
+        @self.mcp.tool(description="Update static route")
+        def update_static_route(device_id: str, route_id: str, route_data: dict, vdom: Optional[str] = None):
+            return self.routing_tools.update_static_route(device_id, route_id, route_data, vdom)
+
+        @self.mcp.tool(description="Delete static route")
+        def delete_static_route(device_id: str, route_id: str, vdom: Optional[str] = None):
+            return self.routing_tools.delete_static_route(device_id, route_id, vdom)
+
+        @self.mcp.tool(description="Get static route detail")
+        def get_static_route_detail(device_id: str, route_id: str, vdom: Optional[str] = None):
+            return self.routing_tools.get_static_route_detail(device_id, route_id, vdom)
+
+        # Virtual IP tools
+        @self.mcp.tool(description="List virtual IPs")
+        def list_virtual_ips(device_id: str, vdom: Optional[str] = None):
+            return self.virtual_ip_tools.list_virtual_ips(device_id, vdom)
+
+        @self.mcp.tool(description="Create virtual IP")
+        def create_virtual_ip(device_id: str, name: str, extip: str, mappedip: str, 
+                             extintf: str, portforward: str = "disable", 
+                             protocol: str = "tcp", extport: Optional[str] = None,
+                             mappedport: Optional[str] = None, vdom: Optional[str] = None):
+            return self.virtual_ip_tools.create_virtual_ip(
+                device_id, name, extip, mappedip, extintf, portforward, protocol, extport, mappedport, vdom
+            )
+
+        @self.mcp.tool(description="Update virtual IP")
+        def update_virtual_ip(device_id: str, name: str, vip_data: dict, vdom: Optional[str] = None):
+            return self.virtual_ip_tools.update_virtual_ip(device_id, name, vip_data, vdom)
+
+        @self.mcp.tool(description="Get virtual IP detail")
+        def get_virtual_ip_detail(device_id: str, name: str, vdom: Optional[str] = None):
+            return self.virtual_ip_tools.get_virtual_ip_detail(device_id, name, vdom)
+
+        @self.mcp.tool(description="Delete virtual IP")
+        def delete_virtual_ip(device_id: str, name: str, vdom: Optional[str] = None):
+            return self.virtual_ip_tools.delete_virtual_ip(device_id, name, vdom)
 
         # System tools
         @self.mcp.tool(description="Test FortiGate connection")
@@ -269,7 +313,8 @@ class FortiGateMCPHTTPServer:
                     "device_tools": self.device_tools.get_schema_info(),
                     "firewall_tools": self.firewall_tools.get_schema_info(),
                     "network_tools": self.network_tools.get_schema_info(),
-                    "routing_tools": self.routing_tools.get_schema_info()
+                    "routing_tools": self.routing_tools.get_schema_info(),
+                    "virtual_ip_tools": self.virtual_ip_tools.get_schema_info()
                 }
             }
             return self._format_response(schema_info, "get_schema_info")

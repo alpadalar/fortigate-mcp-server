@@ -342,6 +342,147 @@ Returns:
 - Deletion status confirmation
 """
 
+# Virtual IP Tool Descriptions
+LIST_VIRTUAL_IPS_DESC = """
+List all Virtual IPs configured on a FortiGate device.
+
+This tool retrieves all Virtual IP objects defined on the device,
+including port forwarding configurations and NAT mappings.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Virtual IP name and configuration
+- External and mapped IP addresses
+- Port forwarding settings
+- Interface assignments
+"""
+
+CREATE_VIRTUAL_IP_DESC = """
+Create a new Virtual IP on a FortiGate device.
+
+This tool adds a new Virtual IP object that can be used for
+port forwarding, NAT, and external access to internal services.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- name: Virtual IP name
+- extip: External IP address
+- mappedip: Mapped internal IP address
+- extintf: External interface name
+- portforward: Enable/disable port forwarding (default: disable)
+- protocol: Protocol type (tcp/udp, default: tcp)
+- extport: External port (optional)
+- mappedport: Mapped port (optional)
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Creation status
+- Virtual IP configuration summary
+"""
+
+UPDATE_VIRTUAL_IP_DESC = """
+Update an existing Virtual IP on a FortiGate device.
+
+This tool modifies the configuration of an existing Virtual IP object,
+allowing changes to IP addresses, ports, or other settings.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- name: Name of the Virtual IP to update
+- vip_data: Updated configuration as JSON
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Update status
+- Configuration changes applied
+"""
+
+GET_VIRTUAL_IP_DETAIL_DESC = """
+Get detailed information for a specific Virtual IP.
+
+This tool retrieves comprehensive configuration details for a
+specific Virtual IP object, including all settings and mappings.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- name: Name of the Virtual IP to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Complete Virtual IP configuration
+- Port forwarding details
+- Interface assignments
+- Status information
+"""
+
+DELETE_VIRTUAL_IP_DESC = """
+Delete a Virtual IP from a FortiGate device.
+
+This tool removes an existing Virtual IP object from the device
+configuration. Note that Virtual IPs in use by policies cannot be deleted.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- name: Name of the Virtual IP to delete
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Deletion status confirmation
+"""
+
+# Enhanced Routing Tool Descriptions
+UPDATE_STATIC_ROUTE_DESC = """
+Update an existing static route on a FortiGate device.
+
+This tool modifies the configuration of an existing static route,
+allowing changes to destination, gateway, or other settings.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- route_id: ID of the route to update
+- route_data: Updated configuration as JSON
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Update status
+- Configuration changes applied
+"""
+
+DELETE_STATIC_ROUTE_DESC = """
+Delete a static route from a FortiGate device.
+
+This tool removes an existing static route from the device
+configuration.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- route_id: ID of the route to delete
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Deletion status confirmation
+"""
+
+GET_STATIC_ROUTE_DETAIL_DESC = """
+Get detailed information for a specific static route.
+
+This tool retrieves comprehensive configuration details for a
+specific static route, including all settings and status.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- route_id: ID of the route to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Complete route configuration
+- Gateway and interface details
+- Status information
+"""
+
 # Routing Tool Descriptions
 LIST_STATIC_ROUTES_DESC = """
 List all static routes configured on a FortiGate device.
