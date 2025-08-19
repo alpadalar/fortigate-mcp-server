@@ -157,6 +157,10 @@ class FortiGateMCPHTTPServer:
         def update_firewall_policy(device_id: str, policy_id: str, policy_data: dict, vdom: Optional[str] = None):
             return self.firewall_tools.update_policy(device_id, policy_id, policy_data, vdom)
 
+        @self.mcp.tool(description="Get detailed information for a specific firewall policy")
+        def get_firewall_policy_detail(device_id: str, policy_id: str, vdom: Optional[str] = None):
+            return self.firewall_tools.get_policy_detail(device_id, policy_id, vdom)
+
         @self.mcp.tool(description="Delete firewall policy")
         def delete_firewall_policy(device_id: str, policy_id: str, vdom: Optional[str] = None):
             return self.firewall_tools.delete_policy(device_id, policy_id, vdom)

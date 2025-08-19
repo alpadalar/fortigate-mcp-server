@@ -137,6 +137,14 @@ class FortiGateMCPServer:
         ):
             return await self.firewall_tools.update_policy(device_id, policy_id, policy_data, vdom)
 
+        @self.mcp.tool(description="Get detailed information for a specific firewall policy")
+        async def get_firewall_policy_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            policy_id: Annotated[str, Field(description="Policy ID to get details for")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return await self.firewall_tools.get_policy_detail_async(device_id, policy_id, vdom)
+
         @self.mcp.tool(description=DELETE_FIREWALL_POLICY_DESC)
         async def delete_firewall_policy(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
