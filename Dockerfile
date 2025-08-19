@@ -25,6 +25,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
         netcat-traditional \
+        git \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -59,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE ${MCP_SERVER_PORT}
 
 # Default command
-CMD ["python", "-m", "src.main"]
+CMD ["python", "-m", "src.fortigate_mcp.server_http", "--host", "0.0.0.0", "--port", "8814", "--path", "/fortigate-mcp", "--config", "/app/config/config.json"]
