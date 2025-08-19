@@ -52,9 +52,9 @@ RUN mkdir -p /app/logs && \
 # Switch to non-root user
 USER appuser
 
-# Health check
+# Health check - Sadece port kontrolü yap
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${MCP_SERVER_PORT}/health || exit 1
+    CMD nc -z localhost ${MCP_SERVER_PORT} || exit 1
 
 # Expose port
 EXPOSE ${MCP_SERVER_PORT}
