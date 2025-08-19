@@ -58,6 +58,26 @@ class FortiGateFormatters:
         return [Content(type="text", text=formatted_text)]
     
     @staticmethod
+    def format_firewall_policy_detail(policy_data: Dict[str, Any], device_id: str,
+                                     address_objects: Optional[Dict[str, Any]] = None,
+                                     service_objects: Optional[Dict[str, Any]] = None) -> List[Content]:
+        """Format detailed firewall policy response.
+        
+        Args:
+            policy_data: Raw policy detail data from FortiGate API
+            device_id: Device identifier
+            address_objects: Address objects data for resolution
+            service_objects: Service objects data for resolution
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.firewall_policy_detail(
+            policy_data, device_id, address_objects, service_objects
+        )
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
     def format_address_objects(addresses_data: Dict[str, Any]) -> List[Content]:
         """Format address objects response.
         
