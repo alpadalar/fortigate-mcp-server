@@ -59,8 +59,8 @@ class FortiGateFormatters:
     
     @staticmethod
     def format_firewall_policy_detail(policy_data: Dict[str, Any], device_id: str,
-                                     address_objects: Optional[Dict[str, Any]] = None,
-                                     service_objects: Optional[Dict[str, Any]] = None) -> List[Content]:
+                                    address_objects: Optional[Dict[str, Any]] = None,
+                                    service_objects: Optional[Dict[str, Any]] = None) -> List[Content]:
         """Format detailed firewall policy response.
         
         Args:
@@ -108,7 +108,7 @@ class FortiGateFormatters:
         """Format static routes response.
         
         Args:
-            routes_data: Raw routes data from FortiGate API
+            routes_data: Raw static routes data from FortiGate API
             
         Returns:
             List containing formatted Content object
@@ -179,55 +179,40 @@ class FortiGateFormatters:
     
     @staticmethod
     def format_json_response(data: Any, title: Optional[str] = None) -> List[Content]:
-        """Format raw data as JSON with optional title.
+        """Format JSON response data.
         
         Args:
-            data: Raw data to format
+            data: Data to format as JSON
             title: Optional title for the response
             
         Returns:
             List containing formatted Content object
         """
-        lines = []
-        
         if title:
-            lines.extend([f"📄 **{title}**", ""])
+            formatted_text = f"{title}\n\n{json.dumps(data, indent=2, ensure_ascii=False)}"
+        else:
+            formatted_text = json.dumps(data, indent=2, ensure_ascii=False)
         
-        # Format as JSON with proper indentation
-        try:
-            json_str = json.dumps(data, indent=2, ensure_ascii=False)
-            lines.append(f"```json\n{json_str}\n```")
-        except (TypeError, ValueError):
-            # Fallback to string representation
-            lines.append(f"```\n{str(data)}\n```")
-        
-        return [Content(type="text", text="\n".join(lines))]
+        return [Content(type="text", text=formatted_text)]
     
     @staticmethod
-    def format_error(error_msg: str, device_id: Optional[str] = None,
-                    operation: Optional[str] = None) -> List[Content]:
-        """Format error message.
+    def format_error(error_message: str, device_id: str, operation: str) -> List[Content]:
+        """Format error response.
         
         Args:
-            error_msg: Error message
-            device_id: Device identifier if applicable
-            operation: Operation name if applicable
+            error_message: Error message
+            device_id: Device identifier
+            operation: Operation that failed
             
         Returns:
             List containing formatted Content object
         """
-        lines = ["❌ **Error**", ""]
-        
-        if operation:
-            lines.append(f"**Operation:** {operation}")
-        
-        if device_id:
-            lines.append(f"**Device:** {device_id}")
-        
-        lines.extend([
-            f"**Message:** {error_msg}",
+        lines = [
+            f"Error in operation: {operation}",
+            f"Device: {device_id}",
+            f"Error: {error_message}",
             ""
-        ])
+        ]
         
         return [Content(type="text", text="\n".join(lines))]
     
@@ -238,27 +223,26 @@ class FortiGateFormatters:
         
         Args:
             device_id: Device identifier
-            success: Whether connection test succeeded
-            error: Error message if test failed
+            success: Whether connection succeeded
+            error: Error message if failed
             
         Returns:
             List containing formatted Content object
         """
-        status_icon = "✅" if success else "❌"
-        status = "CONNECTED" if success else "FAILED"
+        status = "SUCCESS" if success else "FAILED"
         
         lines = [
-            f"{status_icon} **Connection Test: {status}**",
-            f"   • Device: {device_id}",
+            f"Connection Test {status}",
+            f"Device: {device_id}",
             ""
         ]
         
-        if not success and error:
-            lines.extend([
-                "❗ **Error Details:**",
-                f"   {error}",
-                ""
-            ])
+        if success:
+            lines.append("Connection established successfully")
+        elif error:
+            lines.append(f"Connection failed: {error}")
+        else:
+            lines.append("Connection failed")
         
         return [Content(type="text", text="\n".join(lines))]
     
@@ -275,24 +259,23 @@ class FortiGateFormatters:
         Returns:
             List containing formatted Content object
         """
-        status_icon = "✅" if valid else "❌"
         status = "VALID" if valid else "INVALID"
         
-        lines = [f"{status_icon} **Validation: {status}**", ""]
+        lines = [f"Validation: {status}", ""]
         
         if errors:
-            lines.extend(["❗ **Errors:**"])
+            lines.extend(["Errors:"])
             for error in errors:
-                lines.append(f"   • {error}")
+                lines.append(f"  {error}")
             lines.append("")
         
         if warnings:
-            lines.extend(["⚠️ **Warnings:**"])
+            lines.extend(["Warnings:"])
             for warning in warnings:
-                lines.append(f"   • {warning}")
+                lines.append(f"  {warning}")
             lines.append("")
         
         if valid and not warnings:
-            lines.append("✨ Configuration is valid!")
+            lines.append("Configuration is valid!")
         
         return [Content(type="text", text="\n".join(lines))]

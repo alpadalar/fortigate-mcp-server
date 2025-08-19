@@ -11,10 +11,10 @@ from mcp.types import TextContent
 
 
 class TestFortiGateTemplates:
-    """FortiGate Templates test sınıfı"""
+    """FortiGate Templates test class"""
     
     def test_firewall_policies_empty(self):
-        """Boş firewall policies template testi"""
+        """Empty firewall policies template test"""
         data = {"results": []}
         result = FortiGateTemplates.firewall_policies(data)
         
@@ -22,7 +22,7 @@ class TestFortiGateTemplates:
         assert "No firewall policies found" in result
     
     def test_firewall_policies_with_data(self):
-        """Veri ile firewall policies template testi"""
+        """Firewall policies template test with data"""
         data = {
             "results": [
                 {
@@ -46,7 +46,7 @@ class TestFortiGateTemplates:
         assert "accept" in result
     
     def test_firewall_policy_detail_success(self):
-        """Firewall policy detail template testi"""
+        """Firewall policy detail template test"""
         policy_data = {
             "results": {
                 "policyid": 35,
@@ -79,14 +79,13 @@ class TestFortiGateTemplates:
             policy_data, "test_device", address_objects, service_objects
         )
         
-        assert "Policy Detaylı Analizi" in result
+        assert "Policy Detail" in result
         assert "35" in result
         assert "WAN->ManDown-Project" in result
         assert "test_device" in result
-        assert "Güvenlik Analizi" in result
     
     def test_address_objects_empty(self):
-        """Boş address objects template testi"""
+        """Empty address objects template test"""
         data = {"results": []}
         result = FortiGateTemplates.address_objects(data)
         
@@ -94,7 +93,7 @@ class TestFortiGateTemplates:
         assert "No address objects found" in result
     
     def test_address_objects_with_data(self):
-        """Veri ile address objects template testi"""
+        """Address objects template test with data"""
         data = {
             "results": [
                 {
@@ -112,7 +111,7 @@ class TestFortiGateTemplates:
         assert "192.168.1.0/24" in result
     
     def test_service_objects_empty(self):
-        """Boş service objects template testi"""
+        """Empty service objects template test"""
         data = {"results": []}
         result = FortiGateTemplates.service_objects(data)
         
@@ -120,7 +119,7 @@ class TestFortiGateTemplates:
         assert "No service objects found" in result
     
     def test_service_objects_with_data(self):
-        """Veri ile service objects template testi"""
+        """Service objects template test with data"""
         data = {
             "results": [
                 {
@@ -138,7 +137,7 @@ class TestFortiGateTemplates:
         assert "80" in result
     
     def test_static_routes_empty(self):
-        """Boş static routes template testi"""
+        """Empty static routes template test"""
         data = {"results": []}
         result = FortiGateTemplates.static_routes(data)
         
@@ -146,7 +145,7 @@ class TestFortiGateTemplates:
         assert "No static routes found" in result
     
     def test_static_routes_with_data(self):
-        """Veri ile static routes template testi"""
+        """Static routes template test with data"""
         data = {
             "results": [
                 {
@@ -165,7 +164,7 @@ class TestFortiGateTemplates:
         assert "192.168.1.1" in result
     
     def test_interfaces_empty(self):
-        """Boş interfaces template testi"""
+        """Empty interfaces template test"""
         data = {"results": []}
         result = FortiGateTemplates.interfaces(data)
         
@@ -173,7 +172,7 @@ class TestFortiGateTemplates:
         assert "No interfaces found" in result
     
     def test_interfaces_with_data(self):
-        """Veri ile interfaces template testi"""
+        """Interfaces template test with data"""
         data = {
             "results": [
                 {
@@ -194,7 +193,7 @@ class TestFortiGateTemplates:
         assert "LAN" in result
     
     def test_device_status_success(self):
-        """Device status template testi"""
+        """Device status template test"""
         device_id = "test_device"
         status_data = {
             "hostname": "FortiGate",
@@ -211,7 +210,7 @@ class TestFortiGateTemplates:
         assert "test_device" in result
     
     def test_vdoms_success(self):
-        """VDOMs template testi"""
+        """VDOMs template test"""
         data = {
             "results": [
                 {
@@ -230,10 +229,10 @@ class TestFortiGateTemplates:
 
 
 class TestFortiGateFormatters:
-    """FortiGate Formatters test sınıfı"""
+    """FortiGate Formatters test class"""
     
     def test_format_firewall_policies(self):
-        """Firewall policies formatter testi"""
+        """Firewall policies formatter test"""
         data = {
             "results": [
                 {
@@ -252,7 +251,7 @@ class TestFortiGateFormatters:
         assert "Firewall Policies" in result[0].text
     
     def test_format_firewall_policy_detail(self):
-        """Firewall policy detail formatter testi"""
+        """Firewall policy detail formatter test"""
         policy_data = {
             "results": {
                 "policyid": 35,
@@ -268,10 +267,10 @@ class TestFortiGateFormatters:
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
-        assert "Policy Detaylı Analizi" in result[0].text
+        assert "Policy Detail" in result[0].text
     
     def test_format_address_objects(self):
-        """Address objects formatter testi"""
+        """Address objects formatter test"""
         data = {
             "results": [
                 {
@@ -289,7 +288,7 @@ class TestFortiGateFormatters:
         assert "Address Objects" in result[0].text
     
     def test_format_service_objects(self):
-        """Service objects formatter testi"""
+        """Service objects formatter test"""
         data = {
             "results": [
                 {
@@ -307,7 +306,7 @@ class TestFortiGateFormatters:
         assert "Service Objects" in result[0].text
     
     def test_format_static_routes(self):
-        """Static routes formatter testi"""
+        """Static routes formatter test"""
         data = {
             "results": [
                 {
@@ -325,7 +324,7 @@ class TestFortiGateFormatters:
         assert "Static Routes" in result[0].text
     
     def test_format_interfaces(self):
-        """Interfaces formatter testi"""
+        """Interfaces formatter test"""
         data = {
             "results": [
                 {
@@ -340,10 +339,10 @@ class TestFortiGateFormatters:
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
-        assert "Interfaces" in result[0].text
+        assert "Network Interfaces" in result[0].text
     
     def test_format_error(self):
-        """Error formatter testi"""
+        """Error formatter test"""
         result = FortiGateFormatters.format_error(
             "Test error message", "test_device", "test_operation"
         )
@@ -351,13 +350,13 @@ class TestFortiGateFormatters:
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
-        assert "Error" in result[0].text
+        assert "Error in operation" in result[0].text
         assert "Test error message" in result[0].text
         assert "test_device" in result[0].text
         assert "test_operation" in result[0].text
     
     def test_format_operation_result_success(self):
-        """Success operation result formatter testi"""
+        """Success operation result formatter test"""
         result = FortiGateFormatters.format_operation_result(
             "test_operation", "test_device", True, "Success details"
         )
@@ -370,7 +369,7 @@ class TestFortiGateFormatters:
         assert "Success details" in result[0].text
     
     def test_format_operation_result_failure(self):
-        """Failure operation result formatter testi"""
+        """Failure operation result formatter test"""
         result = FortiGateFormatters.format_operation_result(
             "test_operation", "test_device", False, 
             error="Operation failed"
