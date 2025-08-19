@@ -1,0 +1,46 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8814,
+    "name": "fortigate-mcp-server",
+    "version": "1.0.0"
+  },
+  "fortigate": {
+    "devices": {
+      "default": {
+        "host": "192.168.1.1",
+        "port": 443,
+        "username": "admin",
+        "password": "your_password",
+        "api_token": "",
+        "vdom": "root",
+        "verify_ssl": false,
+        "timeout": 30
+      },
+      "backup": {
+        "host": "192.168.1.2",
+        "port": 443,
+        "api_token": "your_api_token_here",
+        "vdom": "root",
+        "verify_ssl": false,
+        "timeout": 30
+      }
+    }
+  },
+  "auth": {
+    "require_auth": false,
+    "api_tokens": [],
+    "allowed_origins": ["*"]
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file": "/app/logs/fortigate_mcp.log",
+    "console": true
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "max_requests_per_minute": 60,
+    "burst_size": 10
+  }
+}

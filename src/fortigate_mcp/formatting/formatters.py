@@ -1,0 +1,278 @@
+"""
+Response formatters for FortiGate MCP.
+
+This module provides utilities for formatting FortiGate API responses
+into structured MCP content. It acts as a bridge between raw API data
+and user-friendly formatted output.
+"""
+import json
+from typing import Any, Dict, List, Optional
+from mcp.types import TextContent as Content
+from .templates import FortiGateTemplates
+
+class FortiGateFormatters:
+    """Formatter collection for FortiGate resources.
+    
+    Provides static methods for converting FortiGate API responses
+    into MCP Content objects with appropriate formatting.
+    """
+    
+    @staticmethod
+    def format_devices(devices_data: Dict[str, Dict[str, Any]]) -> List[Content]:
+        """Format device list response.
+        
+        Args:
+            devices_data: Dictionary of device information
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.device_list(devices_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_device_status(device_id: str, status_data: Dict[str, Any]) -> List[Content]:
+        """Format device status response.
+        
+        Args:
+            device_id: Device identifier
+            status_data: Raw status data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.device_status(device_id, status_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_firewall_policies(policies_data: Dict[str, Any]) -> List[Content]:
+        """Format firewall policies response.
+        
+        Args:
+            policies_data: Raw policies data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.firewall_policies(policies_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_address_objects(addresses_data: Dict[str, Any]) -> List[Content]:
+        """Format address objects response.
+        
+        Args:
+            addresses_data: Raw address objects data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.address_objects(addresses_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_service_objects(services_data: Dict[str, Any]) -> List[Content]:
+        """Format service objects response.
+        
+        Args:
+            services_data: Raw service objects data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.service_objects(services_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_static_routes(routes_data: Dict[str, Any]) -> List[Content]:
+        """Format static routes response.
+        
+        Args:
+            routes_data: Raw routes data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.static_routes(routes_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_interfaces(interfaces_data: Dict[str, Any]) -> List[Content]:
+        """Format interfaces response.
+        
+        Args:
+            interfaces_data: Raw interfaces data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.interfaces(interfaces_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_vdoms(vdoms_data: Dict[str, Any]) -> List[Content]:
+        """Format VDOMs response.
+        
+        Args:
+            vdoms_data: Raw VDOMs data from FortiGate API
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.vdoms(vdoms_data)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_operation_result(operation: str, device_id: str, success: bool,
+                              details: Optional[str] = None, 
+                              error: Optional[str] = None) -> List[Content]:
+        """Format operation result.
+        
+        Args:
+            operation: Name of the operation performed
+            device_id: Target device identifier
+            success: Whether the operation succeeded
+            details: Additional details about the operation
+            error: Error message if operation failed
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.operation_result(
+            operation, device_id, success, details, error
+        )
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_health_status(status: str, details: Dict[str, Any]) -> List[Content]:
+        """Format health check status.
+        
+        Args:
+            status: Overall health status
+            details: Health check details
+            
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.health_status(status, details)
+        return [Content(type="text", text=formatted_text)]
+    
+    @staticmethod
+    def format_json_response(data: Any, title: Optional[str] = None) -> List[Content]:
+        """Format raw data as JSON with optional title.
+        
+        Args:
+            data: Raw data to format
+            title: Optional title for the response
+            
+        Returns:
+            List containing formatted Content object
+        """
+        lines = []
+        
+        if title:
+            lines.extend([f"📄 **{title}**", ""])
+        
+        # Format as JSON with proper indentation
+        try:
+            json_str = json.dumps(data, indent=2, ensure_ascii=False)
+            lines.append(f"```json\n{json_str}\n```")
+        except (TypeError, ValueError):
+            # Fallback to string representation
+            lines.append(f"```\n{str(data)}\n```")
+        
+        return [Content(type="text", text="\n".join(lines))]
+    
+    @staticmethod
+    def format_error(error_msg: str, device_id: Optional[str] = None,
+                    operation: Optional[str] = None) -> List[Content]:
+        """Format error message.
+        
+        Args:
+            error_msg: Error message
+            device_id: Device identifier if applicable
+            operation: Operation name if applicable
+            
+        Returns:
+            List containing formatted Content object
+        """
+        lines = ["❌ **Error**", ""]
+        
+        if operation:
+            lines.append(f"**Operation:** {operation}")
+        
+        if device_id:
+            lines.append(f"**Device:** {device_id}")
+        
+        lines.extend([
+            f"**Message:** {error_msg}",
+            ""
+        ])
+        
+        return [Content(type="text", text="\n".join(lines))]
+    
+    @staticmethod
+    def format_connection_test(device_id: str, success: bool, 
+                             error: Optional[str] = None) -> List[Content]:
+        """Format connection test result.
+        
+        Args:
+            device_id: Device identifier
+            success: Whether connection test succeeded
+            error: Error message if test failed
+            
+        Returns:
+            List containing formatted Content object
+        """
+        status_icon = "✅" if success else "❌"
+        status = "CONNECTED" if success else "FAILED"
+        
+        lines = [
+            f"{status_icon} **Connection Test: {status}**",
+            f"   • Device: {device_id}",
+            ""
+        ]
+        
+        if not success and error:
+            lines.extend([
+                "❗ **Error Details:**",
+                f"   {error}",
+                ""
+            ])
+        
+        return [Content(type="text", text="\n".join(lines))]
+    
+    @staticmethod
+    def format_validation_result(valid: bool, errors: List[str], 
+                               warnings: List[str]) -> List[Content]:
+        """Format validation result.
+        
+        Args:
+            valid: Whether validation passed
+            errors: List of validation errors
+            warnings: List of validation warnings
+            
+        Returns:
+            List containing formatted Content object
+        """
+        status_icon = "✅" if valid else "❌"
+        status = "VALID" if valid else "INVALID"
+        
+        lines = [f"{status_icon} **Validation: {status}**", ""]
+        
+        if errors:
+            lines.extend(["❗ **Errors:**"])
+            for error in errors:
+                lines.append(f"   • {error}")
+            lines.append("")
+        
+        if warnings:
+            lines.extend(["⚠️ **Warnings:**"])
+            for warning in warnings:
+                lines.append(f"   • {warning}")
+            lines.append("")
+        
+        if valid and not warnings:
+            lines.append("✨ Configuration is valid!")
+        
+        return [Content(type="text", text="\n".join(lines))]
