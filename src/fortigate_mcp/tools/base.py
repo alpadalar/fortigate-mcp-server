@@ -59,7 +59,7 @@ class FortiGateTool:
             self.logger.error(f"Device {device_id} not found")
             raise ValueError(f"Device '{device_id}' not found. Available devices: {list(self.fortigate_manager.devices.keys())}")
 
-    def _format_response(self, data: Any, resource_type: Optional[str] = None) -> List[Content]:
+    def _format_response(self, data: Any, resource_type: Optional[str] = None, **kwargs) -> List[Content]:
         """Format response data into MCP content using formatters.
 
         This method handles formatting of various FortiGate resource types into
@@ -98,6 +98,13 @@ class FortiGateTool:
                 return FortiGateFormatters.format_device_status("unknown", data)
         elif resource_type == "firewall_policies":
             return FortiGateFormatters.format_firewall_policies(data)
+        elif resource_type == "firewall_policy_detail":
+            device_id = kwargs.get('device_id', 'unknown')
+            address_objects = kwargs.get('address_objects')
+            service_objects = kwargs.get('service_objects')
+            return FortiGateFormatters.format_firewall_policy_detail(
+                data, device_id, address_objects, service_objects
+            )
         elif resource_type == "address_objects":
             return FortiGateFormatters.format_address_objects(data)
         elif resource_type == "service_objects":

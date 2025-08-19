@@ -200,6 +200,10 @@ class FortiGateAPI:
         """Update existing firewall policy."""
         return self._make_request("PUT", f"cmdb/firewall/policy/{policy_id}", data=policy_data, vdom=vdom)
     
+    def get_firewall_policy_detail(self, policy_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific firewall policy."""
+        return self._make_request("GET", f"cmdb/firewall/policy/{policy_id}", vdom=vdom)
+    
     def delete_firewall_policy(self, policy_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete firewall policy."""
         return self._make_request("DELETE", f"cmdb/firewall/policy/{policy_id}", vdom=vdom)
