@@ -178,10 +178,22 @@ python -m src.fortigate_mcp.server_http --host 0.0.0.0 --port 8814 --path /forti
 - `list_service_objects` - List service objects
 - `create_service_object` - Create service object
 
+### Virtual IP Management
+
+- `list_virtual_ips` - List virtual IPs
+- `create_virtual_ip` - Create virtual IP
+- `update_virtual_ip` - Update virtual IP
+- `get_virtual_ip_detail` - Get virtual IP detail
+- `delete_virtual_ip` - Delete virtual IP
+
 ### Routing Management
 
 - `list_static_routes` - List static routes
 - `create_static_route` - Create static route
+- `update_static_route` - Update static route
+- `delete_static_route` - Delete static route
+- `get_static_route_detail` - Get static route detail
+- `get_routing_table` - Get routing table
 - `list_interfaces` - List interfaces
 - `get_interface_status` - Get interface status
 
