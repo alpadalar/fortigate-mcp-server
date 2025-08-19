@@ -152,6 +152,68 @@ class TestFirewallTools:
         
         assert "created" in result[0].text
         mock_api.create_firewall_policy.assert_called_once_with(policy_data, vdom=None)
+    
+    def test_get_policy_detail_success(self):
+        """Başarılı policy detay alma testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_firewall_policy_detail.return_value = {
+            "results": {
+                "policyid": 35,
+                "name": "WAN->ManDown-Project",
+                "srcintf": [{"name": "wan1"}],
+                "dstintf": [{"name": "internal"}],
+                "srcaddr": [{"name": "all"}],
+                "dstaddr": [{"name": "Yartu-1-TCP"}, {"name": "Yartu-1-UDP"}],
+                "service": [{"name": "ALL"}],
+                "action": "accept",
+                "status": "enable"
+            }
+        }
+        mock_api.get_address_objects.return_value = {
+            "results": [{"name": "all", "subnet": "0.0.0.0 0.0.0.0"}]
+        }
+        mock_api.get_service_objects.return_value = {
+            "results": [{"name": "ALL", "protocol": "TCP/UDP/SCTP"}]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.firewall_tools.get_policy_detail("test_device", "35")
+        
+        assert "Policy Detaylı Analizi" in result[0].text
+        assert "35" in result[0].text
+        assert "WAN->ManDown-Project" in result[0].text
+        mock_api.get_firewall_policy_detail.assert_called_once_with("35", vdom=None)
+        mock_api.get_address_objects.assert_called_once()
+        mock_api.get_service_objects.assert_called_once()
+    
+    def test_get_policy_detail_not_found(self):
+        """Olmayan policy detay alma testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_firewall_policy_detail.side_effect = Exception("Policy not found")
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.firewall_tools.get_policy_detail("test_device", "999")
+        
+        assert "Error" in result[0].text
+        assert "not found" in result[0].text.lower()
+    
+    def test_delete_firewall_policy_success(self):
+        """Başarılı firewall policy silme testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.delete_firewall_policy.return_value = {"status": "success"}
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.firewall_tools.delete_policy("test_device", "35")
+        
+        assert "deleted" in result[0].text
+        assert "35" in result[0].text
+        mock_api.delete_firewall_policy.assert_called_once_with("35", vdom=None)
 
 
 class TestNetworkTools:
@@ -196,6 +258,41 @@ class TestNetworkTools:
         
         assert "created" in result[0].text
         mock_api.create_address_object.assert_called_once()
+    
+    def test_list_service_objects_success(self):
+        """Başarılı service object listesi alma testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_service_objects.return_value = {
+            "results": [{"name": "HTTP", "tcp-portrange": "80"}]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.network_tools.list_service_objects("test_device")
+        
+        assert "Service Objects" in result[0].text
+        assert "HTTP" in result[0].text
+        mock_api.get_service_objects.assert_called_once()
+    
+    def test_create_service_object_success(self):
+        """Başarılı service object oluşturma testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.create_service_object.return_value = {"status": "success"}
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.network_tools.create_service_object(
+            device_id="test_device",
+            name="test_service",
+            service_type="TCP/UDP/SCTP",
+            protocol="TCP",
+            port="8080"
+        )
+        
+        assert "created" in result[0].text
+        mock_api.create_service_object.assert_called_once()
 
 
 class TestRoutingTools:
@@ -239,3 +336,34 @@ class TestRoutingTools:
         
         assert "created" in result[0].text
         mock_api.create_static_route.assert_called_once()
+    
+    def test_list_interfaces_success(self):
+        """Başarılı interface listesi alma testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_interfaces.return_value = {
+            "results": [{"name": "port1", "status": "up"}]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.routing_tools.list_interfaces("test_device")
+        
+        assert "Interfaces" in result[0].text
+        assert "port1" in result[0].text
+        mock_api.get_interfaces.assert_called_once()
+    
+    def test_get_interface_status_success(self):
+        """Başarılı interface durumu alma testi"""
+        # Mock cihaz ekle
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_interface_status.return_value = {
+            "results": {"name": "port1", "status": "up", "ip": "192.168.1.1"}
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+        
+        result = self.routing_tools.get_interface_status("test_device", "port1")
+        
+        assert "port1" in result[0].text
+        mock_api.get_interface_status.assert_called_once_with("port1", vdom=None)
