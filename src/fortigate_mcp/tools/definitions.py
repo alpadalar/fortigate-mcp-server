@@ -603,3 +603,295 @@ Returns:
 - Runtime statistics
 - API endpoints
 """
+
+# Certificate Tool Descriptions
+LIST_LOCAL_CERTIFICATES_DESC = """
+List all local (device) certificates on a FortiGate device.
+
+This tool retrieves all locally installed certificates on the device,
+including SSL certificates, VPN certificates, and other device certificates.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Certificate name and type
+- Subject and issuer information
+- Validity period (start and end dates)
+- Certificate status
+"""
+
+LIST_CA_CERTIFICATES_DESC = """
+List all CA (Certificate Authority) certificates on a FortiGate device.
+
+This tool retrieves all trusted CA certificates installed on the device,
+used for validating SSL/TLS connections and VPN authentication.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- CA certificate name
+- Subject and issuer information
+- Validity period
+- Trust status
+"""
+
+LIST_REMOTE_CERTIFICATES_DESC = """
+List all remote certificates on a FortiGate device.
+
+This tool retrieves certificates obtained from remote peers,
+typically used in VPN and SSL inspection scenarios.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Remote certificate name
+- Subject and issuer information
+- Source information
+- Certificate status
+"""
+
+GET_LOCAL_CERTIFICATE_DETAIL_DESC = """
+Get detailed information for a specific local certificate.
+
+This tool retrieves comprehensive details about a locally installed
+certificate, including its full certificate chain and usage information.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name of the certificate to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Complete certificate details
+- Public key information
+- Signature algorithm
+- Certificate chain
+- Usage and constraints
+"""
+
+GET_CA_CERTIFICATE_DETAIL_DESC = """
+Get detailed information for a specific CA certificate.
+
+This tool retrieves comprehensive details about a CA certificate,
+including trust settings and validation parameters.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name of the CA certificate to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Complete CA certificate details
+- Trust chain information
+- Validation settings
+- Associated services
+"""
+
+GET_REMOTE_CERTIFICATE_DETAIL_DESC = """
+Get detailed information for a specific remote certificate.
+
+This tool retrieves comprehensive details about a remote certificate,
+including peer information and validation status.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name of the remote certificate to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Complete remote certificate details
+- Peer information
+- Validation status
+- Last update time
+"""
+
+LIST_CRL_DESC = """
+List all Certificate Revocation Lists (CRLs) on a FortiGate device.
+
+This tool retrieves all configured CRLs used for checking
+certificate revocation status.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- CRL name and source
+- Last update time
+- Next update time
+- Number of revoked certificates
+"""
+
+GET_CRL_DETAIL_DESC = """
+Get detailed information for a specific Certificate Revocation List.
+
+This tool retrieves comprehensive details about a CRL,
+including its update schedule and revocation entries.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- crl_name: Name of the CRL to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Complete CRL details
+- Distribution point information
+- Update schedule
+- Revocation entries count
+"""
+
+DELETE_LOCAL_CERTIFICATE_DESC = """
+Delete a local certificate from a FortiGate device.
+
+This tool removes a locally installed certificate from the device.
+Note that certificates in use by services cannot be deleted.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name of the certificate to delete
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Deletion status confirmation
+"""
+
+DELETE_CA_CERTIFICATE_DESC = """
+Delete a CA certificate from a FortiGate device.
+
+This tool removes a CA certificate from the device's trusted store.
+Note that CA certificates in use for validation cannot be deleted.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name of the CA certificate to delete
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Deletion status confirmation
+"""
+
+DELETE_REMOTE_CERTIFICATE_DESC = """
+Delete a remote certificate from a FortiGate device.
+
+This tool removes a remote certificate from the device.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name of the remote certificate to delete
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Deletion status confirmation
+"""
+
+# ACME/Let's Encrypt Tool Descriptions
+REQUEST_CERTIFICATE_DESC = """
+Request a Let's Encrypt certificate using Cloudflare DNS challenge.
+
+This tool uses the ACME protocol to request a free SSL/TLS certificate
+from Let's Encrypt, using Cloudflare DNS for domain validation.
+
+Parameters:
+- domains: List of domain names for the certificate (first is primary)
+- email: Contact email for Let's Encrypt account (optional if configured)
+- cloudflare_api_token: Cloudflare API token with DNS edit permissions (optional if configured)
+- key_type: Key type - 'rsa' or 'ec' (default: rsa)
+- key_size: Key size for RSA - 2048 or 4096 (default: 2048)
+- staging: Use Let's Encrypt staging environment for testing (default: false)
+
+Returns:
+- Certificate details including subject, issuer, validity
+- Private key in PEM format
+- Certificate in PEM format
+- Certificate chain in PEM format
+"""
+
+REQUEST_AND_IMPORT_CERTIFICATE_DESC = """
+Request a Let's Encrypt certificate and import it to FortiGate.
+
+This tool combines certificate request and import into a single operation:
+1. Requests a certificate from Let's Encrypt via ACME
+2. Uses Cloudflare DNS for domain validation
+3. Imports the certificate directly to the FortiGate device
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- domains: List of domain names for the certificate
+- cert_name: Name for the certificate in FortiGate
+- email: Contact email for Let's Encrypt (optional if configured)
+- cloudflare_api_token: Cloudflare API token (optional if configured)
+- key_type: Key type - 'rsa' or 'ec' (default: rsa)
+- key_size: Key size for RSA (default: 2048)
+- staging: Use staging environment for testing (default: false)
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Import status confirmation
+- Certificate details including validity information
+"""
+
+IMPORT_CERTIFICATE_DESC = """
+Import an existing certificate to a FortiGate device.
+
+This tool imports a PEM-encoded certificate and private key
+to a FortiGate device's local certificate store.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name for the certificate in FortiGate
+- certificate: PEM-encoded certificate content
+- private_key: PEM-encoded private key content
+- password: Password for encrypted private key (optional)
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Import status confirmation
+"""
+
+IMPORT_CA_CERTIFICATE_DESC = """
+Import a CA certificate to a FortiGate device.
+
+This tool imports a PEM-encoded CA certificate to a FortiGate
+device's trusted CA store.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- cert_name: Name for the CA certificate in FortiGate
+- certificate: PEM-encoded CA certificate content
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Import status confirmation
+"""
+
+LIST_CLOUDFLARE_ZONES_DESC = """
+List Cloudflare zones available for DNS challenges.
+
+This tool lists all DNS zones in your Cloudflare account that
+can be used for ACME DNS-01 domain validation.
+
+Parameters:
+- cloudflare_api_token: Cloudflare API token (optional if configured)
+
+Returns:
+- List of zones with name, ID, and status
+"""
+
+VERIFY_CLOUDFLARE_TOKEN_DESC = """
+Verify Cloudflare API token is valid.
+
+This tool verifies that the Cloudflare API token has valid
+permissions for DNS operations required for ACME challenges.
+
+Parameters:
+- cloudflare_api_token: Cloudflare API token (optional if configured)
+
+Returns:
+- Token validation status
+"""

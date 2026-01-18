@@ -28,11 +28,15 @@ from pydantic import Field
 from .config.loader import load_config
 from .core.logging import setup_logging
 from .core.fortigate import FortiGateManager
+from .core.fortianalyzer import FortiAnalyzerManager
 from .tools.device import DeviceTools
 from .tools.firewall import FirewallTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
 from .tools.virtual_ip import VirtualIPTools
+from .tools.certificate import CertificateTools
+from .tools.acme import ACMETools
+from .tools.fortianalyzer import FortiAnalyzerTools
 from .tools.definitions import *
 
 class FortiGateMCPServer:
@@ -60,7 +64,29 @@ class FortiGateMCPServer:
         self.network_tools = NetworkTools(self.fortigate_manager)
         self.routing_tools = RoutingTools(self.fortigate_manager)
         self.virtual_ip_tools = VirtualIPTools(self.fortigate_manager)
-        
+        self.certificate_tools = CertificateTools(self.fortigate_manager)
+
+        # Initialize ACME tools with config from environment or config file
+        acme_config = {
+            "cloudflare_api_token": (
+                self.config.acme.cloudflare_api_token or
+                os.environ.get("CLOUDFLARE_API_TOKEN")
+            ),
+            "acme_email": (
+                self.config.acme.email or
+                os.environ.get("ACME_EMAIL")
+            ),
+            "acme_account_key_path": (
+                self.config.acme.account_key_path or
+                os.environ.get("ACME_ACCOUNT_KEY_PATH")
+            )
+        }
+        self.acme_tools = ACMETools(self.fortigate_manager, acme_config)
+
+        # Initialize FortiAnalyzer
+        self.faz_manager = FortiAnalyzerManager()
+        self.faz_tools = FortiAnalyzerTools(self.faz_manager)
+
         # Initialize MCP server
         self.mcp = FastMCP("FortiGateMCP")
         self._tests_passed: Optional[bool] = None
@@ -299,6 +325,366 @@ class FortiGateMCPServer:
         ):
             return await self.virtual_ip_tools.delete_virtual_ip(device_id, name, vdom)
 
+        # Certificate tools
+        @self.mcp.tool(description=LIST_LOCAL_CERTIFICATES_DESC)
+        async def list_local_certificates(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.list_local_certificates(device_id, vdom)
+
+        @self.mcp.tool(description=LIST_CA_CERTIFICATES_DESC)
+        async def list_ca_certificates(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.list_ca_certificates(device_id, vdom)
+
+        @self.mcp.tool(description=LIST_REMOTE_CERTIFICATES_DESC)
+        async def list_remote_certificates(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.list_remote_certificates(device_id, vdom)
+
+        @self.mcp.tool(description=GET_LOCAL_CERTIFICATE_DETAIL_DESC)
+        async def get_local_certificate_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="Certificate name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.get_local_certificate_detail(device_id, cert_name, vdom)
+
+        @self.mcp.tool(description=GET_CA_CERTIFICATE_DETAIL_DESC)
+        async def get_ca_certificate_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="CA certificate name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.get_ca_certificate_detail(device_id, cert_name, vdom)
+
+        @self.mcp.tool(description=GET_REMOTE_CERTIFICATE_DETAIL_DESC)
+        async def get_remote_certificate_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="Remote certificate name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.get_remote_certificate_detail(device_id, cert_name, vdom)
+
+        @self.mcp.tool(description=LIST_CRL_DESC)
+        async def list_crl(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.list_crl(device_id, vdom)
+
+        @self.mcp.tool(description=GET_CRL_DETAIL_DESC)
+        async def get_crl_detail(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            crl_name: Annotated[str, Field(description="CRL name")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.get_crl_detail(device_id, crl_name, vdom)
+
+        @self.mcp.tool(description=DELETE_LOCAL_CERTIFICATE_DESC)
+        async def delete_local_certificate(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="Certificate name to delete")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.delete_local_certificate(device_id, cert_name, vdom)
+
+        @self.mcp.tool(description=DELETE_CA_CERTIFICATE_DESC)
+        async def delete_ca_certificate(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="CA certificate name to delete")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.delete_ca_certificate(device_id, cert_name, vdom)
+
+        @self.mcp.tool(description=DELETE_REMOTE_CERTIFICATE_DESC)
+        async def delete_remote_certificate(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="Remote certificate name to delete")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+        ):
+            return self.certificate_tools.delete_remote_certificate(device_id, cert_name, vdom)
+
+        # ACME/Let's Encrypt tools
+        @self.mcp.tool(description=REQUEST_CERTIFICATE_DESC)
+        async def request_certificate(
+            domains: Annotated[list, Field(description="List of domain names for the certificate")],
+            email: Annotated[Optional[str], Field(description="Contact email for Let's Encrypt")] = None,
+            cloudflare_api_token: Annotated[Optional[str], Field(description="Cloudflare API token")] = None,
+            key_type: Annotated[str, Field(description="Key type (rsa or ec)")] = "rsa",
+            key_size: Annotated[int, Field(description="Key size for RSA")] = 2048,
+            staging: Annotated[bool, Field(description="Use staging environment")] = False
+        ):
+            return self.acme_tools.request_certificate(
+                domains, email, cloudflare_api_token, key_type, key_size, staging
+            )
+
+        @self.mcp.tool(description=REQUEST_AND_IMPORT_CERTIFICATE_DESC)
+        async def request_and_import_certificate(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            domains: Annotated[list, Field(description="List of domain names for the certificate")],
+            cert_name: Annotated[str, Field(description="Name for the certificate in FortiGate")],
+            email: Annotated[Optional[str], Field(description="Contact email for Let's Encrypt")] = None,
+            cloudflare_api_token: Annotated[Optional[str], Field(description="Cloudflare API token")] = None,
+            key_type: Annotated[str, Field(description="Key type (rsa or ec)")] = "rsa",
+            key_size: Annotated[int, Field(description="Key size for RSA")] = 2048,
+            staging: Annotated[bool, Field(description="Use staging environment")] = False,
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain")] = None
+        ):
+            return self.acme_tools.request_and_import_certificate(
+                device_id, domains, cert_name, email, cloudflare_api_token,
+                key_type, key_size, staging, vdom
+            )
+
+        @self.mcp.tool(description=IMPORT_CERTIFICATE_DESC)
+        async def import_certificate(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="Name for the certificate in FortiGate")],
+            certificate: Annotated[str, Field(description="PEM-encoded certificate")],
+            private_key: Annotated[str, Field(description="PEM-encoded private key")],
+            password: Annotated[Optional[str], Field(description="Password for encrypted key")] = None,
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain")] = None
+        ):
+            return self.acme_tools.import_certificate(
+                device_id, cert_name, certificate, private_key, password, vdom
+            )
+
+        @self.mcp.tool(description=IMPORT_CA_CERTIFICATE_DESC)
+        async def import_ca_certificate(
+            device_id: Annotated[str, Field(description="FortiGate device identifier")],
+            cert_name: Annotated[str, Field(description="Name for the CA certificate in FortiGate")],
+            certificate: Annotated[str, Field(description="PEM-encoded CA certificate")],
+            vdom: Annotated[Optional[str], Field(description="Virtual Domain")] = None
+        ):
+            return self.acme_tools.import_ca_certificate(device_id, cert_name, certificate, vdom)
+
+        @self.mcp.tool(description=LIST_CLOUDFLARE_ZONES_DESC)
+        async def list_cloudflare_zones(
+            cloudflare_api_token: Annotated[Optional[str], Field(description="Cloudflare API token")] = None
+        ):
+            return self.acme_tools.list_cloudflare_zones(cloudflare_api_token)
+
+        @self.mcp.tool(description=VERIFY_CLOUDFLARE_TOKEN_DESC)
+        async def verify_cloudflare_token(
+            cloudflare_api_token: Annotated[Optional[str], Field(description="Cloudflare API token")] = None
+        ):
+            return self.acme_tools.verify_cloudflare_token(cloudflare_api_token)
+
+        # FortiAnalyzer tools
+        @self.mcp.tool(description="List registered FortiAnalyzer instances")
+        async def faz_list_analyzers():
+            return self.faz_tools.list_analyzers()
+
+        @self.mcp.tool(description="Add a FortiAnalyzer instance")
+        async def faz_add_analyzer(
+            analyzer_id: Annotated[str, Field(description="Unique identifier for FortiAnalyzer")],
+            host: Annotated[str, Field(description="FortiAnalyzer hostname or IP")],
+            api_token: Annotated[Optional[str], Field(description="API token")] = None,
+            username: Annotated[Optional[str], Field(description="Username")] = None,
+            password: Annotated[Optional[str], Field(description="Password")] = None,
+            port: Annotated[int, Field(description="HTTPS port")] = 443,
+            verify_ssl: Annotated[bool, Field(description="Verify SSL")] = False,
+            adom: Annotated[str, Field(description="Administrative Domain")] = "root"
+        ):
+            return self.faz_tools.add_analyzer(
+                analyzer_id, host, api_token, username, password, port, verify_ssl, adom
+            )
+
+        @self.mcp.tool(description="Remove a FortiAnalyzer instance")
+        async def faz_remove_analyzer(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")]
+        ):
+            return self.faz_tools.remove_analyzer(analyzer_id)
+
+        @self.mcp.tool(description="Test FortiAnalyzer connection")
+        async def faz_test_connection(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")]
+        ):
+            return self.faz_tools.test_connection(analyzer_id)
+
+        @self.mcp.tool(description="Get FortiAnalyzer system status")
+        async def faz_get_system_status(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")]
+        ):
+            return self.faz_tools.get_system_status(analyzer_id)
+
+        @self.mcp.tool(description="Get FortiAnalyzer Administrative Domains")
+        async def faz_get_adoms(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")]
+        ):
+            return self.faz_tools.get_adoms(analyzer_id)
+
+        @self.mcp.tool(description="Get devices reporting logs to FortiAnalyzer")
+        async def faz_get_devices(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_devices(analyzer_id, adom)
+
+        @self.mcp.tool(description="Get device log status from FortiAnalyzer")
+        async def faz_get_device_status(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            device_name: Annotated[str, Field(description="Device name")],
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_device_status(analyzer_id, device_name, adom)
+
+        @self.mcp.tool(description="Search logs with filters")
+        async def faz_search_logs(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            log_type: Annotated[str, Field(description="Log type (traffic, event, security)")] = "traffic",
+            filter_expr: Annotated[Optional[str], Field(description="Filter expression")] = None,
+            time_range: Annotated[Optional[str], Field(description="Time range (1h, 24h, 7d)")] = None,
+            limit: Annotated[int, Field(description="Maximum results")] = 100,
+            device: Annotated[Optional[str], Field(description="Filter by device")] = None,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.search_logs(
+                analyzer_id, log_type, filter_expr, time_range, limit, device, adom
+            )
+
+        @self.mcp.tool(description="Get log statistics")
+        async def faz_get_log_stats(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_log_stats(analyzer_id, time_range, adom)
+
+        @self.mcp.tool(description="Get available log fields")
+        async def faz_get_log_fields(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            log_type: Annotated[str, Field(description="Log type")] = "traffic",
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_log_fields(analyzer_id, log_type, adom)
+
+        @self.mcp.tool(description="Get raw log data")
+        async def faz_get_raw_logs(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            log_type: Annotated[str, Field(description="Log type")] = "traffic",
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            limit: Annotated[int, Field(description="Maximum results")] = 100,
+            device: Annotated[Optional[str], Field(description="Filter by device")] = None,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_raw_logs(analyzer_id, log_type, time_range, limit, device, adom)
+
+        @self.mcp.tool(description="List available report templates")
+        async def faz_list_reports(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.list_reports(analyzer_id, adom)
+
+        @self.mcp.tool(description="Run a report")
+        async def faz_run_report(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            report_name: Annotated[str, Field(description="Report template name")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            devices: Annotated[Optional[str], Field(description="Comma-separated devices")] = None,
+            output_format: Annotated[str, Field(description="Output format")] = "pdf",
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.run_report(
+                analyzer_id, report_name, time_range, devices, output_format, adom
+            )
+
+        @self.mcp.tool(description="Get report execution status")
+        async def faz_get_report_status(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            task_id: Annotated[int, Field(description="Report task ID")],
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_report_status(analyzer_id, task_id, adom)
+
+        @self.mcp.tool(description="Download completed report")
+        async def faz_download_report(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            task_id: Annotated[int, Field(description="Report task ID")],
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.download_report(analyzer_id, task_id, adom)
+
+        @self.mcp.tool(description="Get FortiView dashboard data")
+        async def faz_get_fortiview(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            view_type: Annotated[str, Field(description="View type (traffic, threat, application)")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            filter_expr: Annotated[Optional[str], Field(description="Filter expression")] = None,
+            limit: Annotated[int, Field(description="Maximum results")] = 20,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_fortiview(
+                analyzer_id, view_type, time_range, filter_expr, limit, adom
+            )
+
+        @self.mcp.tool(description="Get threat statistics")
+        async def faz_get_threat_stats(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_threat_stats(analyzer_id, time_range, adom)
+
+        @self.mcp.tool(description="Get top traffic sources")
+        async def faz_get_top_sources(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            limit: Annotated[int, Field(description="Number of top sources")] = 20,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_top_sources(analyzer_id, time_range, limit, adom)
+
+        @self.mcp.tool(description="Get top traffic destinations")
+        async def faz_get_top_destinations(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            limit: Annotated[int, Field(description="Number of top destinations")] = 20,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_top_destinations(analyzer_id, time_range, limit, adom)
+
+        @self.mcp.tool(description="Get top applications by traffic")
+        async def faz_get_top_applications(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            limit: Annotated[int, Field(description="Number of top applications")] = 20,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_top_applications(analyzer_id, time_range, limit, adom)
+
+        @self.mcp.tool(description="Get event summary and counts")
+        async def faz_get_event_summary(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            time_range: Annotated[Optional[str], Field(description="Time range")] = None,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.get_event_summary(analyzer_id, time_range, adom)
+
+        @self.mcp.tool(description="List active alerts")
+        async def faz_list_alerts(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            severity: Annotated[Optional[str], Field(description="Filter by severity")] = None,
+            status: Annotated[Optional[str], Field(description="Filter by status")] = None,
+            limit: Annotated[int, Field(description="Maximum alerts")] = 100,
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.list_alerts(analyzer_id, severity, status, limit, adom)
+
+        @self.mcp.tool(description="Acknowledge an alert")
+        async def faz_acknowledge_alert(
+            analyzer_id: Annotated[str, Field(description="Analyzer identifier")],
+            alert_id: Annotated[str, Field(description="Alert ID")],
+            adom: Annotated[Optional[str], Field(description="Administrative Domain")] = None
+        ):
+            return self.faz_tools.acknowledge_alert(analyzer_id, alert_id, adom)
+
         # System tools
         @self.mcp.tool(description=HEALTH_CHECK_DESC)
         async def health_check():
@@ -321,9 +707,12 @@ class FortiGateMCPServer:
                 "registered_devices": len(self.fortigate_manager.devices),
                 "available_tools": [
                     "Device Management (6 tools)",
-                    "Firewall Policy Management (4 tools)",
+                    "Firewall Policy Management (5 tools)",
                     "Network Objects Management (4 tools)",
-                    "Routing Management (4 tools)",
+                    "Routing Management (8 tools)",
+                    "Virtual IP Management (5 tools)",
+                    "Certificate Management (11 tools)",
+                    "ACME/Let's Encrypt (6 tools)",
                     "System Tools (2 tools)"
                 ]
             }

@@ -1,0 +1,252 @@
+{
+  "name": "FortiGate MCP Chat Assistant v3",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Welcome to FortiGate MCP Assistant!\n\nI can help you manage your FortiGate firewalls and FortiManager.\n\n**Available Options:**\n\n🔷 **FortiGate API** (Security Fabric Root)\n- List devices\n- View firewall policies\n- Check interfaces and routes\n- View certificates\n- Security Fabric status\n\n🔶 **FortiManager API**\n- List managed devices across ADOMs\n- View policy packages\n- Get certificates from all devices\n- Check device status\n\n**Example commands:**\n- \"List all FortiGate devices\"\n- \"Show firewall policies\"\n- \"Get security fabric status\"\n- \"List FortiManager devices in BACKUP ADOM\"\n- \"Get all certificates from FortiManager\"\n\nWhat would you like to do?",
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "chat-trigger",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "webhookId": "fortigate-mcp-chat-v3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse user input and determine tool\nconst userInput = $input.first().json.chatInput.toLowerCase();\n\nlet tool = null;\nlet args = {};\n\n// FortiGate tools\nif (userInput.includes('list') && userInput.includes('device')) {\n  tool = 'list_devices';\n  args = {};\n} else if (userInput.includes('firewall') && userInput.includes('polic')) {\n  tool = 'list_firewall_policies';\n  args = { device_id: 'default' };\n} else if (userInput.includes('interface')) {\n  tool = 'list_interfaces';\n  args = { device_id: 'default' };\n} else if (userInput.includes('route') || userInput.includes('routing')) {\n  tool = 'get_routing_table';\n  args = { device_id: 'default' };\n} else if (userInput.includes('fabric') && userInput.includes('status')) {\n  tool = 'get_security_fabric_status';\n  args = { device_id: 'default' };\n} else if (userInput.includes('ha') && userInput.includes('status')) {\n  tool = 'get_ha_status';\n  args = { device_id: 'default' };\n} else if (userInput.includes('certificate') && !userInput.includes('fmg')) {\n  tool = 'list_local_certificates';\n  args = { device_id: 'default' };\n} else if (userInput.includes('address') && userInput.includes('object')) {\n  tool = 'list_address_objects';\n  args = { device_id: 'default' };\n}\n// FortiManager tools\nelse if (userInput.includes('fortimanager') || userInput.includes('fmg')) {\n  if (userInput.includes('cert')) {\n    tool = 'fmg_get_all_certificates';\n    args = { manager_id: 'fmg1', adoms: 'BACKUP,root' };\n  } else if (userInput.includes('device')) {\n    tool = 'fmg_get_devices';\n    args = { manager_id: 'fmg1' };\n    if (userInput.includes('backup')) args.adom = 'BACKUP';\n  } else if (userInput.includes('adom')) {\n    tool = 'fmg_get_adoms';\n    args = { manager_id: 'fmg1' };\n  } else {\n    tool = 'fmg_get_devices';\n    args = { manager_id: 'fmg1', adom: 'BACKUP' };\n  }\n}\n// Help\nelse if (userInput.includes('help')) {\n  tool = 'help';\n}\n\nreturn {\n  tool: tool,\n  args: args,\n  originalInput: $input.first().json.chatInput\n};"
+      },
+      "id": "parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-tool",
+              "leftValue": "={{ $json.tool }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "not-help",
+              "leftValue": "={{ $json.tool }}",
+              "rightValue": "help",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-tool",
+      "name": "Has Valid Tool?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.129.255.6:8814/fortigate-mcp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json, text/event-stream"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2024-11-05\",\n    \"capabilities\": {},\n    \"clientInfo\": { \"name\": \"n8n\", \"version\": \"1.0\" }\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "init-mcp",
+      "name": "Init MCP Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract session ID from init response\nconst response = $input.first().json;\nconst headers = response.headers || {};\nconst sessionId = headers['mcp-session-id'] || 'n8n-' + Date.now();\n\n// Pass through tool info\nconst parseInput = $('Parse Input').first().json;\n\nreturn {\n  sessionId: sessionId,\n  tool: parseInput.tool,\n  args: parseInput.args,\n  originalInput: parseInput.originalInput\n};"
+      },
+      "id": "extract-session",
+      "name": "Extract Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.129.255.6:8814/fortigate-mcp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json, text/event-stream"
+            },
+            {
+              "name": "mcp-session-id",
+              "value": "={{ $json.sessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"{{ $json.tool }}\",\n    \"arguments\": {{ JSON.stringify($json.args) }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "call-tool",
+      "name": "Call MCP Tool",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse SSE response and format output\nconst response = $input.first().json;\nconst body = response.body || response.data || '';\nconst tool = $('Extract Session').first().json.tool;\n\nlet output = `**Tool:** \\`${tool}\\`\\n\\n`;\n\ntry {\n  // Parse SSE format: event: message\\ndata: {...}\n  const lines = body.split('\\n');\n  const dataLine = lines.find(l => l.startsWith('data: '));\n  \n  if (dataLine) {\n    const jsonStr = dataLine.replace('data: ', '');\n    const result = JSON.parse(jsonStr);\n    \n    if (result.error) {\n      output += `❌ Error: ${result.error.message}`;\n    } else if (result.result?.content) {\n      const content = result.result.content;\n      if (Array.isArray(content)) {\n        output += content.map(c => c.text || JSON.stringify(c)).join('\\n');\n      } else {\n        output += JSON.stringify(content, null, 2);\n      }\n    } else {\n      output += JSON.stringify(result.result || result, null, 2);\n    }\n  } else {\n    output += body || 'No response';\n  }\n} catch (e) {\n  output += `Error parsing response: ${e.message}\\n${body}`;\n}\n\n// Truncate if too long\nif (output.length > 4000) {\n  output = output.substring(0, 4000) + '\\n\\n... (truncated)';\n}\n\nreturn { output: output };"
+      },
+      "id": "format-output",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Help or no match response\nconst tool = $input.first().json.tool;\nconst originalInput = $input.first().json.originalInput;\n\nlet output = '';\n\nif (tool === 'help') {\n  output = '**Available Commands:**\\n\\n';\n  output += '🔷 **FortiGate:**\\n';\n  output += '- \"List devices\" - Show registered devices\\n';\n  output += '- \"Show firewall policies\" - Display firewall rules\\n';\n  output += '- \"Get interfaces\" - List network interfaces\\n';\n  output += '- \"Get routing table\" - Show routes\\n';\n  output += '- \"Security fabric status\" - View fabric topology\\n';\n  output += '- \"HA status\" - High availability status\\n';\n  output += '- \"List certificates\" - Local certificates\\n';\n  output += '\\n🔶 **FortiManager:**\\n';\n  output += '- \"FMG devices\" - List managed devices\\n';\n  output += '- \"FMG devices in BACKUP\" - Devices in BACKUP ADOM\\n';\n  output += '- \"FMG certificates\" - All certificates\\n';\n  output += '- \"FMG ADOMs\" - List administrative domains\\n';\n} else {\n  output = `I didn't understand: \"${originalInput}\"\\n\\n`;\n  output += 'Try: \"List devices\", \"Show firewall policies\", \"FMG devices\", or \"Help\"';\n}\n\nreturn { output: output };"
+      },
+      "id": "help-response",
+      "name": "Help/No Match",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 400]
+    }
+  ],
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Has Valid Tool?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Valid Tool?": {
+      "main": [
+        [
+          {
+            "node": "Init MCP Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Help/No Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init MCP Session": {
+      "main": [
+        [
+          {
+            "node": "Extract Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Session": {
+      "main": [
+        [
+          {
+            "node": "Call MCP Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call MCP Tool": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

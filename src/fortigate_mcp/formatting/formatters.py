@@ -257,12 +257,12 @@ class FortiGateFormatters:
     @staticmethod
     def format_connection_test(device_id: str, success: bool, error: Optional[str] = None) -> List[Content]:
         """Format connection test result.
-        
+
         Args:
             device_id: Device identifier
             success: Whether connection test succeeded
             error: Error message if connection failed
-            
+
         Returns:
             List containing formatted Content object
         """
@@ -272,5 +272,168 @@ class FortiGateFormatters:
             formatted_text = f"❌ Connection test failed for device '{device_id}'"
             if error:
                 formatted_text += f"\nError: {error}"
-        
+
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_packet_captures(captures_data: Dict[str, Any]) -> List[Content]:
+        """Format packet capture profiles list.
+
+        Args:
+            captures_data: Raw packet captures data from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.packet_captures(captures_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_packet_capture_status(status_data: Dict[str, Any]) -> List[Content]:
+        """Format packet capture status.
+
+        Args:
+            status_data: Raw packet capture status from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.packet_capture_status(status_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_packet_capture_download(download_data: Dict[str, Any]) -> List[Content]:
+        """Format packet capture download response.
+
+        Args:
+            download_data: Raw download data from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.packet_capture_download(download_data)
+        return [Content(type="text", text=formatted_text)]
+
+    # IPSec VPN formatters
+    @staticmethod
+    def format_ipsec_phase1_list(phase1_data: Dict[str, Any]) -> List[Content]:
+        """Format IPSec Phase 1 interfaces list.
+
+        Args:
+            phase1_data: Raw Phase 1 data from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_phase1_list(phase1_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_phase1_detail(phase1_data: Dict[str, Any], device_id: str) -> List[Content]:
+        """Format IPSec Phase 1 detail.
+
+        Args:
+            phase1_data: Raw Phase 1 detail from FortiGate API
+            device_id: Device identifier
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_phase1_detail(phase1_data, device_id)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_phase2_list(phase2_data: Dict[str, Any]) -> List[Content]:
+        """Format IPSec Phase 2 interfaces list.
+
+        Args:
+            phase2_data: Raw Phase 2 data from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_phase2_list(phase2_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_phase2_detail(phase2_data: Dict[str, Any], device_id: str) -> List[Content]:
+        """Format IPSec Phase 2 detail.
+
+        Args:
+            phase2_data: Raw Phase 2 detail from FortiGate API
+            device_id: Device identifier
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_phase2_detail(phase2_data, device_id)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_tunnel_status(status_data: Dict[str, Any]) -> List[Content]:
+        """Format IPSec tunnel status.
+
+        Args:
+            status_data: Raw tunnel status from FortiGate monitor API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_tunnel_status(status_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_ike_gateways(ike_output: str, parsed_data: Optional[Dict[str, Any]] = None) -> List[Content]:
+        """Format IKE gateway diagnostic output.
+
+        Args:
+            ike_output: Raw CLI output from SSH
+            parsed_data: Optional parsed gateway data
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_ike_gateways(ike_output, parsed_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_tunnel_diagnostics(tunnel_output: str, parsed_data: Optional[Dict[str, Any]] = None) -> List[Content]:
+        """Format tunnel diagnostic output.
+
+        Args:
+            tunnel_output: Raw CLI output from SSH
+            parsed_data: Optional parsed tunnel data
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_tunnel_diagnostics(tunnel_output, parsed_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_ipsec_troubleshoot(
+        tunnel_name: str,
+        phase1_config: Optional[Dict[str, Any]] = None,
+        phase2_config: Optional[Dict[str, Any]] = None,
+        tunnel_status: Optional[Dict[str, Any]] = None,
+        ike_output: Optional[str] = None,
+        tunnel_stats: Optional[str] = None
+    ) -> List[Content]:
+        """Format comprehensive troubleshooting output.
+
+        Args:
+            tunnel_name: Name of the tunnel
+            phase1_config: Phase 1 configuration
+            phase2_config: Phase 2 configuration
+            tunnel_status: Tunnel runtime status
+            ike_output: IKE gateway diagnostic output
+            tunnel_stats: Tunnel statistics from SSH
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.ipsec_troubleshoot_summary(
+            tunnel_name, phase1_config, phase2_config,
+            tunnel_status, ike_output, tunnel_stats
+        )
         return [Content(type="text", text=formatted_text)]

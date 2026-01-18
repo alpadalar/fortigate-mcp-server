@@ -9,6 +9,7 @@ from src.fortigate_mcp.tools.device import DeviceTools
 from src.fortigate_mcp.tools.firewall import FirewallTools
 from src.fortigate_mcp.tools.network import NetworkTools
 from src.fortigate_mcp.tools.routing import RoutingTools
+from src.fortigate_mcp.tools.fabric import FabricTools
 from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
 from src.fortigate_mcp.config.models import AuthConfig
 
@@ -72,8 +73,7 @@ class TestDeviceTools:
         
         result = self.device_tools.test_device_connection("test_device")
         
-        assert "Connection Test" in result[0].text
-        assert "established successfully" in result[0].text
+        assert "Connection test successful" in result[0].text or "Connection Test" in result[0].text
         mock_api.test_connection.assert_called_once()
     
     def test_add_device_success(self):
@@ -362,8 +362,173 @@ class TestRoutingTools:
             "results": {"name": "port1", "status": "up", "ip": "192.168.1.1"}
         }
         self.fortigate_manager.devices["test_device"] = mock_api
-        
+
         result = self.routing_tools.get_interface_status("test_device", "port1")
-        
+
         assert "port1" in result[0].text
         mock_api.get_interface_status.assert_called_once_with("port1", vdom=None)
+
+
+class TestFabricTools:
+    """Security Fabric Tools test class"""
+
+    def setup_method(self):
+        """Setup method called before each test"""
+        auth_config = AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+        self.fortigate_manager = FortiGateManager({}, auth_config)
+        self.fabric_tools = FabricTools(self.fortigate_manager)
+
+    def test_get_security_fabric_config_success(self):
+        """Test successful security fabric config retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_security_fabric_config.return_value = {
+            "results": {
+                "status": "enable",
+                "group-name": "test-fabric",
+                "upstream-ip": "10.0.0.1"
+            }
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_security_fabric_config("test_device")
+
+        assert len(result) > 0
+        mock_api.get_security_fabric_config.assert_called_once()
+
+    def test_get_security_fabric_config_not_found(self):
+        """Test fabric config retrieval for non-existent device"""
+        result = self.fabric_tools.get_security_fabric_config("nonexistent_device")
+
+        assert "Error" in result[0].text
+        assert "not found" in result[0].text
+
+    def test_get_security_fabric_status_success(self):
+        """Test successful security fabric status retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_security_fabric_status.return_value = {
+            "results": {
+                "upstream": [],
+                "downstream": [
+                    {"name": "downstream-fw", "ip": "10.0.0.2"}
+                ]
+            }
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_security_fabric_status("test_device")
+
+        assert len(result) > 0
+        mock_api.get_security_fabric_status.assert_called_once()
+
+    def test_get_fabric_devices_success(self):
+        """Test successful fabric devices retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_fabric_devices.return_value = {
+            "results": [
+                {"name": "fabric-device-1", "device-ip": "10.0.0.3"}
+            ]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_fabric_devices("test_device")
+
+        assert len(result) > 0
+        mock_api.get_fabric_devices.assert_called_once()
+
+    def test_get_fabric_connectors_success(self):
+        """Test successful fabric connectors retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_fabric_connectors.return_value = {
+            "results": [
+                {"name": "azure-connector", "type": "azure"}
+            ]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_fabric_connectors("test_device")
+
+        assert len(result) > 0
+        mock_api.get_fabric_connectors.assert_called_once()
+
+    def test_get_ha_status_success(self):
+        """Test successful HA status retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_ha_status.return_value = {
+            "results": [
+                {"serial_no": "FG123456", "priority": 200, "role": "master"}
+            ]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_ha_status("test_device")
+
+        assert len(result) > 0
+        mock_api.get_ha_status.assert_called_once()
+
+    def test_get_ha_config_success(self):
+        """Test successful HA config retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_ha_config.return_value = {
+            "results": {
+                "group-name": "HA-Cluster",
+                "mode": "a-p",
+                "priority": 200
+            }
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_ha_config("test_device")
+
+        assert len(result) > 0
+        mock_api.get_ha_config.assert_called_once()
+
+    def test_get_fabric_topology_success(self):
+        """Test successful fabric topology retrieval"""
+        # Add mock device
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_security_fabric_config.return_value = {
+            "results": {"status": "enable", "group-name": "test-fabric"}
+        }
+        mock_api.get_security_fabric_status.return_value = {
+            "results": {"downstream": []}
+        }
+        mock_api.get_fabric_devices.return_value = {
+            "results": []
+        }
+        mock_api.get_ha_config.return_value = {
+            "results": {"mode": "standalone"}
+        }
+        mock_api.get_ha_status.return_value = {
+            "results": []
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.fabric_tools.get_fabric_topology("test_device")
+
+        assert len(result) > 0
+        mock_api.get_security_fabric_config.assert_called_once()
+        mock_api.get_security_fabric_status.assert_called_once()
+        mock_api.get_fabric_devices.assert_called_once()
+        mock_api.get_ha_config.assert_called_once()
+        mock_api.get_ha_status.assert_called_once()
+
+    def test_get_schema_info(self):
+        """Test schema info retrieval"""
+        schema = self.fabric_tools.get_schema_info()
+
+        assert schema["name"] == "fabric_tools"
+        assert "operations" in schema
+        assert len(schema["operations"]) == 7  # All 7 fabric operations

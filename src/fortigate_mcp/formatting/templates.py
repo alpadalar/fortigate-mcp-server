@@ -686,11 +686,11 @@ class FortiGateTemplates:
     @staticmethod
     def health_status(status: str, details: Dict[str, Any]) -> str:
         """Format health check status.
-        
+
         Args:
             status: Overall health status
             details: Health check details
-            
+
         Returns:
             Formatted health status
         """
@@ -700,14 +700,525 @@ class FortiGateTemplates:
             f"  Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             ""
         ]
-        
+
         if details.get("registered_devices") is not None:
             lines.append(f"  Registered Devices: {details['registered_devices']}")
-        
+
         if details.get("server_version"):
             lines.append(f"  Server Version: {details['server_version']}")
-        
+
         if details.get("uptime"):
             lines.append(f"  Uptime: {details['uptime']}")
-        
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def packet_captures(captures_data: Dict[str, Any]) -> str:
+        """Format packet capture profiles list.
+
+        Args:
+            captures_data: Packet captures response from FortiGate API
+
+        Returns:
+            Formatted packet captures information
+        """
+        lines = ["Packet Capture Profiles", ""]
+
+        if "results" in captures_data and captures_data["results"]:
+            captures = captures_data["results"]
+
+            for capture in captures:
+                capture_id = capture.get("id", "N/A")
+                interface = capture.get("interface", "N/A")
+                filter_str = capture.get("filter", "none")
+                max_count = capture.get("max-packet-count", "N/A")
+                status = capture.get("status", "unknown")
+
+                lines.extend([
+                    f"Capture ID: {capture_id}",
+                    f"  Interface: {interface}",
+                    f"  Filter: {filter_str if filter_str else 'none'}",
+                    f"  Max Packets: {max_count}",
+                    f"  Status: {status}",
+                    ""
+                ])
+        else:
+            lines.append("No packet capture profiles found")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def packet_capture_status(status_data: Dict[str, Any]) -> str:
+        """Format packet capture status.
+
+        Args:
+            status_data: Packet capture status from FortiGate API
+
+        Returns:
+            Formatted packet capture status
+        """
+        lines = ["Packet Capture Status", ""]
+
+        if "results" in status_data:
+            results = status_data["results"]
+            if isinstance(results, list) and results:
+                results = results[0]
+
+            lines.extend([
+                f"Capture ID: {results.get('id', 'N/A')}",
+                f"State: {results.get('state', 'unknown')}",
+                f"Packets Captured: {results.get('packet-count', 0)}",
+                f"Bytes Captured: {results.get('byte-count', 0)}",
+                f"Interface: {results.get('interface', 'N/A')}",
+                f"Filter: {results.get('filter', 'none') or 'none'}",
+            ])
+
+            if results.get("start-time"):
+                lines.append(f"Start Time: {results['start-time']}")
+            if results.get("stop-time"):
+                lines.append(f"Stop Time: {results['stop-time']}")
+            if results.get("file-size"):
+                lines.append(f"File Size: {results['file-size']} bytes")
+        else:
+            lines.append("No status information available")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def packet_capture_download(download_data: Dict[str, Any]) -> str:
+        """Format packet capture download response.
+
+        Args:
+            download_data: Download data from FortiGate API
+
+        Returns:
+            Formatted download information
+        """
+        lines = ["Packet Capture Download", ""]
+
+        if "results" in download_data:
+            results = download_data["results"]
+            if isinstance(results, list) and results:
+                results = results[0]
+
+            if results.get("file") or results.get("data"):
+                lines.extend([
+                    "File Available: Yes",
+                    f"File Size: {results.get('size', 'Unknown')} bytes",
+                    "Format: PCAP",
+                    "",
+                    "Note: Capture data is available for download"
+                ])
+            else:
+                lines.append("No capture file available - capture may still be running or empty")
+        else:
+            lines.append("Download information not available")
+
+        return "\n".join(lines)
+
+    # IPSec VPN Templates
+    @staticmethod
+    def ipsec_phase1_list(phase1_data: Dict[str, Any]) -> str:
+        """Format IPSec Phase 1 interfaces list.
+
+        Args:
+            phase1_data: Phase 1 interfaces response from FortiGate API
+
+        Returns:
+            Formatted Phase 1 tunnels information
+        """
+        lines = ["IPSec VPN Phase 1 Tunnels", ""]
+
+        if "results" in phase1_data and phase1_data["results"]:
+            for p1 in phase1_data["results"]:
+                status = "Enabled" if p1.get("status") == "enable" else "Disabled"
+                ike_version = p1.get("ike-version", "1")
+
+                lines.extend([
+                    f"Tunnel: {p1.get('name', 'Unnamed')} ({status})",
+                    f"  Interface: {p1.get('interface', 'N/A')}",
+                    f"  Remote Gateway: {p1.get('remote-gw', 'N/A')}",
+                    f"  IKE Version: {ike_version}",
+                    f"  Mode: {p1.get('mode', 'main')}",
+                    f"  Proposal: {p1.get('proposal', 'N/A')}",
+                    f"  DH Group: {p1.get('dhgrp', 'N/A')}",
+                    f"  PSK: {'Configured' if p1.get('psksecret') else 'Not Set'}",
+                ])
+
+                if p1.get("comments"):
+                    lines.append(f"  Comments: {p1['comments']}")
+
+                lines.append("")
+        else:
+            lines.append("No Phase 1 tunnels configured")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_phase1_detail(phase1_data: Dict[str, Any], device_id: str) -> str:
+        """Format detailed Phase 1 configuration.
+
+        Args:
+            phase1_data: Phase 1 detail response from FortiGate API
+            device_id: Device identifier
+
+        Returns:
+            Formatted Phase 1 detail information
+        """
+        lines = [f"IPSec Phase 1 Detail - Device: {device_id}", ""]
+
+        if "results" in phase1_data and phase1_data["results"]:
+            p1 = phase1_data["results"]
+            if isinstance(p1, list):
+                p1 = p1[0] if p1 else {}
+
+            status = "Enabled" if p1.get("status") == "enable" else "Disabled"
+
+            lines.extend([
+                "Basic Configuration",
+                f"  Name: {p1.get('name', 'N/A')}",
+                f"  Status: {status}",
+                f"  Type: {p1.get('type', 'static')}",
+                f"  Interface: {p1.get('interface', 'N/A')}",
+                "",
+                "Remote Peer",
+                f"  Remote Gateway: {p1.get('remote-gw', 'N/A')}",
+                f"  Peer Type: {p1.get('peertype', 'any')}",
+                "",
+                "IKE Settings",
+                f"  IKE Version: {p1.get('ike-version', '1')}",
+                f"  Mode: {p1.get('mode', 'main')}",
+                f"  Proposal: {p1.get('proposal', 'N/A')}",
+                f"  DH Group: {p1.get('dhgrp', 'N/A')}",
+                f"  Local ID: {p1.get('localid', 'N/A')}",
+                "",
+                "Authentication",
+                f"  Auth Method: {p1.get('authmethod', 'psk')}",
+                f"  PSK: {'Configured' if p1.get('psksecret') else 'Not Set'}",
+                "",
+                "Timers",
+                f"  Keylife: {p1.get('keylife', 86400)} seconds",
+                f"  DPD: {p1.get('dpd', 'on-demand')}",
+                f"  DPD Retry Count: {p1.get('dpd-retrycount', 3)}",
+                f"  DPD Retry Interval: {p1.get('dpd-retryinterval', 10)} seconds",
+            ])
+
+            if p1.get("comments"):
+                lines.extend(["", "Comments", f"  {p1['comments']}"])
+
+        else:
+            lines.append("Phase 1 tunnel not found")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_phase2_list(phase2_data: Dict[str, Any]) -> str:
+        """Format IPSec Phase 2 interfaces list.
+
+        Args:
+            phase2_data: Phase 2 interfaces response from FortiGate API
+
+        Returns:
+            Formatted Phase 2 selectors information
+        """
+        lines = ["IPSec VPN Phase 2 Selectors", ""]
+
+        if "results" in phase2_data and phase2_data["results"]:
+            for p2 in phase2_data["results"]:
+                status = "Enabled" if p2.get("status", "enable") == "enable" else "Disabled"
+
+                # Extract source and destination subnets
+                src_subnet = p2.get("src-subnet", "0.0.0.0/0")
+                dst_subnet = p2.get("dst-subnet", "0.0.0.0/0")
+
+                # Handle src-addr-type and dst-addr-type
+                if p2.get("src-addr-type") == "name":
+                    src_subnet = p2.get("src-name", src_subnet)
+                if p2.get("dst-addr-type") == "name":
+                    dst_subnet = p2.get("dst-name", dst_subnet)
+
+                lines.extend([
+                    f"Selector: {p2.get('name', 'Unnamed')} ({status})",
+                    f"  Phase 1: {p2.get('phase1name', 'N/A')}",
+                    f"  Source: {src_subnet}",
+                    f"  Destination: {dst_subnet}",
+                    f"  Protocol: {p2.get('protocol', '0')}",
+                    f"  Proposal: {p2.get('proposal', 'N/A')}",
+                    f"  PFS: {p2.get('pfs', 'enable')}",
+                ])
+
+                if p2.get("comments"):
+                    lines.append(f"  Comments: {p2['comments']}")
+
+                lines.append("")
+        else:
+            lines.append("No Phase 2 selectors configured")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_phase2_detail(phase2_data: Dict[str, Any], device_id: str) -> str:
+        """Format detailed Phase 2 configuration.
+
+        Args:
+            phase2_data: Phase 2 detail response from FortiGate API
+            device_id: Device identifier
+
+        Returns:
+            Formatted Phase 2 detail information
+        """
+        lines = [f"IPSec Phase 2 Detail - Device: {device_id}", ""]
+
+        if "results" in phase2_data and phase2_data["results"]:
+            p2 = phase2_data["results"]
+            if isinstance(p2, list):
+                p2 = p2[0] if p2 else {}
+
+            lines.extend([
+                "Basic Configuration",
+                f"  Name: {p2.get('name', 'N/A')}",
+                f"  Phase 1: {p2.get('phase1name', 'N/A')}",
+                "",
+                "Traffic Selectors",
+                f"  Source Type: {p2.get('src-addr-type', 'subnet')}",
+                f"  Source: {p2.get('src-subnet', p2.get('src-name', 'N/A'))}",
+                f"  Destination Type: {p2.get('dst-addr-type', 'subnet')}",
+                f"  Destination: {p2.get('dst-subnet', p2.get('dst-name', 'N/A'))}",
+                f"  Protocol: {p2.get('protocol', '0')}",
+                "",
+                "IPSec Settings",
+                f"  Proposal: {p2.get('proposal', 'N/A')}",
+                f"  PFS: {p2.get('pfs', 'enable')}",
+                f"  PFS DH Group: {p2.get('dhgrp', 'N/A')}",
+                f"  Replay Detection: {p2.get('replay', 'enable')}",
+                "",
+                "Timers",
+                f"  Keylife Type: {p2.get('keylife-type', 'seconds')}",
+                f"  Keylife Seconds: {p2.get('keylifeseconds', 43200)}",
+                f"  Keylife KB: {p2.get('keylifekbs', 5120)}",
+            ])
+
+            if p2.get("comments"):
+                lines.extend(["", "Comments", f"  {p2['comments']}"])
+
+        else:
+            lines.append("Phase 2 selector not found")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_tunnel_status(status_data: Dict[str, Any]) -> str:
+        """Format IPSec tunnel runtime status.
+
+        Args:
+            status_data: Tunnel status from FortiGate monitor API
+
+        Returns:
+            Formatted tunnel status information
+        """
+        lines = ["IPSec Tunnel Status", ""]
+
+        def format_bytes(b):
+            """Convert bytes to human readable format."""
+            for unit in ['B', 'KB', 'MB', 'GB']:
+                if b < 1024:
+                    return f"{b:.2f} {unit}"
+                b /= 1024
+            return f"{b:.2f} TB"
+
+        if "results" in status_data and status_data["results"]:
+            for tunnel in status_data["results"]:
+                name = tunnel.get("name", "Unknown")
+                incoming = tunnel.get("incoming_bytes", 0)
+                outgoing = tunnel.get("outgoing_bytes", 0)
+                tun_status = tunnel.get("status", "unknown")
+
+                lines.extend([
+                    f"Tunnel: {name}",
+                    f"  Status: {tun_status}",
+                    f"  Remote Gateway: {tunnel.get('rgwy', 'N/A')}",
+                    f"  Incoming: {format_bytes(incoming)}",
+                    f"  Outgoing: {format_bytes(outgoing)}",
+                ])
+
+                if tunnel.get("tun_uptime"):
+                    lines.append(f"  Uptime: {tunnel['tun_uptime']} seconds")
+
+                # Add proxyid (Phase 2 selector) information
+                proxyids = tunnel.get("proxyid", [])
+                if proxyids:
+                    lines.append("  Proxy IDs:")
+                    for proxy in proxyids:
+                        p_status = proxy.get("status", "N/A")
+                        lines.extend([
+                            f"    Proxy ID {proxy.get('proxy_id', 'N/A')}: {p_status}",
+                            f"      Source: {proxy.get('proxy_src', 'N/A')}",
+                            f"      Destination: {proxy.get('proxy_dst', 'N/A')}",
+                        ])
+
+                lines.append("")
+        else:
+            lines.append("No active IPSec tunnels")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_ike_gateways(ike_output: str, parsed_data: Optional[Dict[str, Any]] = None) -> str:
+        """Format IKE gateway diagnostic output.
+
+        Args:
+            ike_output: Raw CLI output from diagnose vpn ike gateway list
+            parsed_data: Optional parsed gateway data
+
+        Returns:
+            Formatted IKE gateway information
+        """
+        lines = ["IKE Gateway Status (SSH Diagnostics)", "=" * 50, ""]
+
+        if parsed_data and parsed_data.get("gateways"):
+            lines.append(f"Gateway Count: {parsed_data.get('gateway_count', 0)}")
+            lines.append("")
+
+            for gw in parsed_data["gateways"]:
+                lines.extend([
+                    f"Gateway: {gw.get('name', 'Unknown')}",
+                ])
+                # Include key fields from parsed data
+                for key, value in gw.items():
+                    if key not in ["name", "raw_lines"] and value:
+                        lines.append(f"  {key}: {value}")
+                lines.append("")
+
+        # Always include raw output for troubleshooting
+        lines.extend([
+            "Raw Output:",
+            "-" * 40,
+            ike_output
+        ])
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_tunnel_diagnostics(tunnel_output: str, parsed_data: Optional[Dict[str, Any]] = None) -> str:
+        """Format tunnel diagnostic output.
+
+        Args:
+            tunnel_output: Raw CLI output from diagnose vpn tunnel list
+            parsed_data: Optional parsed tunnel data
+
+        Returns:
+            Formatted tunnel diagnostic information
+        """
+        lines = ["IPSec Tunnel Diagnostics (SSH)", "=" * 50, ""]
+
+        if parsed_data and parsed_data.get("tunnels"):
+            lines.append(f"Tunnel Count: {parsed_data.get('tunnel_count', 0)}")
+            lines.append("")
+
+            for tunnel in parsed_data["tunnels"]:
+                lines.extend([
+                    f"Tunnel: {tunnel.get('name', 'Unknown')}",
+                    f"  Incoming: {tunnel.get('incoming_bytes', 0)} bytes",
+                    f"  Outgoing: {tunnel.get('outgoing_bytes', 0)} bytes",
+                ])
+                lines.append("")
+
+        # Always include raw output for detailed troubleshooting
+        lines.extend([
+            "Raw Output:",
+            "-" * 40,
+            tunnel_output
+        ])
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def ipsec_troubleshoot_summary(
+        tunnel_name: str,
+        phase1_config: Optional[Dict[str, Any]] = None,
+        phase2_config: Optional[Dict[str, Any]] = None,
+        tunnel_status: Optional[Dict[str, Any]] = None,
+        ike_output: Optional[str] = None,
+        tunnel_stats: Optional[str] = None
+    ) -> str:
+        """Format comprehensive troubleshooting summary.
+
+        Args:
+            tunnel_name: Name of the tunnel being troubleshot
+            phase1_config: Phase 1 configuration
+            phase2_config: Phase 2 configuration
+            tunnel_status: Tunnel runtime status
+            ike_output: IKE gateway diagnostic output
+            tunnel_stats: Tunnel statistics from SSH
+
+        Returns:
+            Formatted troubleshooting summary
+        """
+        lines = [
+            f"IPSec Tunnel Troubleshooting Report: {tunnel_name}",
+            "=" * 60,
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            ""
+        ]
+
+        # Phase 1 Configuration Summary
+        lines.append("--- Phase 1 Configuration ---")
+        if phase1_config and "results" in phase1_config and phase1_config["results"]:
+            p1 = phase1_config["results"]
+            if isinstance(p1, list):
+                p1 = p1[0] if p1 else {}
+            lines.extend([
+                f"  Status: {'Enabled' if p1.get('status') == 'enable' else 'Disabled'}",
+                f"  Remote Gateway: {p1.get('remote-gw', 'N/A')}",
+                f"  IKE Version: {p1.get('ike-version', '1')}",
+                f"  Proposal: {p1.get('proposal', 'N/A')}",
+            ])
+        else:
+            lines.append("  Configuration not available")
+        lines.append("")
+
+        # Phase 2 Configuration Summary
+        lines.append("--- Phase 2 Selectors ---")
+        if phase2_config and "results" in phase2_config and phase2_config["results"]:
+            for p2 in (phase2_config["results"] if isinstance(phase2_config["results"], list) else [phase2_config["results"]]):
+                lines.extend([
+                    f"  Selector: {p2.get('name', 'N/A')}",
+                    f"    Source: {p2.get('src-subnet', 'N/A')}",
+                    f"    Destination: {p2.get('dst-subnet', 'N/A')}",
+                ])
+        else:
+            lines.append("  No selectors found")
+        lines.append("")
+
+        # Tunnel Status Summary
+        lines.append("--- Tunnel Status (REST API) ---")
+        if tunnel_status and "results" in tunnel_status and tunnel_status["results"]:
+            for t in tunnel_status["results"]:
+                if t.get("name") == tunnel_name or not tunnel_name:
+                    lines.extend([
+                        f"  Status: {t.get('status', 'unknown')}",
+                        f"  Incoming: {t.get('incoming_bytes', 0)} bytes",
+                        f"  Outgoing: {t.get('outgoing_bytes', 0)} bytes",
+                    ])
+                    break
+        else:
+            lines.append("  Status not available")
+        lines.append("")
+
+        # IKE Gateway Output
+        if ike_output:
+            lines.extend([
+                "--- IKE Gateway Diagnostics (SSH) ---",
+                ike_output[:500] + ("..." if len(ike_output) > 500 else ""),
+                ""
+            ])
+
+        # Tunnel Stats Output
+        if tunnel_stats:
+            lines.extend([
+                "--- Tunnel Statistics (SSH) ---",
+                tunnel_stats[:500] + ("..." if len(tunnel_stats) > 500 else ""),
+                ""
+            ])
+
         return "\n".join(lines)

@@ -288,6 +288,469 @@ class FortiGateAPI:
         """Get detailed information for a specific virtual IP."""
         return self._make_request("GET", f"cmdb/firewall/vip/{vip_name}", vdom=vdom)
 
+    # Certificate endpoints
+    def get_local_certificates(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get local (device) certificates."""
+        return self._make_request("GET", "cmdb/certificate/local", vdom=vdom)
+
+    def get_local_certificate_detail(self, cert_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific local certificate."""
+        return self._make_request("GET", f"cmdb/certificate/local/{cert_name}", vdom=vdom)
+
+    def get_ca_certificates(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get CA certificates."""
+        return self._make_request("GET", "cmdb/certificate/ca", vdom=vdom)
+
+    def get_ca_certificate_detail(self, cert_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific CA certificate."""
+        return self._make_request("GET", f"cmdb/certificate/ca/{cert_name}", vdom=vdom)
+
+    def get_remote_certificates(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get remote certificates."""
+        return self._make_request("GET", "cmdb/certificate/remote", vdom=vdom)
+
+    def get_remote_certificate_detail(self, cert_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific remote certificate."""
+        return self._make_request("GET", f"cmdb/certificate/remote/{cert_name}", vdom=vdom)
+
+    def get_crl(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get certificate revocation lists."""
+        return self._make_request("GET", "cmdb/certificate/crl", vdom=vdom)
+
+    def get_crl_detail(self, crl_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get detailed information for a specific CRL."""
+        return self._make_request("GET", f"cmdb/certificate/crl/{crl_name}", vdom=vdom)
+
+    def delete_local_certificate(self, cert_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete a local certificate."""
+        return self._make_request("DELETE", f"cmdb/certificate/local/{cert_name}", vdom=vdom)
+
+    def delete_ca_certificate(self, cert_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete a CA certificate."""
+        return self._make_request("DELETE", f"cmdb/certificate/ca/{cert_name}", vdom=vdom)
+
+    def delete_remote_certificate(self, cert_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete a remote certificate."""
+        return self._make_request("DELETE", f"cmdb/certificate/remote/{cert_name}", vdom=vdom)
+
+    def import_local_certificate(
+        self,
+        cert_name: str,
+        certificate: str,
+        private_key: str,
+        password: Optional[str] = None,
+        scope: str = "global",
+        vdom: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Import a local certificate with private key.
+
+        Args:
+            cert_name: Name for the certificate
+            certificate: PEM-encoded certificate (or base64)
+            private_key: PEM-encoded private key (or base64)
+            password: Optional password for encrypted private key
+            scope: Certificate scope ('global' or 'vdom')
+            vdom: Virtual domain
+
+        Returns:
+            Import result
+        """
+        import base64
+
+        # Ensure certificate and key are base64 encoded
+        if certificate.startswith("-----"):
+            certificate = base64.b64encode(certificate.encode()).decode()
+        if private_key.startswith("-----"):
+            private_key = base64.b64encode(private_key.encode()).decode()
+
+        data = {
+            "type": "regular",
+            "certname": cert_name,
+            "file_content": certificate,
+            "key_file_content": private_key,
+            "scope": scope
+        }
+
+        if password:
+            data["password"] = password
+
+        return self._make_request(
+            "POST",
+            "monitor/vpn-certificate/local/import",
+            data=data,
+            vdom=vdom
+        )
+
+    def import_ca_certificate(
+        self,
+        cert_name: str,
+        certificate: str,
+        scope: str = "global",
+        vdom: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Import a CA certificate.
+
+        Args:
+            cert_name: Name for the CA certificate
+            certificate: PEM-encoded certificate (or base64)
+            scope: Certificate scope ('global' or 'vdom')
+            vdom: Virtual domain
+
+        Returns:
+            Import result
+        """
+        import base64
+
+        # Ensure certificate is base64 encoded
+        if certificate.startswith("-----"):
+            certificate = base64.b64encode(certificate.encode()).decode()
+
+        data = {
+            "type": "ca",
+            "import_method": "file",
+            "file_content": certificate,
+            "scope": scope
+        }
+
+        return self._make_request(
+            "POST",
+            "monitor/vpn-certificate/ca/import",
+            data=data,
+            vdom=vdom
+        )
+
+    # Security Fabric endpoints
+    def get_security_fabric_config(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get Security Fabric (CSF) configuration.
+
+        Returns the Security Fabric settings including fabric name,
+        upstream/downstream configuration, and fabric members.
+        """
+        return self._make_request("GET", "cmdb/system/csf", vdom=vdom)
+
+    def get_security_fabric_status(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get Security Fabric runtime status and topology.
+
+        Returns real-time information about the Security Fabric including
+        connected devices, their roles, and connection status.
+        """
+        return self._make_request("GET", "monitor/system/csf", vdom=vdom)
+
+    def get_fabric_devices(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get list of fabric devices/connectors.
+
+        Returns information about FortiGate devices configured as
+        fabric connectors.
+        """
+        return self._make_request("GET", "cmdb/system/csf/fabric-device", vdom=vdom)
+
+    def get_fabric_connectors(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get fabric connector configuration.
+
+        Returns SDN and cloud connector configurations used in the fabric.
+        """
+        return self._make_request("GET", "cmdb/system/sdn-connector", vdom=vdom)
+
+    def get_ha_status(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get High Availability (HA) cluster status.
+
+        Returns HA cluster configuration and member status.
+        """
+        return self._make_request("GET", "monitor/system/ha-peer", vdom=vdom)
+
+    def get_ha_config(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get High Availability (HA) configuration.
+
+        Returns HA settings including group name, mode, and priority.
+        """
+        return self._make_request("GET", "cmdb/system/ha", vdom=vdom)
+
+    # Packet Capture (Sniffer) endpoints
+    def get_packet_captures(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get list of all packet capture profiles.
+
+        Returns configured packet sniffer profiles with their settings.
+        """
+        return self._make_request("GET", "cmdb/system/sniffer", vdom=vdom)
+
+    def get_packet_capture(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get a specific packet capture profile.
+
+        Args:
+            capture_id: Sniffer profile ID
+            vdom: Virtual domain
+
+        Returns:
+            Packet capture profile configuration
+        """
+        return self._make_request("GET", f"cmdb/system/sniffer/{capture_id}", vdom=vdom)
+
+    def create_packet_capture(
+        self,
+        interface: str,
+        filter_str: Optional[str] = None,
+        max_packet_count: int = 10000,
+        vdom: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Create a packet capture profile.
+
+        Args:
+            interface: Interface to capture on (e.g., 'any', 'port1')
+            filter_str: BPF-style filter string
+            max_packet_count: Maximum packets to capture
+            vdom: Virtual domain
+
+        Returns:
+            API response with created capture profile
+        """
+        capture_data = {
+            "interface": interface,
+            "max-packet-count": max_packet_count,
+        }
+        if filter_str:
+            capture_data["filter"] = filter_str
+
+        return self._make_request("POST", "cmdb/system/sniffer", data=capture_data, vdom=vdom)
+
+    def delete_packet_capture(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete a packet capture profile.
+
+        Args:
+            capture_id: Sniffer profile ID to delete
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request("DELETE", f"cmdb/system/sniffer/{capture_id}", vdom=vdom)
+
+    def start_packet_capture(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Start a packet capture.
+
+        Args:
+            capture_id: Sniffer profile ID to start
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request(
+            "POST",
+            "monitor/system/sniffer/start",
+            params={"mkey": capture_id},
+            vdom=vdom
+        )
+
+    def stop_packet_capture(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Stop a packet capture.
+
+        Args:
+            capture_id: Sniffer profile ID to stop
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request(
+            "POST",
+            "monitor/system/sniffer/stop",
+            params={"mkey": capture_id},
+            vdom=vdom
+        )
+
+    def get_packet_capture_status(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get packet capture status.
+
+        Args:
+            capture_id: Sniffer profile ID
+            vdom: Virtual domain
+
+        Returns:
+            Capture status including packet count, state, etc.
+        """
+        return self._make_request(
+            "GET",
+            "monitor/system/sniffer",
+            params={"mkey": capture_id},
+            vdom=vdom
+        )
+
+    def download_packet_capture(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Download packet capture file.
+
+        Args:
+            capture_id: Sniffer profile ID
+            vdom: Virtual domain
+
+        Returns:
+            Capture file data or download information
+        """
+        return self._make_request(
+            "GET",
+            "monitor/system/sniffer/download",
+            params={"mkey": capture_id},
+            vdom=vdom
+        )
+
+    def clear_packet_capture(self, capture_id: int, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Clear captured packets from a capture profile.
+
+        Args:
+            capture_id: Sniffer profile ID
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request(
+            "POST",
+            "monitor/system/sniffer/clear",
+            params={"mkey": capture_id},
+            vdom=vdom
+        )
+
+    # IPSec VPN Phase 1 endpoints
+    def get_ipsec_phase1_interfaces(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get all IPSec VPN Phase 1 interface configurations.
+
+        Returns:
+            List of Phase 1 tunnel configurations
+        """
+        return self._make_request("GET", "cmdb/vpn.ipsec/phase1-interface", vdom=vdom)
+
+    def get_ipsec_phase1_interface(self, name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get a specific IPSec VPN Phase 1 interface configuration.
+
+        Args:
+            name: Phase 1 interface name
+            vdom: Virtual domain
+
+        Returns:
+            Phase 1 tunnel configuration
+        """
+        return self._make_request("GET", f"cmdb/vpn.ipsec/phase1-interface/{name}", vdom=vdom)
+
+    def create_ipsec_phase1_interface(self, phase1_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Create an IPSec VPN Phase 1 interface.
+
+        Args:
+            phase1_data: Phase 1 configuration data including:
+                - name: Tunnel name
+                - interface: Outgoing interface
+                - remote-gw: Remote gateway IP
+                - psksecret: Pre-shared key
+                - proposal: Phase 1 proposal (e.g., 'aes256-sha256')
+                - ike-version: IKE version (1 or 2)
+            vdom: Virtual domain
+
+        Returns:
+            API response with created tunnel
+        """
+        return self._make_request("POST", "cmdb/vpn.ipsec/phase1-interface", data=phase1_data, vdom=vdom)
+
+    def update_ipsec_phase1_interface(self, name: str, phase1_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Update an IPSec VPN Phase 1 interface.
+
+        Args:
+            name: Phase 1 interface name
+            phase1_data: Updated configuration data
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request("PUT", f"cmdb/vpn.ipsec/phase1-interface/{name}", data=phase1_data, vdom=vdom)
+
+    def delete_ipsec_phase1_interface(self, name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete an IPSec VPN Phase 1 interface.
+
+        Args:
+            name: Phase 1 interface name
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request("DELETE", f"cmdb/vpn.ipsec/phase1-interface/{name}", vdom=vdom)
+
+    # IPSec VPN Phase 2 endpoints
+    def get_ipsec_phase2_interfaces(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get all IPSec VPN Phase 2 interface configurations.
+
+        Returns:
+            List of Phase 2 selector configurations
+        """
+        return self._make_request("GET", "cmdb/vpn.ipsec/phase2-interface", vdom=vdom)
+
+    def get_ipsec_phase2_interface(self, name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get a specific IPSec VPN Phase 2 interface configuration.
+
+        Args:
+            name: Phase 2 interface name
+            vdom: Virtual domain
+
+        Returns:
+            Phase 2 selector configuration
+        """
+        return self._make_request("GET", f"cmdb/vpn.ipsec/phase2-interface/{name}", vdom=vdom)
+
+    def create_ipsec_phase2_interface(self, phase2_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Create an IPSec VPN Phase 2 interface.
+
+        Args:
+            phase2_data: Phase 2 configuration data including:
+                - name: Selector name
+                - phase1name: Associated Phase 1 tunnel
+                - src-subnet: Source subnet
+                - dst-subnet: Destination subnet
+                - proposal: Phase 2 proposal
+            vdom: Virtual domain
+
+        Returns:
+            API response with created selector
+        """
+        return self._make_request("POST", "cmdb/vpn.ipsec/phase2-interface", data=phase2_data, vdom=vdom)
+
+    def update_ipsec_phase2_interface(self, name: str, phase2_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Update an IPSec VPN Phase 2 interface.
+
+        Args:
+            name: Phase 2 interface name
+            phase2_data: Updated configuration data
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request("PUT", f"cmdb/vpn.ipsec/phase2-interface/{name}", data=phase2_data, vdom=vdom)
+
+    def delete_ipsec_phase2_interface(self, name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Delete an IPSec VPN Phase 2 interface.
+
+        Args:
+            name: Phase 2 interface name
+            vdom: Virtual domain
+
+        Returns:
+            API response
+        """
+        return self._make_request("DELETE", f"cmdb/vpn.ipsec/phase2-interface/{name}", vdom=vdom)
+
+    # IPSec VPN Monitor endpoints
+    def get_ipsec_tunnel_status(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get IPSec tunnel runtime status.
+
+        Returns real-time status of all IPSec tunnels including:
+        - Connection state
+        - Traffic statistics
+        - Peer information
+        - Proxy IDs (Phase 2 selectors)
+
+        Returns:
+            Tunnel status information
+        """
+        return self._make_request("GET", "monitor/vpn/ipsec", vdom=vdom)
+
 
 class FortiGateManager:
     """Manager for multiple FortiGate devices.
@@ -331,13 +794,19 @@ class FortiGateManager:
             raise ValueError(f"Device '{device_id}' not found")
         return self.devices[device_id]
     
-    def list_devices(self) -> List[str]:
-        """List all registered device IDs.
-        
+    def list_devices(self) -> Dict[str, Dict[str, Any]]:
+        """List all registered devices with their info.
+
         Returns:
-            List of device identifiers
+            Dict mapping device_id to device info (host, vdom)
         """
-        return list(self.devices.keys())
+        return {
+            device_id: {
+                "host": device.config.host,
+                "vdom": device.config.vdom
+            }
+            for device_id, device in self.devices.items()
+        }
     
     def add_device(self, device_id: str, host: str, port: int = 443,
                    username: Optional[str] = None, password: Optional[str] = None,

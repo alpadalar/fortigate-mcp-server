@@ -197,3 +197,4 @@ fortigate_mcp.log
 config/config.yaml
 config/local_config.yaml
 config/config.json
+secret.txt

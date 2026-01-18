@@ -20,17 +20,24 @@ from ..formatting import FortiGateFormatters
 
 class FortiGateTool:
     """Base class for FortiGate MCP tools.
-    
+
     This class provides common functionality used by all FortiGate tool implementations:
     - FortiGate device access through manager
     - Standardized logging
     - Response formatting
     - Error handling
     - Performance monitoring
-    
+
     All tool classes should inherit from this base class to ensure consistent
     behavior and error handling across the MCP server.
     """
+
+    # Mapping of friendly device names to device IDs
+    # This allows users to use either "NLFMFW1A" or "default" to refer to the same device
+    DEVICE_NAME_MAP = {
+        "NLFMFW1A": "default",
+        "nlfmfw1a": "default",
+    }
 
     def __init__(self, fortigate_manager: FortiGateManager):
         """Initialize the tool.
@@ -41,23 +48,51 @@ class FortiGateTool:
         self.fortigate_manager = fortigate_manager
         self.logger = get_logger(f"tools.{self.__class__.__name__.lower()}")
 
+    def _resolve_device_id(self, device_name_or_id: str) -> str:
+        """Resolve a device name or ID to the actual device ID.
+
+        Allows users to specify devices by either their friendly name (e.g., "NLFMFW1A")
+        or their device ID (e.g., "default").
+
+        Args:
+            device_name_or_id: Device name or device ID
+
+        Returns:
+            The resolved device ID
+        """
+        # Check if it's a friendly name that needs mapping
+        if device_name_or_id in self.DEVICE_NAME_MAP:
+            return self.DEVICE_NAME_MAP[device_name_or_id]
+
+        # Check case-insensitive match
+        lower_name = device_name_or_id.lower()
+        if lower_name in self.DEVICE_NAME_MAP:
+            return self.DEVICE_NAME_MAP[lower_name]
+
+        # Return as-is (assume it's already a device ID)
+        return device_name_or_id
+
     def _get_device_api(self, device_id: str) -> FortiGateAPI:
         """Get FortiGate API client for a device.
-        
+
         Args:
-            device_id: Device identifier
-            
+            device_id: Device identifier or device name
+
         Returns:
             FortiGateAPI client instance
-            
+
         Raises:
             ValueError: If device not found
         """
+        resolved_id = self._resolve_device_id(device_id)
         try:
-            return self.fortigate_manager.get_device(device_id)
+            return self.fortigate_manager.get_device(resolved_id)
         except ValueError as e:
-            self.logger.error(f"Device {device_id} not found")
-            raise ValueError(f"Device '{device_id}' not found. Available devices: {list(self.fortigate_manager.devices.keys())}")
+            self.logger.error(f"Device {device_id} (resolved: {resolved_id}) not found")
+            available = list(self.fortigate_manager.devices.keys())
+            # Also show friendly names
+            friendly_names = [name for name, dev_id in self.DEVICE_NAME_MAP.items() if dev_id in available]
+            raise ValueError(f"Device '{device_id}' not found. Available: {available + friendly_names}")
 
     def _format_response(self, data: Any, resource_type: Optional[str] = None, **kwargs) -> List[Content]:
         """Format response data into MCP content using formatters.
@@ -77,18 +112,30 @@ class FortiGateTool:
             List of Content objects formatted according to resource type
         """
         if resource_type == "devices":
-            # Handle list of device IDs (new format) vs dict of device info (old format)
-            if isinstance(data, list):
-                # New format: list of device IDs
+            # Handle dict of device info {device_id: {host, vdom}}
+            # Map device IDs to friendly display names
+            friendly_names = {
+                "default": "NLFMFW1A"
+            }
+            if isinstance(data, dict):
                 if not data:
                     return [Content(type="text", text="📱 No FortiGate devices configured")]
-                
+
+                lines = ["📱 **Registered FortiGate Devices**", ""]
+                for device_id, info in data.items():
+                    host = info.get("host", "N/A") if isinstance(info, dict) else "N/A"
+                    display_name = friendly_names.get(device_id, device_id)
+                    lines.append(f"  • **{display_name}**: {host}")
+                return [Content(type="text", text="\n".join(lines))]
+            elif isinstance(data, list):
+                # Legacy: list of device IDs
+                if not data:
+                    return [Content(type="text", text="📱 No FortiGate devices configured")]
                 lines = ["📱 **Registered FortiGate Devices**", ""]
                 for device_id in data:
                     lines.append(f"  • {device_id}")
                 return [Content(type="text", text="\n".join(lines))]
             else:
-                # Old format: dict of device info
                 return FortiGateFormatters.format_devices(data)
         elif resource_type == "device_status":
             # For device_status, data should be a tuple of (device_id, status_dict)
@@ -115,6 +162,12 @@ class FortiGateTool:
             return FortiGateFormatters.format_interfaces(data)
         elif resource_type == "vdoms":
             return FortiGateFormatters.format_vdoms(data)
+        elif resource_type == "packet_captures":
+            return FortiGateFormatters.format_packet_captures(data)
+        elif resource_type == "packet_capture_status":
+            return FortiGateFormatters.format_packet_capture_status(data)
+        elif resource_type == "packet_capture_download":
+            return FortiGateFormatters.format_packet_capture_download(data)
         else:
             # Fallback to JSON formatting for unknown types
             return FortiGateFormatters.format_json_response(data)
@@ -186,18 +239,25 @@ class FortiGateTool:
             log_tool_call(self.logger, operation, device_id, False, duration_ms, str(e))
             return self._handle_error(operation, device_id, e)
 
-    def _validate_device_exists(self, device_id: str) -> None:
-        """Validate that a device exists.
-        
+    def _validate_device_exists(self, device_id: str) -> str:
+        """Validate that a device exists and return the resolved device ID.
+
         Args:
-            device_id: Device identifier to validate
-            
+            device_id: Device identifier or device name to validate
+
+        Returns:
+            The resolved device ID
+
         Raises:
             ValueError: If device doesn't exist
         """
-        if device_id not in self.fortigate_manager.devices:
+        resolved_id = self._resolve_device_id(device_id)
+        if resolved_id not in self.fortigate_manager.devices:
             available = list(self.fortigate_manager.devices.keys())
-            raise ValueError(f"Device '{device_id}' not found. Available devices: {available}")
+            # Also show friendly names
+            friendly_names = [name for name, dev_id in self.DEVICE_NAME_MAP.items() if dev_id in available]
+            raise ValueError(f"Device '{device_id}' not found. Available: {available + friendly_names}")
+        return resolved_id
 
     def _validate_required_params(self, **params) -> None:
         """Validate that required parameters are provided.

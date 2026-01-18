@@ -33,6 +33,10 @@ dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
     "asgiref>=3.7.0",
+    "acme>=2.0.0",
+    "josepy>=1.13.0",
+    "cryptography>=41.0.0",
+    "cloudflare>=2.19.0",
 ]
 
 [project.optional-dependencies]
