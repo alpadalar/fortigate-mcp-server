@@ -115,6 +115,14 @@ class FortiGateTool:
             return FortiGateFormatters.format_interfaces(data)
         elif resource_type == "vdoms":
             return FortiGateFormatters.format_vdoms(data)
+        elif resource_type == "virtual_ips":
+            return FortiGateFormatters.format_virtual_ips(data)
+        elif resource_type == "virtual_ip_detail":
+            return FortiGateFormatters.format_virtual_ip_detail(data)
+        elif resource_type == "interface_status":
+            return FortiGateFormatters.format_json_response(data, "Interface Status")
+        elif resource_type == "static_route_detail":
+            return FortiGateFormatters.format_json_response(data, "Static Route Detail")
         else:
             # Fallback to JSON formatting for unknown types
             return FortiGateFormatters.format_json_response(data)

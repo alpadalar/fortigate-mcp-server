@@ -33,7 +33,21 @@ from .tools.firewall import FirewallTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
 from .tools.virtual_ip import VirtualIPTools
-from .tools.definitions import *
+from .tools.definitions import (
+    LIST_DEVICES_DESC, GET_DEVICE_STATUS_DESC, TEST_DEVICE_CONNECTION_DESC,
+    ADD_DEVICE_DESC, REMOVE_DEVICE_DESC, DISCOVER_VDOMS_DESC,
+    LIST_FIREWALL_POLICIES_DESC, CREATE_FIREWALL_POLICY_DESC,
+    UPDATE_FIREWALL_POLICY_DESC, DELETE_FIREWALL_POLICY_DESC,
+    LIST_ADDRESS_OBJECTS_DESC, CREATE_ADDRESS_OBJECT_DESC,
+    LIST_SERVICE_OBJECTS_DESC, CREATE_SERVICE_OBJECT_DESC,
+    LIST_STATIC_ROUTES_DESC, CREATE_STATIC_ROUTE_DESC,
+    GET_ROUTING_TABLE_DESC, LIST_INTERFACES_DESC, GET_INTERFACE_STATUS_DESC,
+    UPDATE_STATIC_ROUTE_DESC, DELETE_STATIC_ROUTE_DESC,
+    GET_STATIC_ROUTE_DETAIL_DESC,
+    LIST_VIRTUAL_IPS_DESC, CREATE_VIRTUAL_IP_DESC, UPDATE_VIRTUAL_IP_DESC,
+    GET_VIRTUAL_IP_DETAIL_DESC, DELETE_VIRTUAL_IP_DESC,
+    HEALTH_CHECK_DESC, GET_SERVER_INFO_DESC,
+)
 
 class FortiGateMCPServer:
     """Main server class for FortiGate MCP."""
@@ -145,7 +159,7 @@ class FortiGateMCPServer:
             policy_id: Annotated[str, Field(description="Policy ID to get details for")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return await self.firewall_tools.get_policy_detail_async(device_id, policy_id, vdom)
+            return await self.firewall_tools.get_policy_detail(device_id, policy_id, vdom)
 
         @self.mcp.tool(description=DELETE_FIREWALL_POLICY_DESC)
         async def delete_firewall_policy(
@@ -166,10 +180,12 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=CREATE_ADDRESS_OBJECT_DESC)
         async def create_address_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            address_data: Annotated[dict, Field(description="Address object configuration")],
+            name: Annotated[str, Field(description="Address object name")],
+            address_type: Annotated[str, Field(description="Address type (ipmask, iprange, fqdn)")],
+            address: Annotated[str, Field(description="Address value (IP/netmask, range, or FQDN)")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return await self.network_tools.create_address_object(device_id, address_data, vdom)
+            return await self.network_tools.create_address_object(device_id, name, address_type, address, vdom)
 
         @self.mcp.tool(description=LIST_SERVICE_OBJECTS_DESC)
         async def list_service_objects(
@@ -181,10 +197,13 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=CREATE_SERVICE_OBJECT_DESC)
         async def create_service_object(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            service_data: Annotated[dict, Field(description="Service object configuration")],
+            name: Annotated[str, Field(description="Service object name")],
+            service_type: Annotated[str, Field(description="Service type")],
+            protocol: Annotated[str, Field(description="Protocol (TCP, UDP, ICMP)")],
+            port: Annotated[Optional[str], Field(description="Port or port range")] = None,
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return await self.network_tools.create_service_object(device_id, service_data, vdom)
+            return await self.network_tools.create_service_object(device_id, name, service_type, protocol, port, vdom)
 
         # Routing tools
         @self.mcp.tool(description=LIST_STATIC_ROUTES_DESC)
@@ -197,10 +216,12 @@ class FortiGateMCPServer:
         @self.mcp.tool(description=CREATE_STATIC_ROUTE_DESC)
         async def create_static_route(
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
-            route_data: Annotated[dict, Field(description="Route configuration")],
+            dst: Annotated[str, Field(description="Destination network (IP/netmask)")],
+            gateway: Annotated[str, Field(description="Next hop gateway IP")],
+            device: Annotated[Optional[str], Field(description="Outgoing interface name")] = None,
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return await self.routing_tools.create_static_route(device_id, route_data, vdom)
+            return await self.routing_tools.create_static_route(device_id, dst, gateway, device, vdom)
 
         @self.mcp.tool(description=GET_ROUTING_TABLE_DESC)
         async def get_routing_table(

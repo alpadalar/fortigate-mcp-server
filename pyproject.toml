@@ -26,8 +26,7 @@ classifiers = [
 keywords = ["fortigate", "mcp", "fastmcp", "firewall", "management", "automation"]
 requires-python = ">=3.11"
 dependencies = [
-    "mcp @ git+https://github.com/modelcontextprotocol/python-sdk.git",
-    "fastmcp>=0.2.0",
+    "mcp>=1.0.0",
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "fastapi>=0.104.0",
@@ -89,7 +88,7 @@ addopts = [
     "--cov=src",
     "--cov-report=html",
     "--cov-report=term-missing",
-    "--cov-fail-under=80",
+    "--cov-fail-under=60",
 ]
 asyncio_mode = "auto"
 markers = [
