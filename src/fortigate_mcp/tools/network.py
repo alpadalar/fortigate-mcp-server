@@ -1,5 +1,5 @@
 """Network object management tools for FortiGate MCP."""
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import FortiGateTool
 

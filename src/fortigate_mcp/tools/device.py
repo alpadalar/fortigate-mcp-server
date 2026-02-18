@@ -7,10 +7,9 @@ This module provides MCP tools for managing FortiGate devices:
 - System status monitoring
 - VDOM discovery
 """
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import FortiGateTool
-from ..core.fortigate import FortiGateAPIError
 
 class DeviceTools(FortiGateTool):
     """Tools for FortiGate device management."""

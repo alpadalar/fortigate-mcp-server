@@ -3,8 +3,7 @@ Pytest configuration and fixtures for FortiGate MCP server tests.
 """
 
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig

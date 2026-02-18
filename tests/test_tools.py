@@ -3,15 +3,13 @@ MCP Tools tests - async tool implementations.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock
 
 from src.fortigate_mcp.tools.device import DeviceTools
 from src.fortigate_mcp.tools.firewall import FirewallTools
 from src.fortigate_mcp.tools.network import NetworkTools
 from src.fortigate_mcp.tools.routing import RoutingTools
 from src.fortigate_mcp.tools.virtual_ip import VirtualIPTools
-from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
-from src.fortigate_mcp.config.models import AuthConfig
 
 
 class TestDeviceTools:
@@ -354,6 +352,8 @@ class TestRoutingTools:
 
         result = await self.routing_tools.get_routing_table("test_device")
 
+        assert len(result) > 0
+        assert result[0].text is not None
         mock_fortigate_api.get_routing_table.assert_called_once()
 
     @pytest.mark.asyncio
@@ -384,6 +384,8 @@ class TestRoutingTools:
 
         result = await self.routing_tools.get_static_route_detail("test_device", "1")
 
+        assert len(result) > 0
+        assert result[0].text is not None
         mock_fortigate_api.get_static_route_detail.assert_called_once_with("1", vdom=None)
 
 
@@ -402,6 +404,8 @@ class TestVirtualIPTools:
 
         result = await self.vip_tools.list_virtual_ips("test_device")
 
+        assert len(result) > 0
+        assert result[0].text is not None
         mock_fortigate_api.get_virtual_ips.assert_called_once()
 
     @pytest.mark.asyncio
@@ -438,6 +442,8 @@ class TestVirtualIPTools:
 
         result = await self.vip_tools.get_virtual_ip_detail("test_device", "test_vip")
 
+        assert len(result) > 0
+        assert result[0].text is not None
         mock_fortigate_api.get_virtual_ip_detail.assert_called_once_with("test_vip", vdom=None)
 
     @pytest.mark.asyncio

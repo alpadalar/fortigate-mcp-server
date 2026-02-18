@@ -15,7 +15,6 @@ The server exposes a set of tools for managing FortiGate resources including:
 - Routing configuration
 """
 import logging
-import json
 import os
 import sys
 import signal
@@ -115,7 +114,7 @@ class FortiGateMCPServer:
             password: Annotated[Optional[str], Field(description="Password", default=None)] = None,
             api_token: Annotated[Optional[str], Field(description="API token", default=None)] = None,
             vdom: Annotated[str, Field(description="Virtual Domain", default="root")] = "root",
-            verify_ssl: Annotated[bool, Field(description="Verify SSL", default=False)] = False,
+            verify_ssl: Annotated[bool, Field(description="Verify SSL", default=True)] = True,
             timeout: Annotated[int, Field(description="Timeout in seconds", default=30)] = 30
         ):
             return await self.device_tools.add_device(
@@ -380,15 +379,15 @@ class FortiGateMCPServer:
 if __name__ == "__main__":
     config_path = os.getenv("FORTIGATE_MCP_CONFIG")
     if not config_path:
-        print("FORTIGATE_MCP_CONFIG environment variable must be set")
+        print("FORTIGATE_MCP_CONFIG environment variable must be set", file=sys.stderr)
         sys.exit(1)
-    
+
     try:
         server = FortiGateMCPServer(config_path)
         server.start()
     except KeyboardInterrupt:
-        print("\nShutting down gracefully...")
+        print("\nShutting down gracefully...", file=sys.stderr)
         sys.exit(0)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

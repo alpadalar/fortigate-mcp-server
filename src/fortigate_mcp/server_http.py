@@ -5,7 +5,6 @@ This module provides an HTTP transport layer for the MCP server,
 supporting HTTP transport for web-based integrations and external access.
 """
 
-import logging
 import json
 import os
 import sys
@@ -31,8 +30,6 @@ from .tools.firewall import FirewallTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
 from .tools.virtual_ip import VirtualIPTools
-
-logger = logging.getLogger("fortigate-mcp.http")
 
 class FortiGateMCPHTTPServer:
     """
@@ -115,7 +112,7 @@ class FortiGateMCPHTTPServer:
         async def add_device(device_id: str, host: str, port: int = 443,
                       username: Optional[str] = None, password: Optional[str] = None,
                       api_token: Optional[str] = None, vdom: str = "root",
-                      verify_ssl: bool = False, timeout: int = 30):
+                      verify_ssl: bool = True, timeout: int = 30):
             return await self.device_tools.add_device(device_id, host, port, username, password,
                                               api_token, vdom, verify_ssl, timeout)
 
@@ -397,10 +394,10 @@ def main():
     try:
         command.handle(**options)
     except KeyboardInterrupt:
-        print("\nShutting down gracefully...")
+        print("\nShutting down gracefully...", file=sys.stderr)
         sys.exit(0)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
