@@ -81,7 +81,7 @@ class DeviceTools(FortiGateTool):
     async def add_device(self, device_id: str, host: str, port: int = 443,
                    username: Optional[str] = None, password: Optional[str] = None,
                    api_token: Optional[str] = None, vdom: str = "root",
-                   verify_ssl: bool = False, timeout: int = 30) -> List[Content]:
+                   verify_ssl: bool = True, timeout: int = 30) -> List[Content]:
         """Add a new FortiGate device.
 
         Args:
