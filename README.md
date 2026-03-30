@@ -1,371 +1,361 @@
-# FortiGate MCP Server
+<p align="center">
+  <img src="https://img.shields.io/badge/FortiGate-MCP%20Server-blue?style=for-the-badge&logo=fortinet&logoColor=white" alt="FortiGate MCP Server"/>
+</p>
 
-FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for managing FortiGate devices. This project provides programmatic access to FortiGate devices and enables integration with MCP-compatible tools like Cursor.
+<h1 align="center">FortiGate MCP Server</h1>
 
-## 🚀 Features
+<p align="center">
+  <strong>A production-ready Model Context Protocol (MCP) server for managing FortiGate firewalls</strong>
+</p>
 
-- **Device Management**: Add, remove, and test connections to FortiGate devices
-- **Firewall Management**: List, create, update, and delete firewall rules
-- **Network Management**: Manage address and service objects
-- **Routing Management**: Manage static routes and interfaces
-- **HTTP Transport**: MCP protocol over HTTP using FastMCP
-- **Docker Support**: Easy installation and deployment
-- **Cursor Integration**: Full integration with Cursor IDE
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
+  <img src="https://img.shields.io/badge/MCP-1.0-green?style=flat-square" alt="MCP 1.0"/>
+  <img src="https://img.shields.io/badge/async-httpx-orange?style=flat-square" alt="Async httpx"/>
+  <img src="https://img.shields.io/badge/tests-117%20passed-brightgreen?style=flat-square" alt="Tests"/>
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/>
+</p>
 
-## 📋 Requirements
+<p align="center">
+  <a href="#features">Features</a> &bull;
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#configuration">Configuration</a> &bull;
+  <a href="#available-tools">Tools</a> &bull;
+  <a href="#architecture">Architecture</a> &bull;
+  <a href="#security">Security</a> &bull;
+  <a href="#testing">Testing</a>
+</p>
 
-- Python 3.8+
-- Access to FortiGate device
-- API token or username/password
+---
 
-## 🛠️ Installation
+## Overview
 
-### 1. Clone the Project
+FortiGate MCP Server exposes FortiGate firewall management capabilities through the [Model Context Protocol](https://modelcontextprotocol.io/), enabling AI assistants and MCP-compatible tools to programmatically manage firewall policies, network objects, routing, and device configurations.
+
+Built with **fully async Python**, persistent HTTP connection pooling, and security-first defaults.
+
+## Features
+
+**Device Management**
+- Multi-device support with concurrent management
+- API token and basic authentication
+- Connection testing and health monitoring
+- VDOM discovery and per-VDOM operations
+
+**Firewall Policy Management**
+- Full CRUD for firewall policies
+- Policy detail with address/service object resolution
+- VDOM-scoped operations
+
+**Network Object Management**
+- Address objects (subnet, IP range, FQDN)
+- Service objects (TCP/UDP/SCTP with port ranges)
+
+**Virtual IP Management**
+- NAT/DNAT virtual IPs
+- Port forwarding configuration
+- Protocol-specific VIP rules
+
+**Routing**
+- Static route CRUD operations
+- Routing table inspection
+- Interface listing and status monitoring
+
+**Infrastructure**
+- Fully async API client with `httpx.AsyncClient` connection pooling
+- STDIO and HTTP transport modes
+- Pydantic configuration models with validation
+- Structured logging with API call tracing
+- Rate limiting support
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Access to a FortiGate device with API enabled
+- API token (recommended) or admin credentials
+
+### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Aprazor/fortigate-mcp-server.git
 cd fortigate-mcp-server
-```
 
-### 2. Install Dependencies
-
-```bash
-# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# or
-.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows
 
-# Install dependencies
-pip install -r requirements.txt
+pip install -e .
 ```
 
-### 3. Configuration
+### Configuration
 
-Edit the `config/config.json` file:
+Create a configuration file (e.g., `config/config.json`):
 
 ```json
 {
   "fortigate": {
     "devices": {
-      "default": {
+      "fw-primary": {
         "host": "192.168.1.1",
         "port": 443,
-        "username": "admin",
-        "password": "password",
-        "api_token": "your-api-token",
+        "api_token": "your-api-token-here",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       }
     }
   },
+  "server": {
+    "name": "fortigate-mcp-server",
+    "host": "0.0.0.0",
+    "port": 8814
+  },
+  "auth": {
+    "require_auth": false,
+    "allowed_origins": []
+  },
   "logging": {
     "level": "INFO",
-    "file": "./logs/fortigate_mcp.log"
+    "console": true
   }
 }
 ```
 
-## 🚀 Usage
+### Run the Server
 
-### Start HTTP Server
+**STDIO mode** (for direct MCP client integration):
 
 ```bash
-# Start with script
-./start_http_server.sh
+export FORTIGATE_MCP_CONFIG=config/config.json
+python -m src.fortigate_mcp.server
+```
 
-# Or manually
+**HTTP mode** (for web-based access):
+
+```bash
 python -m src.fortigate_mcp.server_http \
   --host 0.0.0.0 \
   --port 8814 \
-  --path /fortigate-mcp \
   --config config/config.json
 ```
 
-### Run with Docker
+### MCP Client Integration
 
-```bash
-# Build and start
-docker-compose up -d
-
-# View logs
-docker-compose logs -f fortigate-mcp-server
-```
-
-## 🔧 Cursor MCP Integration
-
-### 1. Cursor MCP Configuration
-
-Edit `~/.cursor/mcp_servers.json` in Cursor:
-
-#### Option 1: Command Connection
+**Claude Desktop / Claude Code** (`~/.claude/mcp_servers.json`):
 
 ```json
 {
   "mcpServers": {
-    "fortigate-mcp": {
+    "fortigate": {
       "command": "python",
-      "args": [
-        "-m",
-        "src.fortigate_mcp.server_http",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8814",
-        "--path",
-        "/fortigate-mcp",
-        "--config",
-        "/path/to/your/config.json"
-      ],
+      "args": ["-m", "src.fortigate_mcp.server"],
       "env": {
-        "FORTIGATE_MCP_CONFIG": "/path/to/your/config.json"
+        "FORTIGATE_MCP_CONFIG": "/path/to/config.json"
       }
     }
   }
 }
 ```
 
-#### Option 2: URL Connection (Recommended)
+**Cursor IDE** (`~/.cursor/mcp_servers.json`):
 
 ```json
 {
   "mcpServers": {
     "FortiGateMCP": {
-      "url": "http://0.0.0.0:8814/fortigate-mcp/",
+      "url": "http://localhost:8814/fortigate-mcp/",
       "transport": "http"
     }
   }
 }
 ```
 
-### 2. Using in Cursor
+## Available Tools
 
-To use FortiGate MCP in Cursor:
+### Device Management (6 tools)
 
-1. **Start the server:**
-```bash
-cd /media/workspace/fortigate-mcp-server
-python -m src.fortigate_mcp.server_http --host 0.0.0.0 --port 8814 --path /fortigate-mcp --config config/config.json
+| Tool | Description |
+|------|-------------|
+| `list_devices` | List all registered FortiGate devices |
+| `get_device_status` | Get system status for a device |
+| `test_device_connection` | Test connectivity to a device |
+| `add_device` | Register a new FortiGate device |
+| `remove_device` | Remove a registered device |
+| `discover_vdoms` | Discover Virtual Domains on a device |
+
+### Firewall Policy Management (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_firewall_policies` | List all firewall policies |
+| `create_firewall_policy` | Create a new firewall policy |
+| `update_firewall_policy` | Update an existing policy |
+| `get_firewall_policy_detail` | Get policy with resolved objects |
+| `delete_firewall_policy` | Delete a firewall policy |
+
+### Network Object Management (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_address_objects` | List firewall address objects |
+| `create_address_object` | Create address object (subnet/range/FQDN) |
+| `list_service_objects` | List firewall service objects |
+| `create_service_object` | Create service object (TCP/UDP/SCTP) |
+
+### Virtual IP Management (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_virtual_ips` | List virtual IP configurations |
+| `create_virtual_ip` | Create VIP with optional port forwarding |
+| `update_virtual_ip` | Update virtual IP configuration |
+| `get_virtual_ip_detail` | Get detailed VIP information |
+| `delete_virtual_ip` | Delete a virtual IP |
+
+### Routing Management (8 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_static_routes` | List configured static routes |
+| `create_static_route` | Create a new static route |
+| `update_static_route` | Update an existing static route |
+| `delete_static_route` | Delete a static route |
+| `get_static_route_detail` | Get detailed route information |
+| `get_routing_table` | Get the active routing table |
+| `list_interfaces` | List network interfaces |
+| `get_interface_status` | Get interface operational status |
+
+### System Tools (2 tools)
+
+| Tool | Description |
+|------|-------------|
+| `health_check` | Server health and device connectivity status |
+| `get_server_info` | Server version and configuration info |
+
+## Architecture
+
+```
+fortigate-mcp-server/
+├── src/fortigate_mcp/
+│   ├── server.py                # STDIO MCP server (FastMCP)
+│   ├── server_http.py           # HTTP MCP server (FastMCP)
+│   ├── config/
+│   │   ├── loader.py            # Configuration file loading
+│   │   └── models.py            # Pydantic config models
+│   ├── core/
+│   │   ├── fortigate.py         # Async API client + device manager
+│   │   └── logging.py           # Structured logging setup
+│   ├── tools/
+│   │   ├── base.py              # Base tool class (error handling, formatting)
+│   │   ├── definitions.py       # Tool description constants
+│   │   ├── device.py            # Device management tools
+│   │   ├── firewall.py          # Firewall policy tools
+│   │   ├── network.py           # Address/service object tools
+│   │   ├── routing.py           # Routing and interface tools
+│   │   └── virtual_ip.py        # Virtual IP tools
+│   └── formatting/
+│       ├── formatters.py        # MCP content formatters
+│       └── templates.py         # Response templates
+└── tests/
+    ├── conftest.py              # Shared fixtures (AsyncMock)
+    ├── test_config.py           # Configuration model tests
+    ├── test_device_manager.py   # Device manager lifecycle tests
+    ├── test_fortigate_api.py    # Async API client tests
+    ├── test_formatting.py       # Response formatting tests
+    └── test_tools.py            # Tool integration tests
 ```
 
-2. **Restart Cursor**
-3. **Ensure MCP server is running**
-4. **Use FortiGate commands in Cursor**
+### Design Principles
 
-## 📚 API Commands
+- **Fully async**: All API calls use `httpx.AsyncClient` with persistent connection pooling per device
+- **Security by default**: SSL verification enabled, empty CORS origins, no wildcard defaults
+- **Clean separation**: Config models, API client, tool logic, and formatting are independent layers
+- **Error categorization**: FortiGate API errors are mapped to user-friendly messages with HTTP status awareness
 
-### Device Management
+## Security
 
-- `list_devices` - List registered devices
-- `get_device_status` - Get device status
-- `test_device_connection` - Test connection
-- `add_device` - Add new device
-- `remove_device` - Remove device
-- `discover_vdoms` - Discover VDOMs
+This server is designed with security-first defaults:
 
-### Firewall Management
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `verify_ssl` | `true` | SSL certificate verification enabled |
+| `allowed_origins` | `[]` | No CORS origins allowed (explicit opt-in) |
+| `require_auth` | `false` | MCP server authentication (enable for production) |
 
-- `list_firewall_policies` - List firewall rules
-- `create_firewall_policy` - Create new rule
-- `update_firewall_policy` - Update rule
-- `delete_firewall_policy` - Delete rule
+**Recommendations for production:**
 
-### Network Management
+- Use **API tokens** instead of username/password authentication
+- Keep `verify_ssl: true` unless testing with self-signed certificates
+- Set explicit `allowed_origins` when using HTTP transport
+- Enable `require_auth` with configured API tokens for the MCP server itself
+- Run the server on a trusted network or behind a reverse proxy
+- Use environment variables for sensitive configuration values
 
-- `list_address_objects` - List address objects
-- `create_address_object` - Create address object
-- `list_service_objects` - List service objects
-- `create_service_object` - Create service object
+## Testing
 
-### Virtual IP Management
-
-- `list_virtual_ips` - List virtual IPs
-- `create_virtual_ip` - Create virtual IP
-- `update_virtual_ip` - Update virtual IP
-- `get_virtual_ip_detail` - Get virtual IP detail
-- `delete_virtual_ip` - Delete virtual IP
-
-### Routing Management
-
-- `list_static_routes` - List static routes
-- `create_static_route` - Create static route
-- `update_static_route` - Update static route
-- `delete_static_route` - Delete static route
-- `get_static_route_detail` - Get static route detail
-- `get_routing_table` - Get routing table
-- `list_interfaces` - List interfaces
-- `get_interface_status` - Get interface status
-
-### System Commands
-
-- `health` - Health check
-- `test_connection` - Connection test
-- `get_schema_info` - Schema information
-
-## 🧪 Testing
-
-### Run Tests
+The project includes 117 tests covering the full async stack:
 
 ```bash
-# Run all unit tests (default)
+# Run all tests
 python -m pytest
-
-# Run with coverage
-python -m pytest --cov=src --cov-report=html
-
-# Run specific test categories
-python -m pytest tests/test_device_manager.py
-python -m pytest tests/test_fortigate_api.py
-python -m pytest tests/test_tools.py
-
-# Run integration tests (requires server running)
-python integration_tests.py
-
-# Run only unit tests (default)
-python -m pytest tests/
 
 # Run with verbose output
 python -m pytest -v
 
-# Run with detailed error information
-python -m pytest --tb=long
+# Run specific test module
+python -m pytest tests/test_tools.py
+
+# Run with coverage report
+python -m pytest --cov=src --cov-report=html
 ```
 
-### Test Categories
+### Test Coverage
 
-- **Unit Tests**: Test individual components and functions
-- **Integration Tests**: Test HTTP server functionality (requires server running)
-- **Coverage**: Code coverage reporting with HTML output
+| Module | Coverage |
+|--------|----------|
+| Config models | Security defaults, validation, Pydantic models |
+| API client | Async HTTP, connection pooling, error handling |
+| Device manager | Lifecycle (add/remove/list), async operations |
+| Tool classes | All CRUD operations, VDOM support, error paths |
+| Formatting | Templates, content rendering, edge cases |
 
-### HTTP Server Test
+## Troubleshooting
 
-```bash
-# Run test script
-python test_http_server.py
-```
+**Connection refused**
+- Verify the FortiGate device is reachable and the API is enabled
+- Check that the port (default 443) is not blocked by network firewalls
 
-### Manual Testing
+**Authentication failed (401)**
+- Verify your API token is valid and has appropriate permissions
+- For basic auth, confirm the username/password are correct
 
-```bash
-# Health check
-curl -X POST http://localhost:8814/fortigate-mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "health", "params": {}}'
+**SSL certificate error**
+- For self-signed certificates in lab environments, set `verify_ssl: false`
+- For production, install a valid certificate on the FortiGate device
 
-# List devices
-curl -X POST http://localhost:8814/fortigate-mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "list_devices", "params": {}}'
-```
+**VDOM not found**
+- Use `discover_vdoms` to list available VDOMs on the device
+- Ensure the VDOM name matches exactly (case-sensitive)
 
-## 📁 Project Structure
-
-```
-fortigate-mcp-server/
-├── src/
-│   └── fortigate_mcp/
-│       ├── __init__.py
-│       ├── server_http.py          # HTTP MCP server
-│       ├── config/                 # Configuration management
-│       ├── core/                   # Core components
-│       ├── tools/                  # MCP tools
-│       └── formatting/             # Response formatting
-├── config/
-│   ├── config.json                # Main configuration
-│   └── config.example.json        # Example configuration
-├── examples/
-│   └── cursor_mcp_config.json     # Cursor MCP config
-├── logs/                          # Log files
-├── tests/                         # Test files
-├── docker-compose.yml             # Docker compose
-├── Dockerfile                     # Docker image
-├── start_http_server.sh           # Startup script
-├── test_http_server.py            # Test script
-└── README.md                      # This file
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **Connection Error**
-   - Ensure FortiGate device is accessible
-   - Verify API token or username/password
-   - Use `verify_ssl: false` for SSL certificate issues
-
-2. **Port Conflict**
-   - Ensure port 8814 is available
-   - Change port using `--port` parameter
-
-3. **Configuration Error**
-   - Ensure `config.json` is properly formatted
-   - Check JSON syntax
-
-4. **Cursor MCP Connection Issue**
-   - Ensure server is running
-   - Verify URL is correct
-   - Restart Cursor
-
-### Logs
-
-Check logs using:
-
-```bash
-# HTTP server logs
-tail -f logs/fortigate_mcp.log
-
-# Docker logs
-docker-compose logs -f fortigate-mcp-server
-```
-
-## 🔒 Security
-
-### Recommendations
-
-1. **Use API Tokens**
-   - Use API tokens instead of username/password
-   - Store tokens securely
-
-2. **SSL Certificate**
-   - Use SSL certificates in production
-   - Set `verify_ssl: true`
-
-3. **Network Security**
-   - Run MCP server only on secure networks
-   - Restrict access with firewall rules
-
-4. **Rate Limiting**
-   - Enable rate limiting
-   - Limit API calls
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Write tests for new functionality
+4. Ensure all tests pass (`python -m pytest`)
+5. Commit your changes (`git commit -m 'Add my feature'`)
+6. Push to your branch (`git push origin feature/my-feature`)
+7. Open a Pull Request
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- [FastMCP](https://gofastmcp.com/) - For MCP HTTP transport
-- [FortiGate API](https://docs.fortinet.com/document/fortigate/7.4.0/administration-guide/109229/rest-api) - For FortiGate integration
-- [Cursor](https://cursor.sh/) - For MCP support
-
-## 📞 Support
-
-For issues:
-- Use the [Issues](https://github.com/your-repo/issues) page
-- Check the documentation
-- Review the logs
-
----
-
-**Note**: This project has been tested with FortiGate devices. Please perform comprehensive testing before using in production.
+- [Model Context Protocol](https://modelcontextprotocol.io/) - The protocol specification
+- [FastMCP](https://gofastmcp.com/) - Python MCP server framework
+- [FortiGate REST API](https://docs.fortinet.com/) - FortiGate API documentation
+- [httpx](https://www.python-httpx.org/) - Async HTTP client

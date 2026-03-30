@@ -28,7 +28,7 @@ class FortiGateDeviceConfig(BaseModel):
     password: Optional[str] = Field(default=None, description="Password for authentication")
     api_token: Optional[str] = Field(default=None, description="API token for authentication")
     vdom: str = Field(default="root", description="Virtual Domain name")
-    verify_ssl: bool = Field(default=False, description="SSL certificate verification")
+    verify_ssl: bool = Field(default=True, description="SSL certificate verification (disable only for testing)")
     timeout: int = Field(default=30, description="Request timeout in seconds")
 
 class FortiGateConfig(BaseModel):
@@ -49,7 +49,7 @@ class AuthConfig(BaseModel):
     """
     require_auth: bool = Field(default=False, description="Whether authentication is required")
     api_tokens: List[str] = Field(default_factory=list, description="Valid API tokens")
-    allowed_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
+    allowed_origins: List[str] = Field(default_factory=list, description="CORS allowed origins (empty = no CORS)")
 
 class LoggingConfig(BaseModel):
     """Model for logging configuration.
