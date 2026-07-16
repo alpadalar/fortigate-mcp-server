@@ -255,3 +255,25 @@ class TestScrubSecrets:
 
     def test_empty_and_none_secrets_dropped(self):
         assert scrub_secrets("some text here", {"", None}) == "some text here"
+
+    def test_overlapping_secrets_fully_redacted_no_residual_fragment(self):
+        """CR-01 regression: when one registered secret is a substring of
+        another (e.g. a rotated token that extends an older still-registered
+        token), redaction must not leave a residual fragment of the longer
+        secret behind, regardless of `set` iteration order."""
+        result = scrub_secrets(
+            "leaked: abcdef and abc are both secrets", {"abc", "abcdef"}
+        )
+        assert "abcdef" not in result
+        assert "abc" not in result
+        assert result.count("***REDACTED***") == 2
+
+    def test_overlapping_secrets_stable_across_many_set_orderings(self):
+        """Same assertion as above, repeated to reduce the chance a single
+        favorable set iteration order masks a regression."""
+        for _ in range(25):
+            result = scrub_secrets(
+                "prefix abcdef-suffix and abc alone", {"abc", "abcdef"}
+            )
+            assert "abcdef" not in result
+            assert "abc" not in result

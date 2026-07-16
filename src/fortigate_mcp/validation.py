@@ -236,7 +236,17 @@ def scrub_secrets(text: str, secrets) -> str:
     if not isinstance(text, str):
         return text
 
-    known = {s for s in secrets if s}
+    # Longest-first: two registered secrets can be in a substring
+    # relationship (e.g. a rotated token that extends an older still-
+    # registered token -- register_secrets() never removes entries).
+    # Replacing the shorter one first would fragment the longer one and
+    # leave a residual, undredacted tail. Sorting descending by length
+    # guarantees the longer secret is always matched whole before a
+    # shorter substring of it can consume part of it. This also makes the
+    # result independent of `set` iteration order (which is per-process
+    # hash-seed dependent) -- ties in length keep a stable relative order
+    # via Python's stable sort over the (also order-independent) input.
+    known = sorted({s for s in secrets if s}, key=len, reverse=True)
     for secret in known:
         text = text.replace(secret, "***REDACTED***")
 
