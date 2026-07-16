@@ -65,10 +65,10 @@ security = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-username/fortigate-mcp-server"
-Documentation = "https://github.com/your-username/fortigate-mcp-server#readme"
-Repository = "https://github.com/your-username/fortigate-mcp-server"
-"Bug Tracker" = "https://github.com/your-username/fortigate-mcp-server/issues"
+Homepage = "https://github.com/alpadalar/fortigate-mcp-server"
+Documentation = "https://github.com/alpadalar/fortigate-mcp-server#readme"
+Repository = "https://github.com/alpadalar/fortigate-mcp-server"
+"Bug Tracker" = "https://github.com/alpadalar/fortigate-mcp-server/issues"
 
 [project.scripts]
 fortigate-mcp-server = "src.fortigate_mcp.server:server_main"
