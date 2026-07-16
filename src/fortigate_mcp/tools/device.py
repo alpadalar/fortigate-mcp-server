@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional
 from mcp.types import TextContent as Content
 from .base import FortiGateTool
 from ..core.fortigate import FortiGateAPIError
+from ..core.logging import register_secrets
 
 class DeviceTools(FortiGateTool):
     """Tools for FortiGate device management."""
@@ -114,6 +115,13 @@ class DeviceTools(FortiGateTool):
                     error=f"Device '{device_id}' already exists"
                 )
             
+            # Runtime-added device credentials must enter the redaction
+            # registry BEFORE the client is constructed below -- client
+            # construction logs an init line, and this is the single
+            # dispatch path both the stdio and HTTP transports' add_device
+            # tools route through, so this one call site covers both.
+            register_secrets({api_token, password})
+
             # Add device to manager
             self.fortigate_manager.add_device(
                 device_id=device_id,
@@ -146,8 +154,12 @@ class DeviceTools(FortiGateTool):
         """
         try:
             self._validate_device_exists(device_id)
-            
-            # Remove device from manager
+
+            # Intentionally does NOT deregister this device's credentials
+            # from the redaction filter: a removed device's token must
+            # stay redacted in any later log line (e.g. a stale reference
+            # elsewhere still logging it). Retention is strictly safer
+            # than premature deregistration -- do not "fix" this.
             self.fortigate_manager.remove_device(device_id)
             
             return self._format_operation_result(

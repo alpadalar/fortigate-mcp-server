@@ -37,12 +37,16 @@ logger = logging.getLogger("fortigate-mcp.http")
 class FortiGateMCPHTTPServer:
     """
     HTTP-based MCP server for FortiGate management.
-    
+
     This server supports:
     - HTTP transport for web integration
-    - CORS for browser access
-    - Authentication (optional)
-    - Rate limiting
+    - Authentication is not currently enforced (AuthConfig.require_auth is
+      parsed but never checked; the server is unauthenticated by default --
+      run only on trusted networks; enforcement is planned for Phase 4)
+    - Rate limiting is not currently enforced (RateLimitConfig is parsed
+      but never checked)
+    - CORS is not configured (AuthConfig.allowed_origins is parsed but not
+      applied; no CORS middleware exists in this codebase)
     """
     
     def __init__(self, 
@@ -64,9 +68,19 @@ class FortiGateMCPHTTPServer:
             
         # Load and validate configuration
         self.config = load_config(config_path)
-        
+
+        # Collect boot-time device secrets so the redaction filter can
+        # scrub them from any log line before the first handler is even
+        # created.
+        secrets: set = set()
+        for device_config in self.config.fortigate.devices.values():
+            if device_config.api_token:
+                secrets.add(device_config.api_token.get_secret_value())
+            if device_config.password:
+                secrets.add(device_config.password.get_secret_value())
+
         # Setup logging
-        self.logger = setup_logging(self.config.logging)
+        self.logger = setup_logging(self.config.logging, secrets=secrets)
         
         self.host = host
         self.port = port

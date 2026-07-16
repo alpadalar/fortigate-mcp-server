@@ -76,7 +76,18 @@ class FortiGateMCPServer:
         """
         # Load configuration
         self.config = load_config(config_path)
-        self.logger = setup_logging(self.config.logging)
+
+        # Collect boot-time device secrets so the redaction filter can
+        # scrub them from any log line before the first handler is even
+        # created.
+        secrets: set = set()
+        for device_config in self.config.fortigate.devices.values():
+            if device_config.api_token:
+                secrets.add(device_config.api_token.get_secret_value())
+            if device_config.password:
+                secrets.add(device_config.password.get_secret_value())
+
+        self.logger = setup_logging(self.config.logging, secrets=secrets)
         
         # Initialize core components
         self.fortigate_manager = FortiGateManager(

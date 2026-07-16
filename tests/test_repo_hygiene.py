@@ -42,6 +42,18 @@ def test_integration_tests_script_removed_from_root():
     )
 
 
+def test_http_server_docstring_matches_reality():
+    """server_http.py's class docstring must not claim capabilities that
+    are not actually enforced (CONF-04): authentication, rate limiting,
+    and CORS are all parsed-but-unenforced config today."""
+    repo_root = _repo_root()
+    text = (repo_root / "src" / "fortigate_mcp" / "server_http.py").read_text()
+
+    assert "Authentication (optional)" not in text
+    assert "CORS for browser access" not in text
+    assert text.count("not currently enforced") >= 2
+
+
 @pytest.mark.slow
 @pytest.mark.skipif(
     os.environ.get("PACKAGING_CHECKS") != "1",
