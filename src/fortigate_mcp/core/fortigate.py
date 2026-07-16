@@ -181,6 +181,27 @@ class FortiGateAPI:
                 scrub_secrets(f"Network error: {str(e)}", self._own_secrets),
                 device_id=self.device_id
             )
+        except FortiGateAPIError:
+            # Already scrubbed and well-formed (raised inside the try block
+            # above) -- re-raise as-is, do not let the catch-all below
+            # re-wrap it.
+            raise
+        except Exception as e:
+            # Catch-all for any exception NOT covered by the two branches
+            # above (e.g. an unexpected error from response.json() on the
+            # success path, or any future httpx/library exception type that
+            # isn't a RequestError subclass). Without this, such an
+            # exception would propagate to tools/base.py's
+            # `error_msg = str(error)` completely unscrubbed -- that path
+            # builds MCP tool-response content directly and has no
+            # TokenRedactionFilter fallback (that filter only touches log
+            # records, not tool-response content).
+            duration_ms = (time.time() - start_time) * 1000
+            log_api_call(self.logger, method, endpoint, None, duration_ms)
+            raise FortiGateAPIError(
+                scrub_secrets(f"Unexpected error: {e}", self._own_secrets),
+                device_id=self.device_id,
+            )
 
     def _validated_endpoint(
         self, prefix: str, identifier: str, field_name: str, numeric: bool = False

@@ -463,6 +463,33 @@ class TestFortiGateAPITokenLeak:
         combined_text = "\n".join(content.text for content in result)
         assert self.FAKE_TOKEN not in combined_text
 
+    def test_unexpected_exception_scrubbed_and_wrapped(self):
+        """WR-02 regression: an exception that is neither httpx.RequestError
+        nor a FortiGateAPIError raised inside the try block (e.g. an
+        unexpected error on the success-path response.json() call) must
+        still be scrubbed and wrapped in a FortiGateAPIError -- not
+        propagate raw all the way to the MCP tool-response layer, which has
+        no TokenRedactionFilter fallback of its own."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = RuntimeError(
+            f"unexpected parse failure, saw Bearer {self.FAKE_TOKEN}"
+        )
+
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+            mock_client.request.return_value = mock_response
+
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                self.api._make_request("GET", "monitor/system/status")
+
+            assert self.FAKE_TOKEN not in str(exc_info.value)
+            assert "***REDACTED***" in str(exc_info.value)
+            assert exc_info.value.device_id == "test_device"
+
     def test_full_request_cycle_logs_never_contain_token(self, caplog):
         """Regression guard for the current clean state of log_api_call
         (log_api_call never logs headers today)."""
