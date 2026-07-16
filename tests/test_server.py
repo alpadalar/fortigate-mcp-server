@@ -57,14 +57,14 @@ TOOL_CALL_MATRIX = [
     (
         "create_address_object",
         "network_tools",
-        "create_address_object",
+        "create_address_object_from_payload",
         {"device_id": "probe", "address_data": {"name": "a1", "type": "ipmask", "subnet": "10.0.0.0/24"}},
     ),
     ("list_service_objects", "network_tools", "list_service_objects", {"device_id": "probe"}),
     (
         "create_service_object",
         "network_tools",
-        "create_service_object",
+        "create_service_object_from_payload",
         {"device_id": "probe", "service_data": {"name": "s1", "protocol": "TCP"}},
     ),
     # Routing tools
@@ -72,7 +72,7 @@ TOOL_CALL_MATRIX = [
     (
         "create_static_route",
         "routing_tools",
-        "create_static_route",
+        "create_static_route_from_payload",
         {"device_id": "probe", "route_data": {"dst": "10.0.0.0/24", "gateway": "10.0.0.1"}},
     ),
     ("get_routing_table", "routing_tools", "get_routing_table", {"device_id": "probe"}),
@@ -163,3 +163,87 @@ def test_get_firewall_policy_detail_still_async(tmp_config_path):
 
     content = result[0] if isinstance(result, tuple) else result
     assert "Test-Policy" in content[0].text
+
+
+def _server_with_mocked_device(tmp_config_path):
+    """Build a server with a MagicMock(spec=FortiGateAPI) device named 'probe'."""
+    server = FortiGateMCPServer(tmp_config_path)
+    mock_api = MagicMock(spec=FortiGateAPI)
+    mock_api.device_id = "probe"
+    mock_api.create_static_route.return_value = {"status": "success"}
+    mock_api.create_address_object.return_value = {"status": "success"}
+    mock_api.create_service_object.return_value = {"status": "success"}
+    server.fortigate_manager.devices["probe"] = mock_api
+    return server, mock_api
+
+
+def test_route_payload_preserves_optional_fields(tmp_config_path):
+    """create_static_route forwards distance/comment, not just dst/gateway."""
+    server, mock_api = _server_with_mocked_device(tmp_config_path)
+    route_data = {
+        "dst": "10.0.0.0/24",
+        "gateway": "10.0.0.1",
+        "device": "port1",
+        "distance": 10,
+        "comment": "test route",
+    }
+
+    asyncio.run(server.mcp.call_tool("create_static_route", {"device_id": "probe", "route_data": route_data}))
+
+    mock_api.create_static_route.assert_called_once_with(route_data, vdom=None)
+
+
+def test_address_payload_ipmask_variant(tmp_config_path):
+    """create_address_object forwards the full ipmask payload unchanged."""
+    server, mock_api = _server_with_mocked_device(tmp_config_path)
+    address_data = {"name": "addr1", "type": "ipmask", "subnet": "10.0.0.0/24", "comment": "c"}
+
+    asyncio.run(server.mcp.call_tool("create_address_object", {"device_id": "probe", "address_data": address_data}))
+
+    mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
+
+
+def test_address_payload_iprange_variant(tmp_config_path):
+    """create_address_object forwards start-ip AND end-ip for the iprange variant."""
+    server, mock_api = _server_with_mocked_device(tmp_config_path)
+    address_data = {"name": "addr2", "type": "iprange", "start-ip": "10.0.0.10", "end-ip": "10.0.0.20"}
+
+    asyncio.run(server.mcp.call_tool("create_address_object", {"device_id": "probe", "address_data": address_data}))
+
+    mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
+
+
+def test_address_payload_fqdn_variant(tmp_config_path):
+    """create_address_object keeps the fqdn key as-is, never remapped to subnet."""
+    server, mock_api = _server_with_mocked_device(tmp_config_path)
+    address_data = {"name": "addr3", "type": "fqdn", "fqdn": "example.com"}
+
+    asyncio.run(server.mcp.call_tool("create_address_object", {"device_id": "probe", "address_data": address_data}))
+
+    mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
+    called_payload = mock_api.create_address_object.call_args.args[0]
+    assert "subnet" not in called_payload
+    assert called_payload["fqdn"] == "example.com"
+
+
+def test_service_payload_tcp_variant(tmp_config_path):
+    """create_service_object forwards tcp-portrange and comment intact."""
+    server, mock_api = _server_with_mocked_device(tmp_config_path)
+    service_data = {"name": "svc1", "protocol": "TCP", "tcp-portrange": "8080", "comment": "c"}
+
+    asyncio.run(server.mcp.call_tool("create_service_object", {"device_id": "probe", "service_data": service_data}))
+
+    mock_api.create_service_object.assert_called_once_with(service_data, vdom=None)
+
+
+def test_service_payload_udp_variant(tmp_config_path):
+    """create_service_object forwards udp-portrange intact, not remapped to a generic 'port'."""
+    server, mock_api = _server_with_mocked_device(tmp_config_path)
+    service_data = {"name": "svc2", "protocol": "UDP", "udp-portrange": "514"}
+
+    asyncio.run(server.mcp.call_tool("create_service_object", {"device_id": "probe", "service_data": service_data}))
+
+    mock_api.create_service_object.assert_called_once_with(service_data, vdom=None)
+    called_payload = mock_api.create_service_object.call_args.args[0]
+    assert "port" not in called_payload
+    assert called_payload["udp-portrange"] == "514"

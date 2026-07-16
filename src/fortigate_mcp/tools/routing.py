@@ -37,6 +37,25 @@ class RoutingTools(FortiGateTool):
         except Exception as e:
             return self._handle_error("create static route", device_id, e)
     
+    def create_static_route_from_payload(self, device_id: str, route_data: Dict[str, Any],
+                                        vdom: Optional[str] = None) -> List[Content]:
+        """Create static route from a full dict payload, preserving every documented field.
+
+        Unlike create_static_route (which only accepts dst/gateway/device as
+        individual fields), this adapter forwards the entire route_data dict
+        unchanged to the API layer, so distance/comment and any other
+        documented route keys are never dropped.
+        """
+        try:
+            self._validate_device_exists(device_id)
+            self._validate_required_params(dst=route_data.get("dst"), gateway=route_data.get("gateway"))
+
+            api_client = self._get_device_api(device_id)
+            result = api_client.create_static_route(route_data, vdom=vdom)
+            return self._format_operation_result("create static route", device_id, True, f"Static route to {route_data.get('dst')} created successfully")
+        except Exception as e:
+            return self._handle_error("create static route", device_id, e)
+
     def get_routing_table(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
         """Get routing table."""
         try:

@@ -169,7 +169,7 @@ class FortiGateMCPServer:
             address_data: Annotated[dict, Field(description="Address object configuration")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return self.network_tools.create_address_object(device_id, address_data, vdom)
+            return self.network_tools.create_address_object_from_payload(device_id, address_data, vdom)
 
         @self.mcp.tool(description=LIST_SERVICE_OBJECTS_DESC)
         def list_service_objects(
@@ -184,7 +184,7 @@ class FortiGateMCPServer:
             service_data: Annotated[dict, Field(description="Service object configuration")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return self.network_tools.create_service_object(device_id, service_data, vdom)
+            return self.network_tools.create_service_object_from_payload(device_id, service_data, vdom)
 
         # Routing tools
         @self.mcp.tool(description=LIST_STATIC_ROUTES_DESC)
@@ -200,7 +200,7 @@ class FortiGateMCPServer:
             route_data: Annotated[dict, Field(description="Route configuration")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
         ):
-            return self.routing_tools.create_static_route(device_id, route_data, vdom)
+            return self.routing_tools.create_static_route_from_payload(device_id, route_data, vdom)
 
         @self.mcp.tool(description=GET_ROUTING_TABLE_DESC)
         def get_routing_table(

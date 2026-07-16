@@ -35,6 +35,48 @@ class NetworkTools(FortiGateTool):
         except Exception as e:
             return self._handle_error("create address object", device_id, e)
     
+    def create_address_object_from_payload(self, device_id: str, address_data: Dict[str, Any],
+                                          vdom: Optional[str] = None) -> List[Content]:
+        """Create address object from a full dict payload, preserving every documented field.
+
+        Unlike create_address_object (which only accepts a single 'address'
+        string field, structurally dropping end-ip/fqdn variants), this
+        adapter forwards the entire address_data dict unchanged to the API
+        layer: ipmask keeps 'subnet', iprange keeps BOTH 'start-ip' and
+        'end-ip', fqdn keeps 'fqdn' (never remapped to 'subnet'), and
+        'comment' passes through.
+        """
+        try:
+            self._validate_device_exists(device_id)
+            self._validate_required_params(name=address_data.get("name"), type=address_data.get("type"))
+
+            api_client = self._get_device_api(device_id)
+            result = api_client.create_address_object(address_data, vdom=vdom)
+            return self._format_operation_result("create address object", device_id, True, f"Address object '{address_data.get('name')}' created successfully")
+        except Exception as e:
+            return self._handle_error("create address object", device_id, e)
+
+    def create_service_object_from_payload(self, device_id: str, service_data: Dict[str, Any],
+                                          vdom: Optional[str] = None) -> List[Content]:
+        """Create service object from a full dict payload, preserving every documented field.
+
+        Unlike create_service_object (which collapses tcp-portrange/
+        udp-portrange into a single generic 'port' field and drops
+        'comment'), this adapter forwards the entire service_data dict
+        unchanged to the API layer: 'tcp-portrange' and 'udp-portrange' are
+        preserved as separate keys (a payload may carry both), and
+        'comment' passes through.
+        """
+        try:
+            self._validate_device_exists(device_id)
+            self._validate_required_params(name=service_data.get("name"), protocol=service_data.get("protocol"))
+
+            api_client = self._get_device_api(device_id)
+            result = api_client.create_service_object(service_data, vdom=vdom)
+            return self._format_operation_result("create service object", device_id, True, f"Service object '{service_data.get('name')}' created successfully")
+        except Exception as e:
+            return self._handle_error("create service object", device_id, e)
+
     def list_service_objects(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
         """List service objects."""
         try:
