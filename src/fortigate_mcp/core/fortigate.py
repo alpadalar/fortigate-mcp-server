@@ -14,6 +14,13 @@ from typing import Dict, Any, Optional, Union, List
 import httpx
 import json
 from ..config.models import FortiGateDeviceConfig, AuthConfig
+from ..validation import (
+    scrub_secrets,
+    validate_interface_name,
+    validate_numeric_id,
+    validate_object_name,
+    validate_vdom,
+)
 from .logging import get_logger, log_api_call
 
 class FortiGateAPIError(Exception):
@@ -45,16 +52,19 @@ class FortiGateAPI:
         self.device_id = device_id
         self.config = config
         self.logger = get_logger(f"device.{device_id}")
-        
-        # Build base URL
-        self.base_url = f"https://{config.host}:{config.port}/api/v2"
-        
+
+        # Build base URL (IPv6 literals must be bracketed in the URL authority --
+        # a validated host containing ':' can only be an IPv6 literal, since
+        # validate_host rejects embedded :port for IPv4/hostnames)
+        host_part = f"[{config.host}]" if ":" in config.host else config.host
+        self.base_url = f"https://{host_part}:{config.port}/api/v2"
+
         # Setup authentication headers
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
-        
+
         if config.api_token:
             self.headers["Authorization"] = f"Bearer {config.api_token.get_secret_value()}"
             self.auth_method = "token"
@@ -63,7 +73,7 @@ class FortiGateAPI:
             self._basic_auth = (config.username, config.password.get_secret_value())
         else:
             raise ValueError(f"Device {device_id}: Either api_token or username/password must be provided")
-        
+
         self.logger.info(f"Initialized FortiGate API client (auth: {self.auth_method})")
     
     def _make_request(
@@ -91,11 +101,14 @@ class FortiGateAPI:
         """
         # Build URL
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        
+
         # Setup parameters
         if not params:
             params = {}
-        params["vdom"] = vdom or self.config.vdom
+        # None-checked fallback: an explicit "" override must be validated
+        # and rejected, never silently swapped for the device default.
+        resolved_vdom = self.config.vdom if vdom is None else vdom
+        params["vdom"] = validate_vdom(resolved_vdom)
         
         # Setup authentication
         auth = None
@@ -130,9 +143,9 @@ class FortiGateAPI:
                             error_msg += f" - {error_data['error']}"
                     except:
                         error_msg += f" - {response.text}"
-                    
+
                     raise FortiGateAPIError(
-                        error_msg, 
+                        error_msg,
                         status_code=response.status_code,
                         device_id=self.device_id
                     )
@@ -148,10 +161,36 @@ class FortiGateAPI:
             duration_ms = (time.time() - start_time) * 1000
             log_api_call(self.logger, method, endpoint, None, duration_ms)
             raise FortiGateAPIError(
-                f"Network error: {str(e)}", 
+                f"Network error: {str(e)}",
                 device_id=self.device_id
             )
-    
+
+    def _validated_endpoint(
+        self, prefix: str, identifier: str, field_name: str, numeric: bool = False
+    ) -> str:
+        """Validate `identifier` and build a safe REST path segment.
+
+        Args:
+            prefix: fixed, trusted path prefix (e.g. "cmdb/firewall/policy").
+            identifier: caller-supplied identifier to validate before
+                interpolation into the REST path.
+            field_name: caller-facing field name for validator error messages.
+            numeric: if True, validate as a numeric ID (policy_id/route_id);
+                otherwise validate as an object name (address/service/vip name).
+
+        Returns:
+            "{prefix}/{safe_id}" -- safe to interpolate into a REST path.
+
+        Raises:
+            ValueError: if `identifier` fails validation.
+        """
+        safe_id = (
+            validate_numeric_id(identifier, field_name)
+            if numeric
+            else validate_object_name(identifier, field_name)
+        )
+        return f"{prefix}/{safe_id}"
+
     def test_connection(self) -> bool:
         """Test connection to FortiGate device.
         
@@ -185,7 +224,13 @@ class FortiGateAPI:
     
     def get_interface_status(self, interface_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get specific interface status."""
-        return self._make_request("GET", f"monitor/system/interface?interface={interface_name}", vdom=vdom)
+        # Dedicated dot-permitting grammar (VLAN subinterfaces like
+        # "port1.100" are valid) -- NOT validate_object_name. Sent via
+        # httpx params= (not a raw query string) so it is auto-encoded too.
+        safe_name = validate_interface_name(interface_name)
+        return self._make_request(
+            "GET", "monitor/system/interface", params={"interface": safe_name}, vdom=vdom
+        )
     
     # Firewall policy endpoints
     def get_firewall_policies(self, vdom: Optional[str] = None) -> Dict[str, Any]:
@@ -198,15 +243,18 @@ class FortiGateAPI:
     
     def update_firewall_policy(self, policy_id: str, policy_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Update existing firewall policy."""
-        return self._make_request("PUT", f"cmdb/firewall/policy/{policy_id}", data=policy_data, vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/firewall/policy", policy_id, "policy_id", numeric=True)
+        return self._make_request("PUT", endpoint, data=policy_data, vdom=vdom)
+
     def get_firewall_policy_detail(self, policy_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed information for a specific firewall policy."""
-        return self._make_request("GET", f"cmdb/firewall/policy/{policy_id}", vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/firewall/policy", policy_id, "policy_id", numeric=True)
+        return self._make_request("GET", endpoint, vdom=vdom)
+
     def delete_firewall_policy(self, policy_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete firewall policy."""
-        return self._make_request("DELETE", f"cmdb/firewall/policy/{policy_id}", vdom=vdom)
+        endpoint = self._validated_endpoint("cmdb/firewall/policy", policy_id, "policy_id", numeric=True)
+        return self._make_request("DELETE", endpoint, vdom=vdom)
     
     # Address object endpoints
     def get_address_objects(self, vdom: Optional[str] = None) -> Dict[str, Any]:
@@ -219,11 +267,13 @@ class FortiGateAPI:
     
     def update_address_object(self, address_name: str, address_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Update existing address object."""
-        return self._make_request("PUT", f"cmdb/firewall/address/{address_name}", data=address_data, vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/firewall/address", address_name, "address_name")
+        return self._make_request("PUT", endpoint, data=address_data, vdom=vdom)
+
     def delete_address_object(self, address_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete address object."""
-        return self._make_request("DELETE", f"cmdb/firewall/address/{address_name}", vdom=vdom)
+        endpoint = self._validated_endpoint("cmdb/firewall/address", address_name, "address_name")
+        return self._make_request("DELETE", endpoint, vdom=vdom)
     
     # Service object endpoints
     def get_service_objects(self, vdom: Optional[str] = None) -> Dict[str, Any]:
@@ -236,11 +286,13 @@ class FortiGateAPI:
     
     def update_service_object(self, service_name: str, service_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Update existing service object."""
-        return self._make_request("PUT", f"cmdb/firewall.service/custom/{service_name}", data=service_data, vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/firewall.service/custom", service_name, "service_name")
+        return self._make_request("PUT", endpoint, data=service_data, vdom=vdom)
+
     def delete_service_object(self, service_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete service object."""
-        return self._make_request("DELETE", f"cmdb/firewall.service/custom/{service_name}", vdom=vdom)
+        endpoint = self._validated_endpoint("cmdb/firewall.service/custom", service_name, "service_name")
+        return self._make_request("DELETE", endpoint, vdom=vdom)
     
     # Routing endpoints
     def get_static_routes(self, vdom: Optional[str] = None) -> Dict[str, Any]:
@@ -253,15 +305,18 @@ class FortiGateAPI:
     
     def update_static_route(self, route_id: str, route_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Update existing static route."""
-        return self._make_request("PUT", f"cmdb/router/static/{route_id}", data=route_data, vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/router/static", route_id, "route_id", numeric=True)
+        return self._make_request("PUT", endpoint, data=route_data, vdom=vdom)
+
     def delete_static_route(self, route_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete static route."""
-        return self._make_request("DELETE", f"cmdb/router/static/{route_id}", vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/router/static", route_id, "route_id", numeric=True)
+        return self._make_request("DELETE", endpoint, vdom=vdom)
+
     def get_static_route_detail(self, route_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed information for a specific static route."""
-        return self._make_request("GET", f"cmdb/router/static/{route_id}", vdom=vdom)
+        endpoint = self._validated_endpoint("cmdb/router/static", route_id, "route_id", numeric=True)
+        return self._make_request("GET", endpoint, vdom=vdom)
     
     def get_routing_table(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get routing table."""
@@ -278,15 +333,18 @@ class FortiGateAPI:
     
     def update_virtual_ip(self, vip_name: str, vip_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Update existing virtual IP."""
-        return self._make_request("PUT", f"cmdb/firewall/vip/{vip_name}", data=vip_data, vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/firewall/vip", vip_name, "vip_name")
+        return self._make_request("PUT", endpoint, data=vip_data, vdom=vdom)
+
     def delete_virtual_ip(self, vip_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete virtual IP."""
-        return self._make_request("DELETE", f"cmdb/firewall/vip/{vip_name}", vdom=vdom)
-    
+        endpoint = self._validated_endpoint("cmdb/firewall/vip", vip_name, "vip_name")
+        return self._make_request("DELETE", endpoint, vdom=vdom)
+
     def get_virtual_ip_detail(self, vip_name: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed information for a specific virtual IP."""
-        return self._make_request("GET", f"cmdb/firewall/vip/{vip_name}", vdom=vdom)
+        endpoint = self._validated_endpoint("cmdb/firewall/vip", vip_name, "vip_name")
+        return self._make_request("GET", endpoint, vdom=vdom)
 
 
 class FortiGateManager:
