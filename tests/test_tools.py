@@ -98,11 +98,39 @@ class TestDeviceTools:
             username="admin",
             password="password"
         )
-        
+
         result = self.device_tools.remove_device("test_device")
-        
+
         assert "removed" in result[0].text
         assert "test_device" not in self.fortigate_manager.devices
+
+    def test_add_device_rejects_crlf_device_id(self):
+        """WR-01 regression: a device_id containing CRLF must be rejected
+        before it is ever stored -- a stored bad device_id would otherwise
+        be interpolated raw into log lines for the device's entire
+        lifetime (fortigate.py's Initialized/Added/Removed device lines)."""
+        result = self.device_tools.add_device(
+            device_id="evil\r\nFAKE LOG LINE INJECTED",
+            host="192.168.1.1",
+            username="admin",
+            password="password"
+        )
+
+        assert "Error" in result[0].text
+        assert "evil\r\nFAKE LOG LINE INJECTED" not in self.fortigate_manager.devices
+
+    def test_add_device_rejects_oversized_device_id(self):
+        """device_id has no length limit at the MCP schema level -- the
+        grammar validator's length cap must reject an oversized value."""
+        result = self.device_tools.add_device(
+            device_id="a" * 200,
+            host="192.168.1.1",
+            username="admin",
+            password="password"
+        )
+
+        assert "Error" in result[0].text
+        assert len(self.fortigate_manager.devices) == 0
 
 
 class TestFirewallTools:

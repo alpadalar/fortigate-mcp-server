@@ -12,6 +12,7 @@ from mcp.types import TextContent as Content
 from .base import FortiGateTool
 from ..core.fortigate import FortiGateAPIError
 from ..core.logging import register_secrets
+from ..validation import validate_object_name
 
 class DeviceTools(FortiGateTool):
     """Tools for FortiGate device management."""
@@ -40,10 +41,10 @@ class DeviceTools(FortiGateTool):
         try:
             self._validate_device_exists(device_id)
             api_client = self._get_device_api(device_id)
-            
+
             status_data = api_client.get_system_status()
             return self._format_response((device_id, status_data), "device_status")
-            
+
         except Exception as e:
             return self._handle_error("get device status", device_id, e)
     
@@ -107,7 +108,16 @@ class DeviceTools(FortiGateTool):
         """
         try:
             self._validate_required_params(device_id=device_id, host=host)
-            
+
+            # device_id has no charset/length limit at the MCP schema level
+            # and is interpolated raw into log lines for the lifetime of the
+            # device (core/fortigate.py's "Initialized/Added/Removed device"
+            # lines, plus every _handle_error call for this device). Reject
+            # it here -- before it is ever stored -- so a CRLF/control-
+            # character device_id can never become part of persistent state
+            # that gets logged repeatedly.
+            validate_object_name(device_id, "device_id")
+
             # Check if device already exists
             if device_id in self.fortigate_manager.devices:
                 return self._format_operation_result(
