@@ -356,12 +356,13 @@ class FortiGateMCPServer:
             self.logger.error(f"Server error: {e}")
             sys.exit(1)
 
-if __name__ == "__main__":
+def server_main() -> None:
+    """Entry point for running the stdio FortiGate MCP server."""
     config_path = os.getenv("FORTIGATE_MCP_CONFIG")
     if not config_path:
         print("FORTIGATE_MCP_CONFIG environment variable must be set")
         sys.exit(1)
-    
+
     try:
         server = FortiGateMCPServer(config_path)
         server.start()
@@ -371,3 +372,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    server_main()

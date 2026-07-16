@@ -575,6 +575,24 @@ Returns:
 - VLAN and zone assignments
 """
 
+GET_INTERFACE_STATUS_DESC = """
+Get the current status of a specific network interface on a FortiGate device.
+
+This tool retrieves live status information for a single named interface,
+including its link state, IP address configuration, and related details.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- interface_name: Name of the specific interface to query
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Interface name
+- Link status (up/down)
+- IP address configuration
+- Related interface detail fields
+"""
+
 # System Tool Descriptions
 HEALTH_CHECK_DESC = """
 Perform a comprehensive health check of the FortiGate MCP server.

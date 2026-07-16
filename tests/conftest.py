@@ -2,6 +2,8 @@
 Pytest configuration and fixtures
 """
 
+import json
+
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
@@ -138,6 +140,39 @@ def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def tmp_config_path(tmp_path):
+    """Temp FORTIGATE_MCP_CONFIG-compatible JSON file for server-construction tests.
+
+    Uses an RFC 5737 TEST-NET-2 address and an obviously-fake token so no
+    future contributor mistakes fixture data for a real credential. Timeout
+    is kept low (1s, not 30s) so any future network-touching construction
+    fails fast against the unroutable TEST-NET-2 address.
+    """
+    config_file = tmp_path / "config.json"
+    config_file.write_text(
+        json.dumps(
+            {
+                "server": {"host": "0.0.0.0", "port": 8814, "name": "test", "version": "1.0.0"},
+                "fortigate": {
+                    "devices": {
+                        "default": {
+                            "host": "198.51.100.10",
+                            "api_token": "test-token-not-real",
+                            "vdom": "root",
+                            "verify_ssl": False,
+                            "timeout": 1,
+                        }
+                    }
+                },
+                "auth": {"require_auth": False, "api_tokens": [], "allowed_origins": ["*"]},
+                "logging": {"level": "INFO", "console": True},
+            }
+        )
+    )
+    yield str(config_file)
 
 
 @pytest.fixture
