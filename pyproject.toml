@@ -26,8 +26,9 @@ classifiers = [
 keywords = ["fortigate", "mcp", "fastmcp", "firewall", "management", "automation"]
 requires-python = ">=3.11"
 dependencies = [
-    "mcp @ git+https://github.com/modelcontextprotocol/python-sdk.git",
-    "fastmcp>=0.2.0",
+    # mcp floor 1.23.0 fixes CVE-2025-66416 (DNS rebinding, GHSA-9h52-p55h-vw2f); ceiling <2.0 avoids the FastMCP->MCPServer rename landing 2026-07-28; fastmcp stays in the current working 2.x band (installed 2.11.3), 3.x consolidation deferred to Phase 3 (CONS-01)
+    "mcp>=1.23.0,<2.0",
+    "fastmcp>=2.11,<3",
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "fastapi>=0.104.0",
@@ -70,7 +71,7 @@ Repository = "https://github.com/your-username/fortigate-mcp-server"
 "Bug Tracker" = "https://github.com/your-username/fortigate-mcp-server/issues"
 
 [project.scripts]
-fortigate-mcp-server = "src.main:main"
+fortigate-mcp-server = "src.fortigate_mcp.server:server_main"
 
 [tool.hatch.metadata]
 allow-direct-references = true
