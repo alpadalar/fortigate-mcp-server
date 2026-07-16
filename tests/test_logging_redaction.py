@@ -12,6 +12,7 @@ created by setup_logging() for the propagation/idempotency cases.
 
 import io
 import logging
+import threading
 
 from src.fortigate_mcp.config.models import LoggingConfig
 from src.fortigate_mcp.core.logging import (
@@ -175,3 +176,37 @@ def test_setup_logging_idempotent_no_filter_accumulation(tmp_path):
     assert content != ""
     assert "***REDACTED***" in content
     assert "idempotent-token-not-real" not in content
+
+
+def test_concurrent_register_and_filter_never_raises():
+    """CR-02 regression: register() must never mutate the live `_secrets`
+    set in place while filter() (called on every log record, on any
+    thread) is iterating a snapshot of it via scrub_secrets(). Reproduces
+    the exact concurrent-writer / concurrent-reader pattern that raised
+    `RuntimeError: Set changed size during iteration` before the fix."""
+    filt = TokenRedactionFilter()
+    errors = []
+
+    def writer():
+        for i in range(500):
+            filt.register({f"concurrent-secret-{i}"})
+
+    def reader():
+        record = logging.LogRecord(
+            "test.redaction.concurrent", logging.INFO, __file__, 1,
+            "background log line during registration churn", None, None,
+        )
+        for _ in range(500):
+            try:
+                filt.filter(record)
+            except Exception as exc:  # pragma: no cover - failure path only
+                errors.append(str(exc))
+
+    threads = [threading.Thread(target=writer) for _ in range(2)]
+    threads += [threading.Thread(target=reader) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []

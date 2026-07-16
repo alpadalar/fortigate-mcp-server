@@ -10,6 +10,7 @@ This module provides centralized logging setup with support for:
 import logging
 import logging.handlers
 import sys
+import threading
 from typing import Iterable, Optional, Set
 
 from ..config.models import LoggingConfig
@@ -26,22 +27,39 @@ class TokenRedactionFilter(logging.Filter):
     ``get_logger("tools...")`` and similar child loggers, because
     Python's logging propagation delivers the record straight to every
     ancestor HANDLER without re-invoking ancestor logger-level filters.
+
+    Thread safety: `register()` never mutates `self._secrets` in place --
+    it always rebinds the attribute to a brand-new set built under a lock.
+    `filter()` reads `self._secrets` with a single attribute access (no
+    lock needed there: CPython single-reference reads/writes are atomic
+    under the GIL), so a concurrent `register()` call can never be
+    observed mid-mutation by `scrub_secrets()`'s internal iteration --
+    `filter()` either sees the old set object or the new one, never a
+    partially-updated one. This closes a reproducible
+    `RuntimeError: Set changed size during iteration` under concurrent
+    add_device calls racing arbitrary concurrent logging (every log call
+    reaches this filter).
     """
 
     def __init__(self) -> None:
         super().__init__()
+        self._lock = threading.Lock()
         self._secrets: Set[str] = set()
 
     def register(self, secrets: Iterable[Optional[str]]) -> None:
         """Add secrets to the redaction registry. Never removes entries."""
-        self._secrets.update(s for s in secrets if s)
+        with self._lock:
+            self._secrets = self._secrets | {s for s in secrets if s}
 
     def filter(self, record: logging.LogRecord) -> bool:
+        # Single atomic reference read -- see thread-safety note above.
+        secrets_snapshot = self._secrets
+
         # Scrub the rendered message. record.args is cleared afterward so
         # Formatter.format() does not re-interpolate the original (already
         # substituted into msg above) args over the redacted text.
         msg = record.getMessage()
-        record.msg = scrub_secrets(msg, self._secrets)
+        record.msg = scrub_secrets(msg, secrets_snapshot)
         record.args = None
 
         # Scrub exception tracebacks too: Formatter.format() uses a
@@ -51,7 +69,7 @@ class TokenRedactionFilter(logging.Filter):
         # the appended traceback.
         if record.exc_info and not record.exc_text:
             record.exc_text = scrub_secrets(
-                logging.Formatter().formatException(record.exc_info), self._secrets
+                logging.Formatter().formatException(record.exc_info), secrets_snapshot
             )
             record.exc_info = None
 
