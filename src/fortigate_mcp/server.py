@@ -347,8 +347,15 @@ class FortiGateMCPServer:
             run_tests = os.getenv("RUN_TESTS_ON_START", "0").lower() in ("1", "true", "yes", "on")
             if run_tests:
                 self.logger.info("Running startup tests...")
-                # Add test logic here
-                self._tests_passed = True
+                connection_results = self.fortigate_manager.test_all_connections()
+                self._tests_passed = all(connection_results.values())
+                if not self._tests_passed:
+                    failed_devices = [
+                        device_id for device_id, ok in connection_results.items() if not ok
+                    ]
+                    self.logger.warning(
+                        f"Startup connection tests failed for devices: {failed_devices}"
+                    )
 
             self.logger.info("Starting FortiGate MCP server...")
             anyio.run(self.mcp.run_stdio_async)
