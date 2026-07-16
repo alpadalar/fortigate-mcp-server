@@ -48,6 +48,22 @@ _HOSTNAME_RE = re.compile(
 # vdom / generic identifier charset: letters, digits, underscore, hyphen.
 _IDENTIFIER_RE = re.compile(r"[A-Za-z0-9_-]{1,79}")
 
+# Numeric identifier (policy_id, route_id): explicit ASCII digit class only.
+# Python's Unicode-aware digit shorthand accepts non-ASCII decimal digits
+# (e.g. Arabic-Indic "١٢٣" == "123"), and int() happily
+# parses them too -- so an ASCII-only character class is load-bearing here,
+# not a style preference.
+_NUMERIC_ID_RE = re.compile(r"[0-9]{1,10}")
+_MAX_POLICY_ID = 4294967294  # community-sourced sanity bound (RESEARCH.md A2)
+
+# Interface name grammar: identical to the identifier charset PLUS dots,
+# because FortiGate VLAN subinterfaces are named like "port1.100". This is
+# deliberately a SEPARATE grammar from _IDENTIFIER_RE / validate_object_name
+# -- object names never need dots, interfaces sometimes do.
+_INTERFACE_RE = re.compile(r"[A-Za-z0-9_.-]{1,79}")
+
+_BEARER_RE = re.compile(r"Bearer\s+\S+", re.IGNORECASE)
+
 
 def validate_host(host: str) -> str:
     """Validate a FortiGate device host: IPv4, unscoped IPv6, or RFC-1123 hostname.
@@ -121,3 +137,107 @@ def validate_vdom(vdom: str) -> str:
             "(allowed: letters, digits, underscore, hyphen; 1-79 chars)"
         )
     return vdom
+
+
+def validate_numeric_id(value: str, field_name: str) -> str:
+    """Validate a FortiGate numeric identifier (policy_id, route_id, etc.).
+
+    The value stays a string on return -- callers interpolate it directly
+    into a REST path segment; this function only proves it is safe to do
+    so (1-10 ASCII digits, bounded to a sane maximum).
+
+    Args:
+        value: the raw identifier string to validate.
+        field_name: the caller-facing field name, included in the error
+            message for traceability (e.g. "policy_id", "route_id") --
+            never the rejected value itself.
+
+    Raises:
+        ValueError: if `value` is not a string of 1-10 ASCII digits, or
+            exceeds the sanity bound.
+    """
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string of ASCII digits")
+    if not _NUMERIC_ID_RE.fullmatch(value) or int(value) > _MAX_POLICY_ID:
+        raise ValueError(
+            f"{field_name} is not a valid numeric ID "
+            "(expected 1-10 ASCII digits, max 4294967294)"
+        )
+    return value
+
+
+def validate_object_name(name: str, field_name: str) -> str:
+    """Validate a FortiGate object name (address, service, VIP names, etc.).
+
+    Args:
+        name: the raw object name to validate.
+        field_name: the caller-facing field name, included in the error
+            message for traceability -- never the rejected value itself.
+
+    Raises:
+        ValueError: if `name` is not a string, or does not fullmatch the
+            allowed identifier charset. Dots are NOT allowed here -- see
+            `validate_interface_name` for the dot-permitting grammar used
+            by FortiGate VLAN subinterface names.
+    """
+    if not isinstance(name, str):
+        raise ValueError(f"{field_name} must be a string")
+    if not _IDENTIFIER_RE.fullmatch(name):
+        raise ValueError(
+            f"{field_name} is not a valid object name "
+            "(allowed: letters, digits, underscore, hyphen; 1-79 chars)"
+        )
+    return name
+
+
+def validate_interface_name(name: str) -> str:
+    """Validate a FortiGate interface name (e.g. "port1", "port1.100").
+
+    This is deliberately a SEPARATE, more permissive grammar than
+    `validate_object_name`: FortiGate VLAN subinterfaces are named like
+    "port1.100", so dots must be allowed here. `get_interface_status`
+    sends this value via httpx `params=` (not a raw path segment), so the
+    permissive-but-still-anchored pattern remains safe.
+
+    Raises:
+        ValueError: if `name` is not a string, or does not fullmatch the
+            interface-name charset.
+    """
+    if not isinstance(name, str):
+        raise ValueError("interface_name must be a string")
+    if not _INTERFACE_RE.fullmatch(name):
+        raise ValueError(
+            "interface_name is not a valid interface name "
+            "(allowed: letters, digits, underscore, hyphen, dot; 1-79 chars)"
+        )
+    return name
+
+
+def scrub_secrets(text: str, secrets) -> str:
+    """Redact known secret values and Bearer-pattern tokens from `text`.
+
+    The single shared scrubbing primitive: `core/fortigate.py` applies
+    this to untrusted HTTP-response/exception text before building a
+    `FortiGateAPIError` (CONF-03), and `core/logging.py`'s
+    `TokenRedactionFilter` delegates to it for every log record.
+
+    Args:
+        text: the text to scrub. Non-string input is returned unchanged
+            (defensive; callers are expected to pass a str).
+        secrets: any iterable of known secret strings. Empty-string and
+            `None` entries are dropped before use -- an empty secret must
+            never become a redact-everything match.
+
+    Returns:
+        `text` with every occurrence of each non-empty secret replaced by
+        ``***REDACTED***``, plus any ``Bearer <token>`` pattern masked
+        independently of the known-secrets set.
+    """
+    if not isinstance(text, str):
+        return text
+
+    known = {s for s in secrets if s}
+    for secret in known:
+        text = text.replace(secret, "***REDACTED***")
+
+    return _BEARER_RE.sub("Bearer ***REDACTED***", text)
