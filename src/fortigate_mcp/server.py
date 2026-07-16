@@ -360,17 +360,17 @@ def server_main() -> None:
     """Entry point for running the stdio FortiGate MCP server."""
     config_path = os.getenv("FORTIGATE_MCP_CONFIG")
     if not config_path:
-        print("FORTIGATE_MCP_CONFIG environment variable must be set")
+        print("FORTIGATE_MCP_CONFIG environment variable must be set", file=sys.stderr)
         sys.exit(1)
 
     try:
         server = FortiGateMCPServer(config_path)
         server.start()
     except KeyboardInterrupt:
-        print("\nShutting down gracefully...")
+        print("\nShutting down gracefully...", file=sys.stderr)
         sys.exit(0)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
