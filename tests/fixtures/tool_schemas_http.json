@@ -1,0 +1,832 @@
+{
+  "add_device": {
+    "inputSchema": {
+      "properties": {
+        "api_token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "device_id": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "password": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "port": {
+          "default": 443,
+          "type": "integer"
+        },
+        "timeout": {
+          "default": 30,
+          "type": "integer"
+        },
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "vdom": {
+          "default": "root",
+          "type": "string"
+        },
+        "verify_ssl": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "device_id",
+        "host"
+      ],
+      "type": "object"
+    }
+  },
+  "create_address_object": {
+    "inputSchema": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "address_type": {
+          "type": "string"
+        },
+        "device_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "name",
+        "address_type",
+        "address"
+      ],
+      "type": "object"
+    }
+  },
+  "create_firewall_policy": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "policy_data": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "policy_data"
+      ],
+      "type": "object"
+    }
+  },
+  "create_service_object": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "service_type": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "name",
+        "service_type",
+        "protocol"
+      ],
+      "type": "object"
+    }
+  },
+  "create_static_route": {
+    "inputSchema": {
+      "properties": {
+        "device": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "device_id": {
+          "type": "string"
+        },
+        "dst": {
+          "type": "string"
+        },
+        "gateway": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "dst",
+        "gateway"
+      ],
+      "type": "object"
+    }
+  },
+  "create_virtual_ip": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "extintf": {
+          "type": "string"
+        },
+        "extip": {
+          "type": "string"
+        },
+        "extport": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mappedip": {
+          "type": "string"
+        },
+        "mappedport": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "portforward": {
+          "default": "disable",
+          "type": "string"
+        },
+        "protocol": {
+          "default": "tcp",
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "name",
+        "extip",
+        "mappedip",
+        "extintf"
+      ],
+      "type": "object"
+    }
+  },
+  "delete_firewall_policy": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "policy_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "policy_id"
+      ],
+      "type": "object"
+    }
+  },
+  "delete_static_route": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "route_id"
+      ],
+      "type": "object"
+    }
+  },
+  "delete_virtual_ip": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "discover_vdoms": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "get_device_status": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "get_firewall_policy_detail": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "policy_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "policy_id"
+      ],
+      "type": "object"
+    }
+  },
+  "get_interface_status": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "interface_name": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "interface_name"
+      ],
+      "type": "object"
+    }
+  },
+  "get_routing_table": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "get_schema_info": {
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "get_static_route_detail": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "route_id"
+      ],
+      "type": "object"
+    }
+  },
+  "get_virtual_ip_detail": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "health": {
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "list_address_objects": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_devices": {
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "list_firewall_policies": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_interfaces": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_service_objects": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_static_routes": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_virtual_ips": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "remove_device": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "test_connection": {
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "test_device_connection": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "update_firewall_policy": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "policy_data": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "policy_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "policy_id",
+        "policy_data"
+      ],
+      "type": "object"
+    }
+  },
+  "update_static_route": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "route_data": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id",
+        "route_id",
+        "route_data"
+      ],
+      "type": "object"
+    }
+  },
+  "update_virtual_ip": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "vip_data": {
+          "additionalProperties": true,
+          "type": "object"
+        }
+      },
+      "required": [
+        "device_id",
+        "name",
+        "vip_data"
+      ],
+      "type": "object"
+    }
+  }
+}
