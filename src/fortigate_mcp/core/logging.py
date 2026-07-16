@@ -48,8 +48,12 @@ def setup_logging(config: LoggingConfig) -> logging.Logger:
     )
     
     # Setup console logging if enabled
+    # NOTE: must never target sys.stdout — the stdio MCP transport
+    # (mcp.server.stdio.stdio_server) writes JSON-RPC framing directly to
+    # stdout, so any plain-text log line written there corrupts the
+    # protocol stream. Route console logging to stderr instead.
     if config.console:
-        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(log_level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
