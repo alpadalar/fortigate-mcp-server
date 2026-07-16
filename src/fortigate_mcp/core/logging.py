@@ -10,43 +10,122 @@ This module provides centralized logging setup with support for:
 import logging
 import logging.handlers
 import sys
-from typing import Optional
-from ..config.models import LoggingConfig
+from typing import Iterable, Optional, Set
 
-def setup_logging(config: LoggingConfig) -> logging.Logger:
+from ..config.models import LoggingConfig
+from ..validation import scrub_secrets
+
+
+class TokenRedactionFilter(logging.Filter):
+    """Redact known secrets and Bearer-pattern tokens from log records.
+
+    Attach to HANDLERS, not loggers — ancestor-logger filters are not
+    re-run for records propagated from child loggers; handlers receive
+    those records directly. A filter added directly to the root logger
+    object would silently never see records emitted by
+    ``get_logger("tools...")`` and similar child loggers, because
+    Python's logging propagation delivers the record straight to every
+    ancestor HANDLER without re-invoking ancestor logger-level filters.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._secrets: Set[str] = set()
+
+    def register(self, secrets: Iterable[Optional[str]]) -> None:
+        """Add secrets to the redaction registry. Never removes entries."""
+        self._secrets.update(s for s in secrets if s)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Scrub the rendered message. record.args is cleared afterward so
+        # Formatter.format() does not re-interpolate the original (already
+        # substituted into msg above) args over the redacted text.
+        msg = record.getMessage()
+        record.msg = scrub_secrets(msg, self._secrets)
+        record.args = None
+
+        # Scrub exception tracebacks too: Formatter.format() uses a
+        # pre-set record.exc_text instead of re-formatting record.exc_info,
+        # so pre-computing and scrubbing exc_text here is what keeps a
+        # secret embedded in an exception message from leaking through
+        # the appended traceback.
+        if record.exc_info and not record.exc_text:
+            record.exc_text = scrub_secrets(
+                logging.Formatter().formatException(record.exc_info), self._secrets
+            )
+            record.exc_info = None
+
+        return True
+
+
+# Module-level shared filter instance: setup_logging() attaches this same
+# instance to every handler it creates, so register_secrets() (called at
+# boot and at runtime by DeviceTools.add_device) updates redaction for
+# every handler without needing a re-attachment pass.
+_redaction_filter = TokenRedactionFilter()
+
+
+def register_secrets(secrets: Iterable[Optional[str]]) -> None:
+    """Register secrets with the shared redaction filter.
+
+    Safe to call before or after setup_logging(); safe to call multiple
+    times (e.g. once per runtime add_device call). Secrets are only ever
+    added, never removed.
+    """
+    _redaction_filter.register(secrets)
+
+
+def _attach_redaction(handler: logging.Handler) -> logging.Handler:
+    """Attach the shared redaction filter to a handler.
+
+    Single choke point for handler-level filter attachment — every
+    handler setup_logging() creates must be routed through this helper
+    so a future handler cannot be added without redaction coverage.
+    """
+    handler.addFilter(_redaction_filter)
+    return handler
+
+
+def setup_logging(config: LoggingConfig, secrets: Optional[set] = None) -> logging.Logger:
     """Setup logging configuration for the FortiGate MCP server.
-    
+
     Configures logging based on the provided configuration:
     - Sets global log level
     - Configures console and/or file output
     - Sets up formatters for structured output
     - Creates component-specific loggers
-    
+    - Attaches a shared TokenRedactionFilter to every handler created
+
     Args:
         config: LoggingConfig object containing logging settings
-        
+        secrets: optional iterable of known secret values to register with
+            the redaction filter before any handler is created
+
     Returns:
         Logger instance for the main application
-        
+
     Example:
         config = LoggingConfig(level="INFO", file="server.log", console=True)
-        logger = setup_logging(config)
+        logger = setup_logging(config, secrets={"my-api-token"})
         logger.info("Server starting...")
     """
+    if secrets:
+        register_secrets(secrets)
+
     # Clear any existing handlers to avoid duplication
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
-    
+
     # Set global log level
     log_level = getattr(logging, config.level.upper(), logging.INFO)
     root_logger.setLevel(log_level)
-    
+
     # Create formatter
     formatter = logging.Formatter(
         config.format,
         datefmt='%Y-%m-%d %H:%M:%S'
     )
-    
+
     # Setup console logging if enabled
     # NOTE: must never target sys.stdout — the stdio MCP transport
     # (mcp.server.stdio.stdio_server) writes JSON-RPC framing directly to
@@ -56,8 +135,8 @@ def setup_logging(config: LoggingConfig) -> logging.Logger:
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(log_level)
         console_handler.setFormatter(formatter)
-        root_logger.addHandler(console_handler)
-    
+        root_logger.addHandler(_attach_redaction(console_handler))
+
     # Setup file logging if specified
     if config.file:
         try:
@@ -66,7 +145,7 @@ def setup_logging(config: LoggingConfig) -> logging.Logger:
             log_dir = os.path.dirname(config.file)
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir, exist_ok=True)
-            
+
             # Use rotating file handler to prevent large log files
             file_handler = logging.handlers.RotatingFileHandler(
                 config.file,
@@ -76,18 +155,18 @@ def setup_logging(config: LoggingConfig) -> logging.Logger:
             )
             file_handler.setLevel(log_level)
             file_handler.setFormatter(formatter)
-            root_logger.addHandler(file_handler)
+            root_logger.addHandler(_attach_redaction(file_handler))
         except Exception as e:
             # If file logging fails, log to console
             console_logger = logging.getLogger("fortigate-mcp.logging")
             console_logger.warning(f"Failed to setup file logging: {e}")
-    
+
     # Create and return main application logger
     logger = logging.getLogger("fortigate-mcp.main")
-    
+
     # Set specific log levels for component loggers
     _setup_component_loggers(log_level)
-    
+
     return logger
 
 def _setup_component_loggers(log_level: int) -> None:
