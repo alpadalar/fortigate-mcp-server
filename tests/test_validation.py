@@ -9,7 +9,11 @@ values, scoped IPv6, and embedded :port.
 import pytest
 
 from src.fortigate_mcp.validation import (
+    scrub_secrets,
     validate_host,
+    validate_interface_name,
+    validate_numeric_id,
+    validate_object_name,
     validate_port,
     validate_vdom,
 )
@@ -107,3 +111,147 @@ class TestValidateVdom:
         with pytest.raises(ValueError) as excinfo:
             validate_vdom("%0d%0a")
         assert "%0d%0a" not in str(excinfo.value)
+
+
+class TestValidateNumericId:
+    """validate_numeric_id: ASCII-digit-only string, 1-10 digits, bounded."""
+
+    @pytest.mark.parametrize(
+        "value",
+        ["0", "1", "4294967294"],
+    )
+    def test_accepts_valid_numeric_ids(self, value):
+        assert validate_numeric_id(value, "policy_id") == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "4294967295",
+            "abc",
+            "../",
+            "1%0d%0a",
+            "1 ",
+            "1\n",
+            "١٢٣",  # Unicode Arabic-Indic digits "123"
+            "",
+            1,
+            None,
+        ],
+    )
+    def test_rejects_invalid_numeric_ids(self, value):
+        with pytest.raises(ValueError):
+            validate_numeric_id(value, "policy_id")
+
+    def test_error_message_contains_field_name(self):
+        with pytest.raises(ValueError, match="policy_id"):
+            validate_numeric_id("abc", "policy_id")
+        with pytest.raises(ValueError, match="route_id"):
+            validate_numeric_id("abc", "route_id")
+
+    def test_rejected_value_never_echoed(self):
+        with pytest.raises(ValueError) as excinfo:
+            validate_numeric_id("1%0d%0a", "policy_id")
+        assert "1%0d%0a" not in str(excinfo.value)
+
+
+class TestValidateObjectName:
+    """validate_object_name: letters, digits, underscore, hyphen; 1-79 chars."""
+
+    @pytest.mark.parametrize(
+        "name",
+        ["test_addr", "HTTP-8080"],
+    )
+    def test_accepts_valid_object_names(self, name):
+        assert validate_object_name(name, "address_name") == name
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "port1.100",
+            "../",
+            "%0d%0a",
+            "?",
+            "#",
+            "bad name",
+            "bad\r\nname",
+            "name\n",
+            "a" * 80,
+            1,
+            None,
+        ],
+    )
+    def test_rejects_invalid_object_names(self, name):
+        with pytest.raises(ValueError):
+            validate_object_name(name, "address_name")
+
+    def test_error_message_contains_field_name(self):
+        with pytest.raises(ValueError, match="address_name"):
+            validate_object_name("bad name", "address_name")
+
+    def test_rejected_value_never_echoed(self):
+        with pytest.raises(ValueError) as excinfo:
+            validate_object_name("%0d%0a", "address_name")
+        assert "%0d%0a" not in str(excinfo.value)
+
+
+class TestValidateInterfaceName:
+    """validate_interface_name: separate, dot-permitting grammar (port1.100)."""
+
+    @pytest.mark.parametrize(
+        "name",
+        ["port1", "port1.100", "x0-lan_2"],
+    )
+    def test_accepts_valid_interface_names(self, name):
+        assert validate_interface_name(name) == name
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "../",
+            "%0d%0a",
+            "?",
+            "#",
+            " ",
+            "\r\n",
+            "port1\n",
+            "a" * 80,
+            "",
+            1,
+            None,
+        ],
+    )
+    def test_rejects_invalid_interface_names(self, name):
+        with pytest.raises(ValueError):
+            validate_interface_name(name)
+
+    def test_dots_allowed_for_interface_but_not_object_name(self):
+        assert validate_interface_name("port1.100") == "port1.100"
+        with pytest.raises(ValueError):
+            validate_object_name("port1.100", "address_name")
+
+    def test_rejected_value_never_echoed(self):
+        with pytest.raises(ValueError) as excinfo:
+            validate_interface_name("%0d%0a")
+        assert "%0d%0a" not in str(excinfo.value)
+
+
+class TestScrubSecrets:
+    """scrub_secrets: shared secret-scrubbing primitive for CONF-03."""
+
+    def test_redacts_known_secret(self):
+        assert (
+            scrub_secrets("token is test-token-not-real here", {"test-token-not-real"})
+            == "token is ***REDACTED*** here"
+        )
+
+    def test_redacts_bearer_pattern_independent_of_known_secrets(self):
+        assert (
+            scrub_secrets("Authorization: Bearer any-shaped-token", set())
+            == "Authorization: Bearer ***REDACTED***"
+        )
+
+    def test_unrelated_text_unchanged(self):
+        assert scrub_secrets("no secrets here", {"test-token-not-real"}) == "no secrets here"
+
+    def test_empty_and_none_secrets_dropped(self):
+        assert scrub_secrets("some text here", {"", None}) == "some text here"
