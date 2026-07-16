@@ -400,9 +400,17 @@ class FortiGateManager:
             auth_config: Authentication configuration
         """
         self.devices: Dict[str, FortiGateAPI] = {}
+        # Devices whose FortiGateAPI construction raised during startup,
+        # mapped to the error string. Startup continues past a single
+        # device failure (so one misconfigured device doesn't take down
+        # the whole server), but this dict makes the failure visible to
+        # health_check/get_server_info instead of requiring an operator to
+        # grep logs -- list_devices()/self.devices alone would silently
+        # under-report the configured device count.
+        self.failed_devices: Dict[str, str] = {}
         self.auth_config = auth_config
         self.logger = get_logger("fortigate_manager")
-        
+
         # Initialize devices
         for device_id, config in devices.items():
             try:
@@ -410,6 +418,7 @@ class FortiGateManager:
                 self.logger.info(f"Initialized device: {device_id}")
             except Exception as e:
                 self.logger.error(f"Failed to initialize device {device_id}: {e}")
+                self.failed_devices[device_id] = str(e)
     
     def get_device(self, device_id: str) -> FortiGateAPI:
         """Get FortiGate API client for a device.

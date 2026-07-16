@@ -343,9 +343,23 @@ class FortiGateMCPServer:
         # System tools
         @self.mcp.tool(description=HEALTH_CHECK_DESC)
         async def health_check():
-            status = "healthy" if self._tests_passed is True else ("degraded" if self._tests_passed is False else "unknown")
+            failed_devices = self.fortigate_manager.failed_devices
+            # A startup device-initialization failure is a real
+            # misconfiguration signal -- surface it as "degraded" even when
+            # RUN_TESTS_ON_START never ran connection tests, instead of only
+            # ever reporting "unknown"/"healthy" and leaving the failure
+            # visible only in logs.
+            if failed_devices:
+                status = "degraded"
+            elif self._tests_passed is True:
+                status = "healthy"
+            elif self._tests_passed is False:
+                status = "degraded"
+            else:
+                status = "unknown"
             details = {
                 "registered_devices": len(self.fortigate_manager.devices),
+                "failed_devices": failed_devices,
                 "server_version": self.config.server.version,
                 "timestamp": datetime.now().isoformat()
             }
@@ -360,6 +374,7 @@ class FortiGateMCPServer:
                 "host": self.config.server.host,
                 "port": self.config.server.port,
                 "registered_devices": len(self.fortigate_manager.devices),
+                "failed_devices": self.fortigate_manager.failed_devices,
                 "available_tools": [
                     "Device Management (6 tools)",
                     "Firewall Policy Management (4 tools)",

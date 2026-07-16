@@ -292,14 +292,21 @@ class FortiGateMCPHTTPServer:
 
         @self.mcp.tool(description="Health check for FortiGate MCP server")
         def health():
+            failed_devices = self.fortigate_manager.failed_devices
             health_info = {
-                "status": "ok",
+                # A device that failed to initialize at startup is a real
+                # misconfiguration signal -- surface it here instead of
+                # only ever reporting "ok" and leaving the failure visible
+                # solely in logs (list_devices()/self.devices alone
+                # silently under-report the configured device count).
+                "status": "degraded" if failed_devices else "ok",
                 "server": "FortiGateMCP-HTTP",
                 "timestamp": datetime.now().isoformat(),
                 "registered_devices": len(self.fortigate_manager.devices),
+                "failed_devices": failed_devices,
                 "device_connections": {}
             }
-            
+
             # Test device connections
             try:
                 devices = self.fortigate_manager.list_devices()
@@ -314,7 +321,7 @@ class FortiGateMCPHTTPServer:
             except Exception as e:
                 health_info["status"] = "error"
                 health_info["error"] = str(e)
-            
+
             return self._format_response(health_info, "health")
 
         @self.mcp.tool(description="Get schema information for all available tools")

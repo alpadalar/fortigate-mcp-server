@@ -122,8 +122,30 @@ class TestFortiGateManager:
         """Tüm bağlantıları test etme"""
         # Mock cihaz ekle
         self.manager.devices["test_device"] = mock_fortigate_api
-        
+
         result = self.manager.test_all_connections()
-        
+
         assert "test_device" in result
         assert result["test_device"] is True
+
+    def test_init_records_failed_device_without_aborting_startup(self):
+        """WR-03 regression: a device whose FortiGateAPI construction raises
+        during __init__ must be recorded in failed_devices (visible to
+        health_check/get_server_info) instead of only a log line, and must
+        not prevent the remaining devices from initializing."""
+        auth_config = AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+        good_config = FortiGateDeviceConfig(
+            host="192.168.1.1", username="admin", password="password"
+        )
+        # Neither api_token nor username/password -- FortiGateAPI.__init__
+        # raises ValueError for this device.
+        bad_config = FortiGateDeviceConfig(host="192.168.1.2")
+
+        manager = FortiGateManager(
+            {"good_device": good_config, "bad_device": bad_config}, auth_config
+        )
+
+        assert "good_device" in manager.devices
+        assert "bad_device" not in manager.devices
+        assert "bad_device" in manager.failed_devices
+        assert manager.failed_devices["bad_device"]

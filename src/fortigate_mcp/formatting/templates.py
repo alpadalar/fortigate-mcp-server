@@ -709,5 +709,11 @@ class FortiGateTemplates:
         
         if details.get("uptime"):
             lines.append(f"  Uptime: {details['uptime']}")
-        
+
+        failed_devices = details.get("failed_devices")
+        if failed_devices:
+            lines.append(f"  Failed Devices: {len(failed_devices)}")
+            for device_id, error in failed_devices.items():
+                lines.append(f"    - {device_id}: {error}")
+
         return "\n".join(lines)
