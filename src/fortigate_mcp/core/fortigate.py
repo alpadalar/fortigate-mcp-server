@@ -56,11 +56,11 @@ class FortiGateAPI:
         }
         
         if config.api_token:
-            self.headers["Authorization"] = f"Bearer {config.api_token}"
+            self.headers["Authorization"] = f"Bearer {config.api_token.get_secret_value()}"
             self.auth_method = "token"
         elif config.username and config.password:
             self.auth_method = "basic"
-            self._basic_auth = (config.username, config.password)
+            self._basic_auth = (config.username, config.password.get_secret_value())
         else:
             raise ValueError(f"Device {device_id}: Either api_token or username/password must be provided")
         

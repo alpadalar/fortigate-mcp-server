@@ -14,26 +14,57 @@ The models provide:
 - Required vs optional field handling
 """
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
-class FortiGateDeviceConfig(BaseModel):
+from ..validation import validate_host, validate_port, validate_vdom
+
+
+class StrictConfigModel(BaseModel):
+    """Base for all configuration models: rejects unknown fields and hides
+    raw input values in validation errors (defense-in-depth for
+    secret-bearing fields)."""
+
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
+
+
+class FortiGateDeviceConfig(StrictConfigModel):
     """Model for individual FortiGate device configuration.
-    
+
     Defines the required and optional parameters for
     connecting to a specific FortiGate device.
+
+    Coercion policy: port must be a JSON integer (strings and booleans
+    rejected pre-coercion); other fields follow Pydantic lax coercion,
+    which is acceptable because none of them is interpolated into a REST
+    path without further validation.
     """
     host: str = Field(description="FortiGate IP address or hostname")
     port: int = Field(default=443, description="HTTPS port (default: 443)")
     username: Optional[str] = Field(default=None, description="Username for authentication")
-    password: Optional[str] = Field(default=None, description="Password for authentication")
-    api_token: Optional[str] = Field(default=None, description="API token for authentication")
+    password: Optional[SecretStr] = Field(default=None, description="Password for authentication")
+    api_token: Optional[SecretStr] = Field(default=None, description="API token for authentication")
     vdom: str = Field(default="root", description="Virtual Domain name")
     verify_ssl: bool = Field(default=False, description="SSL certificate verification")
-    timeout: int = Field(default=30, description="Request timeout in seconds")
+    timeout: int = Field(default=30, gt=0, description="Request timeout in seconds")
 
-class FortiGateConfig(BaseModel):
+    @field_validator("host")
+    @classmethod
+    def _validate_host(cls, v: str) -> str:
+        return validate_host(v)
+
+    @field_validator("vdom")
+    @classmethod
+    def _validate_vdom(cls, v: str) -> str:
+        return validate_vdom(v)
+
+    @field_validator("port", mode="before")
+    @classmethod
+    def _validate_port(cls, v: int) -> int:
+        return validate_port(v)
+
+class FortiGateConfig(StrictConfigModel):
     """Model for FortiGate devices configuration.
-    
+
     Contains configuration for multiple FortiGate devices.
     Each device is identified by a unique key.
     """
@@ -41,19 +72,22 @@ class FortiGateConfig(BaseModel):
         description="Dictionary of FortiGate devices keyed by device ID"
     )
 
-class AuthConfig(BaseModel):
-    """Model for authentication configuration.
-    
-    Defines authentication parameters for the MCP server itself.
-    Used for HTTP transport authentication if enabled.
+class AuthConfig(StrictConfigModel):
+    """Authentication configuration for the MCP server's HTTP transport.
+
+    NOT YET ENFORCED: these fields are parsed and stored but never checked
+    at the transport layer -- the HTTP server is unauthenticated by
+    default (require_auth defaults to False; run only on trusted
+    networks). Bearer-token enforcement is planned for Phase 4 (SEC-05)
+    on top of Phase 3's app factory. See the CONF-04 decision record.
     """
     require_auth: bool = Field(default=False, description="Whether authentication is required")
     api_tokens: List[str] = Field(default_factory=list, description="Valid API tokens")
     allowed_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
 
-class LoggingConfig(BaseModel):
+class LoggingConfig(StrictConfigModel):
     """Model for logging configuration.
-    
+
     Defines logging parameters with sensible defaults.
     Supports both file and console logging with
     customizable format and log levels.
@@ -66,30 +100,30 @@ class LoggingConfig(BaseModel):
     file: Optional[str] = Field(default=None, description="Log file path (None for console only)")
     console: bool = Field(default=True, description="Enable console logging")
 
-class ServerConfig(BaseModel):
+class ServerConfig(StrictConfigModel):
     """Model for server configuration.
-    
+
     Defines server runtime parameters including
     network binding and performance settings.
     """
     host: str = Field(default="0.0.0.0", description="Server bind address")
-    port: int = Field(default=8814, description="Server port")
+    port: int = Field(default=8814, ge=1, le=65535, description="Server port")
     name: str = Field(default="fortigate-mcp-server", description="Server name")
     version: str = Field(default="1.0.0", description="Server version")
 
-class RateLimitConfig(BaseModel):
-    """Model for rate limiting configuration.
-    
-    Defines rate limiting parameters to prevent
-    API abuse and ensure stable performance.
+class RateLimitConfig(StrictConfigModel):
+    """Rate limiting configuration.
+
+    NOT YET ENFORCED: parsed but never checked anywhere in the codebase.
+    Enforcement is a Phase 4 candidate. See SECURITY roadmap.
     """
     enabled: bool = Field(default=True, description="Enable rate limiting")
     max_requests_per_minute: int = Field(default=60, description="Maximum requests per minute")
     burst_size: int = Field(default=10, description="Burst request allowance")
 
-class Config(BaseModel):
+class Config(StrictConfigModel):
     """Root configuration model.
-    
+
     Combines all configuration models into a single validated
     configuration object. Provides the complete server configuration.
     """

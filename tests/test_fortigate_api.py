@@ -35,7 +35,7 @@ class TestFortiGateAPI:
         assert api.device_id == "test_device"
         assert api.config.host == "192.168.1.1"
         assert api.config.username == "admin"
-        assert api.config.password == "password"
+        assert api.config.password.get_secret_value() == "password"
         assert api.auth_method == "basic"
         assert api.config.vdom == "root"
     
