@@ -65,6 +65,10 @@ class FortiGateAPI:
             "Accept": "application/json"
         }
 
+        # Device's own secret set, used ONLY to scrub untrusted error text
+        # (CONF-03) -- never used to build the request itself.
+        self._own_secrets: set = set()
+
         if config.api_token:
             self.headers["Authorization"] = f"Bearer {config.api_token.get_secret_value()}"
             self.auth_method = "token"
@@ -73,6 +77,11 @@ class FortiGateAPI:
             self._basic_auth = (config.username, config.password.get_secret_value())
         else:
             raise ValueError(f"Device {device_id}: Either api_token or username/password must be provided")
+
+        if config.api_token:
+            self._own_secrets.add(config.api_token.get_secret_value())
+        if config.password:
+            self._own_secrets.add(config.password.get_secret_value())
 
         self.logger.info(f"Initialized FortiGate API client (auth: {self.auth_method})")
     
@@ -144,6 +153,12 @@ class FortiGateAPI:
                     except:
                         error_msg += f" - {response.text}"
 
+                    # error_msg is built from an UNTRUSTED response body -- a
+                    # device, proxy, or middlebox can echo the request's
+                    # Authorization header back in an error body. Scrub
+                    # before this text can reach FortiGateAPIError / MCP output.
+                    error_msg = scrub_secrets(error_msg, self._own_secrets)
+
                     raise FortiGateAPIError(
                         error_msg,
                         status_code=response.status_code,
@@ -160,8 +175,10 @@ class FortiGateAPI:
         except httpx.RequestError as e:
             duration_ms = (time.time() - start_time) * 1000
             log_api_call(self.logger, method, endpoint, None, duration_ms)
+            # httpx exception messages can embed request details -- scrub
+            # before this text can reach FortiGateAPIError / MCP output.
             raise FortiGateAPIError(
-                f"Network error: {str(e)}",
+                scrub_secrets(f"Network error: {str(e)}", self._own_secrets),
                 device_id=self.device_id
             )
 

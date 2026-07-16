@@ -6,8 +6,9 @@ import pytest
 from unittest.mock import patch, MagicMock
 import httpx
 
-from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateAPIError
-from src.fortigate_mcp.config.models import FortiGateDeviceConfig
+from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
+from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
+from src.fortigate_mcp.tools.firewall import FirewallTools
 
 
 # 13 identifier-bearing FortiGateAPI methods x their expected dispatch shape:
@@ -360,3 +361,133 @@ class TestFortiGateAPIDispatchShape:
             called_args = mock_request.call_args.args
             assert called_args[0] == expected_verb
             assert called_args[1] == expected_endpoint
+
+
+class TestFortiGateAPITokenLeak:
+    """Adversarial proof (CONF-03): the device's own secret is deliberately
+    embedded in each untrusted text source (httpx exception message, JSON
+    error body, plain-text error body) and proven absent from the resulting
+    FortiGateAPIError -- including at the tool-layer MCP-content surface."""
+
+    FAKE_TOKEN = "test-token-not-real"
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10",
+            api_token=self.FAKE_TOKEN,
+            vdom="root",
+        )
+        self.api = FortiGateAPI("test_device", config)
+
+    def test_network_error_message_scrubbed(self):
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+            mock_client.request.side_effect = httpx.RequestError(
+                f"Connection failed; request had Authorization: Bearer {self.FAKE_TOKEN}"
+            )
+
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                self.api._make_request("GET", "monitor/system/status")
+
+            assert self.FAKE_TOKEN not in str(exc_info.value)
+            assert self.FAKE_TOKEN not in repr(exc_info.value)
+            assert "***REDACTED***" in str(exc_info.value)
+
+    def test_json_error_body_scrubbed(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "error": f"invalid token {self.FAKE_TOKEN} supplied"
+        }
+        mock_response.text = "unused"
+
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+            mock_client.request.return_value = mock_response
+
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                self.api._make_request("GET", "monitor/system/status")
+
+            assert self.FAKE_TOKEN not in str(exc_info.value)
+            assert self.FAKE_TOKEN not in repr(exc_info.value)
+            assert "***REDACTED***" in str(exc_info.value)
+            assert exc_info.value.status_code == 400
+
+    def test_text_error_body_scrubbed(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.side_effect = ValueError("not json")
+        mock_response.text = f"server error: echo Bearer {self.FAKE_TOKEN}"
+
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+            mock_client.request.return_value = mock_response
+
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                self.api._make_request("GET", "monitor/system/status")
+
+            assert self.FAKE_TOKEN not in str(exc_info.value)
+            assert "***REDACTED***" in str(exc_info.value)
+
+    def test_tool_layer_error_output_scrubbed_end_to_end(self):
+        auth_config = AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+        manager = FortiGateManager({}, auth_config)
+        manager.devices["dev"] = self.api
+        firewall_tools = FirewallTools(manager)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "error": f"invalid token {self.FAKE_TOKEN} supplied"
+        }
+        mock_response.text = "unused"
+
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+            mock_client.request.return_value = mock_response
+
+            result = firewall_tools.delete_policy("dev", "1")
+
+        combined_text = "\n".join(content.text for content in result)
+        assert self.FAKE_TOKEN not in combined_text
+
+    def test_full_request_cycle_logs_never_contain_token(self, caplog):
+        """Regression guard for the current clean state of log_api_call
+        (log_api_call never logs headers today)."""
+        caplog.set_level("DEBUG")
+
+        mock_success = MagicMock()
+        mock_success.status_code = 200
+        mock_success.json.return_value = {"status": "success"}
+
+        mock_error = MagicMock()
+        mock_error.status_code = 400
+        mock_error.json.return_value = {"error": "generic failure"}
+        mock_error.text = "generic failure"
+
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+
+            mock_client.request.return_value = mock_success
+            self.api._make_request("GET", "monitor/system/status")
+
+            mock_client.request.return_value = mock_error
+            with pytest.raises(FortiGateAPIError):
+                self.api._make_request("GET", "monitor/system/status")
+
+        assert self.FAKE_TOKEN not in caplog.text
