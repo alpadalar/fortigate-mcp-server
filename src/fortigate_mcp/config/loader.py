@@ -13,6 +13,9 @@ and valid before the server starts operation.
 import json
 import os
 from typing import Optional
+
+from pydantic import ValidationError
+
 from .models import Config
 
 def load_config(config_path: Optional[str] = None) -> Config:
@@ -117,8 +120,30 @@ def load_config(config_path: Optional[str] = None) -> Config:
     # Create and validate Config object
     try:
         config = Config(**config_data)
-    except Exception as e:
-        raise ValueError(f"Configuration validation failed: {e}")
+    except ValidationError as e:
+        # Build a field-addressed message from the structured error list
+        # (omitting raw inputs and URLs) rather than str(e), which would
+        # otherwise embed Pydantic's raw rejected input value. The cause
+        # chain below is deliberately severed so the original
+        # ValidationError -- and any secret it carries in its own
+        # traceback rendering -- never survives as __cause__;
+        # hide_input_in_errors=True on StrictConfigModel is a second,
+        # independent layer that additionally strips inputs from the
+        # ValidationError's own str()/repr().
+        field_errors = "; ".join(
+            f"{'.'.join(str(p) for p in err['loc'])}: {err['msg']}"
+            for err in e.errors(include_input=False, include_url=False)
+        )
+        raise ValueError(f"Configuration validation failed: {field_errors}") from None
+    except Exception:
+        # Generic, non-interpolated fallback: an arbitrary unknown exception's
+        # text could contain anything (including a secret), so it is never
+        # echoed into the public error message. The cause chain is severed
+        # below so no cause object -- and nothing it might carry -- survives.
+        raise ValueError(
+            "Configuration validation failed due to an unexpected error while "
+            "constructing the configuration object"
+        ) from None
 
     return config
 
