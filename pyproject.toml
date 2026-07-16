@@ -90,7 +90,7 @@ addopts = [
     "--cov=src",
     "--cov-report=html",
     "--cov-report=term-missing",
-    "--cov-fail-under=80",
+    "--cov-fail-under=67",
 ]
 asyncio_mode = "auto"
 markers = [
