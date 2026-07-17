@@ -3,13 +3,22 @@ Pytest configuration and fixtures
 """
 
 import json
+import os
+import socket
+import tempfile
+import threading
+import time
+from contextlib import contextmanager
 
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+import httpx
+import uvicorn
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
+from src.fortigate_mcp.server_http import FortiGateMCPHTTPServer
 from tests.support.fake_fortigate import fortigate_router
 
 
@@ -202,3 +211,130 @@ def device_config():
         timeout=30,
         port=443
     )
+
+
+@contextmanager
+def run_live_server():
+    """Serve the EXACT ``build_http_app()`` output over a real 127.0.0.1
+    TCP socket, in a daemon thread, and yield ``(base_url, server, app)``.
+
+    Codex-review mitigations (03-REVIEWS.md, 03-05 section) baked in:
+
+    - TOCTOU port race (MEDIUM): the listening socket is bound here, ONCE,
+      and handed directly to uvicorn's ``run()`` via its ``sockets`` kwarg --
+      no probe-then-rebind window for another process to steal the port.
+    - Unverified thread termination (MEDIUM): teardown asserts the daemon
+      thread is no longer alive after ``should_exit`` + ``join``, instead of
+      merely joining and hoping.
+    - mkstemp descriptor leak (MEDIUM): the descriptor returned by
+      ``tempfile.mkstemp`` is consumed via ``os.fdopen`` (matching
+      ``tests/test_tool_schema_snapshot.py::_build_servers``), never left
+      open.
+    - httpx proxy-env inheritance (LOW): the readiness poll uses
+      ``trust_env=False`` so an ambient ``HTTP_PROXY`` can never hijack
+      loopback traffic during the poll.
+    - Served-app identity (HIGH): ``build_http_app()`` is called exactly
+      once here; the SAME object is both served by uvicorn and yielded to
+      tests, so structural middleware checks never construct a second app.
+
+    ``load_config`` rejects an empty device set ("At least one FortiGate
+    device must be configured"), so this fixture reuses the standard
+    one-RFC-5737-device config shape from ``tmp_config_path`` and patches
+    ``FortiGateMCPHTTPServer._test_initial_connection`` to a no-op during
+    construction (same technique as
+    ``tests/test_tool_schema_snapshot.py::_build_servers``, line 107) so
+    E2E startup performs zero FortiGate network I/O.
+    """
+    config = {
+        "server": {"host": "0.0.0.0", "port": 8814, "name": "test", "version": "1.0.0"},
+        "fortigate": {
+            "devices": {
+                "default": {
+                    "host": "198.51.100.10",
+                    "api_token": "test-token-not-real",
+                    "vdom": "root",
+                    "verify_ssl": False,
+                    "timeout": 1,
+                }
+            }
+        },
+        "auth": {"require_auth": False, "api_tokens": [], "allowed_origins": ["*"]},
+        "logging": {"level": "INFO", "console": True},
+    }
+    fd, config_path = tempfile.mkstemp(suffix=".json", prefix="e2e_config_")
+    with os.fdopen(fd, "w") as f:
+        json.dump(config, f)
+
+    # Pre-bind an OS-assigned ephemeral port on loopback ONLY -- never
+    # "0.0.0.0" and never read from an environment variable. The socket is
+    # NOT closed here; it is handed straight to uvicorn below so no other
+    # process can race us for the port between probe and bind.
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+
+    uv = None
+    thread = None
+    try:
+        with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
+            server = FortiGateMCPHTTPServer(
+                config_path=config_path,
+                host="127.0.0.1",
+                port=port,
+                path="/fortigate-mcp",
+            )
+        # Built EXACTLY ONCE: this same object is served by uvicorn AND
+        # yielded to tests for structural inspection (Codex HIGH).
+        app = server.build_http_app()
+
+        uv = uvicorn.Server(
+            uvicorn.Config(
+                app,
+                host="127.0.0.1",
+                port=port,
+                log_level="error",
+                lifespan="on",
+            )
+        )
+        thread = threading.Thread(target=lambda: uv.run(sockets=[sock]), daemon=True)
+        thread.start()
+
+        base_url = f"http://127.0.0.1:{port}"
+        ready = False
+        for _ in range(200):
+            try:
+                # trust_env=False: an ambient HTTP_PROXY must never hijack
+                # loopback traffic during the readiness poll.
+                response = httpx.get(base_url + "/health", timeout=0.5, trust_env=False)
+                if response.status_code == 200:
+                    ready = True
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(0.03)
+        if not ready:
+            raise RuntimeError("live E2E server did not become ready in time")
+
+        yield base_url, server, app
+    finally:
+        if uv is not None:
+            uv.should_exit = True
+        if thread is not None:
+            thread.join(timeout=5)
+            assert not thread.is_alive(), "uvicorn E2E thread failed to terminate within 5s"
+        # uvicorn owns and closes sockets passed to run(sockets=...) on
+        # shutdown -- do not close `sock` manually here.
+        try:
+            os.unlink(config_path)
+        except OSError:
+            pass
+
+
+@pytest.fixture(scope="module")
+def live_server():
+    """Module-scoped live uvicorn E2E server -- amortizes startup cost
+    across every test in ``tests/test_e2e_http.py``. Yields
+    ``(base_url, server, app)``."""
+    with run_live_server() as ctx:
+        yield ctx
