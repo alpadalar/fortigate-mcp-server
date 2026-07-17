@@ -1,0 +1,95 @@
+"""Pure-ASGI Bearer-token auth middleware enforcing SEC-05.
+
+Mirrors ``middleware/trace.py::TraceMiddleware``'s pure-ASGI shape exactly
+(no Starlette ``BaseHTTPMiddleware`` response-buffering, which is unsafe on
+the streamable-HTTP MCP mount this middleware sits in front of): the
+constructor takes ``app``; ``__call__(self, scope, receive, send)`` passes
+non-"http" scope types straight through untouched.
+
+Threat model this closes (04-REVIEWS.md, T-04-09/T-04-10/T-04-11/T-04-16):
+
+- Reject-before-compare: a missing Authorization header, a non-Bearer
+  scheme, or an empty/whitespace-only candidate is denied BEFORE any
+  ``hmac.compare_digest`` call runs -- there is no ""-vs-"" comparison
+  path in this code, structurally.
+- Filtered, fail-closed token set: only entries that are truthy after
+  ``.strip()`` survive construction (defense in depth below AuthConfig's
+  own validators in config/models.py). If the filtered set ends up empty,
+  every request is denied -- including header-less ones -- rather than
+  silently accepting anything.
+- No short-circuit comparison: every filtered token is compared via
+  ``hmac.compare_digest`` for a non-empty candidate, accumulated with
+  ``|=`` rather than an ``any(...)`` generator that stops at the first
+  match, so per-token comparison count does not vary with which token (if
+  any) matches.
+- Method-scoped /health exemption: GET/HEAD /health bypasses the token
+  check (liveness probes must work even when require_auth is True); any
+  other verb to /health is NOT exempt and still requires a valid token.
+  The exemption lives inside __call__ because there is no way to register
+  /health "outside" the wrapped ASGI stack -- build_http_app() wraps the
+  entire served app in this middleware.
+- No token echo: the 401 body is a fixed, generic JSON object -- never a
+  configured token, header value, or other request material.
+"""
+import hmac
+from typing import Iterable, Tuple
+
+from starlette.datastructures import Headers
+from starlette.responses import JSONResponse
+
+_BEARER_PREFIX = "bearer "
+
+
+class AuthMiddleware:
+    """Pure-ASGI Bearer-token gate for build_http_app()'s middleware stack.
+
+    Constructed with the raw, unfiltered ``AuthConfig.api_tokens`` list;
+    filtering happens once here at construction time.
+    """
+
+    def __init__(self, app, api_tokens: Iterable[str]):
+        self.app = app
+        # Defense in depth: only non-empty-after-strip entries participate
+        # in comparison, even though AuthConfig already rejects those at
+        # the config layer. A filtered-empty set fails closed below.
+        self._tokens: Tuple[str, ...] = tuple(
+            token for token in api_tokens if token and token.strip()
+        )
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        if scope["path"] == "/health" and scope["method"] in ("GET", "HEAD"):
+            await self.app(scope, receive, send)
+            return
+
+        headers = Headers(scope=scope)
+        auth_header = headers.get("authorization")
+
+        candidate = ""
+        if auth_header is not None and auth_header.lower().startswith(_BEARER_PREFIX):
+            candidate = auth_header[len(_BEARER_PREFIX):]
+
+        # Reject before compare: no candidate, no configured tokens to
+        # compare against -- hmac.compare_digest must never run against an
+        # empty candidate or an empty expected-token set.
+        if not candidate.strip() or not self._tokens:
+            await self._deny(scope, receive, send)
+            return
+
+        matched = False
+        for token in self._tokens:
+            matched |= hmac.compare_digest(candidate, token)
+
+        if not matched:
+            await self._deny(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
+
+    @staticmethod
+    async def _deny(scope, receive, send) -> None:
+        response = JSONResponse({"error": "unauthorized"}, status_code=401)
+        await response(scope, receive, send)

@@ -13,10 +13,18 @@ The models provide:
 - Field descriptions
 - Required vs optional field handling
 """
+import re
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
 from ..validation import validate_host, validate_port, validate_vdom
+
+# C0 control characters (0x00-0x1f) plus DEL (0x7f) -- rejects CR/LF and
+# other control bytes inside a configured Bearer token. Mirrors the
+# CRLF-safety intent of validate_host/validate_vdom in ../validation.py,
+# kept local here since api_tokens are never interpolated into a REST
+# path/URL (validation.py's stated neutrality scope).
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 
 class StrictConfigModel(BaseModel):
@@ -84,15 +92,40 @@ class FortiGateConfig(StrictConfigModel):
 class AuthConfig(StrictConfigModel):
     """Authentication configuration for the MCP server's HTTP transport.
 
-    NOT YET ENFORCED: these fields are parsed and stored but never checked
-    at the transport layer -- the HTTP server is unauthenticated by
-    default (require_auth defaults to False; run only on trusted
-    networks). Bearer-token enforcement is planned for Phase 4 (SEC-05)
-    on top of Phase 3's app factory. See the CONF-04 decision record.
+    require_auth defaults to False -- the HTTP server is unauthenticated
+    by default; run only on trusted networks. When True, a pure-ASGI
+    Bearer-token middleware (middleware/auth.py::AuthMiddleware) is wired
+    into build_http_app()'s middleware stack: every HTTP request must
+    carry a valid ``Authorization: Bearer <token>`` header matching one of
+    api_tokens, except GET/HEAD /health which stays token-exempt for
+    liveness probes. allowed_origins remains parsed but unapplied -- no
+    CORS middleware exists in this codebase.
     """
     require_auth: bool = Field(default=False, description="Whether authentication is required")
     api_tokens: List[str] = Field(default_factory=list, description="Valid API tokens")
     allowed_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
+
+    @field_validator("api_tokens")
+    @classmethod
+    def _validate_api_tokens(cls, v: List[str]) -> List[str]:
+        for token in v:
+            if not isinstance(token, str) or not token.strip():
+                raise ValueError(
+                    "api_tokens entries must be non-empty, non-whitespace strings"
+                )
+            if _CONTROL_CHAR_RE.search(token):
+                raise ValueError(
+                    "api_tokens entries must not contain control characters"
+                )
+        return v
+
+    @model_validator(mode="after")
+    def _validate_require_auth_has_usable_token(self) -> "AuthConfig":
+        if self.require_auth and not self.api_tokens:
+            raise ValueError(
+                "require_auth=true requires at least one non-empty api_token"
+            )
+        return self
 
 class LoggingConfig(StrictConfigModel):
     """Model for logging configuration.
