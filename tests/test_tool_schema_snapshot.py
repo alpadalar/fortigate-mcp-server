@@ -180,9 +180,19 @@ def _normalize_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _stdio_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:
-    """Extract {name: {inputSchema}} from the SDK FastMCP (stdio) server."""
-    tools = asyncio.run(server.mcp.list_tools())  # list[mcp.types.Tool]
-    return {t.name: {"inputSchema": _normalize_schema(t.inputSchema)} for t in tools}
+    """Extract {name: {inputSchema}} from the fastmcp 2.x (stdio) server.
+
+    Post-CONS-01 consolidation, stdio runs on ``fastmcp.FastMCP`` (same
+    engine as HTTP), which lacks the SDK's tool-listing method -- structurally
+    identical to ``_http_snapshot`` below except for which server it receives.
+    """
+
+    async def _get() -> Dict[str, Any]:
+        tools = await server.mcp.get_tools()  # dict[str, FunctionTool]
+        return {name: tool.to_mcp_tool() for name, tool in tools.items()}
+
+    mcp_tools = asyncio.run(_get())
+    return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
 
 
 def _http_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:

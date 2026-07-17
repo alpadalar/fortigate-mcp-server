@@ -9,6 +9,7 @@ dispatch mismatches, and dict-payload forwarding.
 import asyncio
 
 import pytest
+from fastmcp import Client
 from mcp.types import TextContent
 from unittest.mock import MagicMock
 
@@ -16,12 +17,30 @@ from src.fortigate_mcp.core.fortigate import FortiGateAPI
 from src.fortigate_mcp.server import FortiGateMCPServer
 
 
+async def _list_via_client(server):
+    """List tools through a real in-memory fastmcp.Client MCP session."""
+    async with Client(server.mcp) as client:
+        return await client.list_tools()
+
+
+async def _call_via_client(server, tool_name, args):
+    """Call a tool through a real in-memory fastmcp.Client MCP session.
+
+    Preferred over direct ``.fn()`` calls or the SDK's ``call_tool`` --
+    this exercises the real protocol path (initialize, argument validation,
+    dispatch, result conversion), the exact layer the historical
+    async/sync bug lived in.
+    """
+    async with Client(server.mcp) as client:
+        return await client.call_tool(tool_name, args)
+
+
 def test_stdio_server_constructs_successfully(tmp_config_path):
     """FortiGateMCPServer constructs without exception and registers 30 tools."""
     server = FortiGateMCPServer(tmp_config_path)
 
     assert server is not None
-    tools = asyncio.run(server.mcp.list_tools())
+    tools = asyncio.run(_list_via_client(server))
     assert len(tools) == 30
 
 
@@ -130,9 +149,9 @@ def test_all_sync_wrappers_dispatch(tmp_config_path, tool_name, tools_attr, meth
     mock_method = MagicMock(return_value=[TextContent(type="text", text=f"SENTINEL-{tool_name}")])
     monkeypatch.setattr(tools_instance, method_name, mock_method)
 
-    result = asyncio.run(server.mcp.call_tool(tool_name, args))
+    result = asyncio.run(_call_via_client(server, tool_name, args))
 
-    content = result[0] if isinstance(result, tuple) else result
+    content = result.content
     assert content[0].text == f"SENTINEL-{tool_name}"
     mock_method.assert_called_once()
 
@@ -159,9 +178,11 @@ def test_get_firewall_policy_detail_still_async(tmp_config_path):
     mock_api.get_service_objects.return_value = {"results": [{"name": "ALL", "protocol": "TCP/UDP/SCTP"}]}
     server.fortigate_manager.devices["default"] = mock_api
 
-    result = asyncio.run(server.mcp.call_tool("get_firewall_policy_detail", {"device_id": "default", "policy_id": "1"}))
+    result = asyncio.run(
+        _call_via_client(server, "get_firewall_policy_detail", {"device_id": "default", "policy_id": "1"})
+    )
 
-    content = result[0] if isinstance(result, tuple) else result
+    content = result.content
     assert "Test-Policy" in content[0].text
 
 
@@ -188,7 +209,7 @@ def test_route_payload_preserves_optional_fields(tmp_config_path):
         "comment": "test route",
     }
 
-    asyncio.run(server.mcp.call_tool("create_static_route", {"device_id": "probe", "route_data": route_data}))
+    asyncio.run(_call_via_client(server, "create_static_route", {"device_id": "probe", "route_data": route_data}))
 
     mock_api.create_static_route.assert_called_once_with(route_data, vdom=None)
 
@@ -198,7 +219,7 @@ def test_address_payload_ipmask_variant(tmp_config_path):
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     address_data = {"name": "addr1", "type": "ipmask", "subnet": "10.0.0.0/24", "comment": "c"}
 
-    asyncio.run(server.mcp.call_tool("create_address_object", {"device_id": "probe", "address_data": address_data}))
+    asyncio.run(_call_via_client(server, "create_address_object", {"device_id": "probe", "address_data": address_data}))
 
     mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
 
@@ -208,7 +229,7 @@ def test_address_payload_iprange_variant(tmp_config_path):
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     address_data = {"name": "addr2", "type": "iprange", "start-ip": "10.0.0.10", "end-ip": "10.0.0.20"}
 
-    asyncio.run(server.mcp.call_tool("create_address_object", {"device_id": "probe", "address_data": address_data}))
+    asyncio.run(_call_via_client(server, "create_address_object", {"device_id": "probe", "address_data": address_data}))
 
     mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
 
@@ -218,7 +239,7 @@ def test_address_payload_fqdn_variant(tmp_config_path):
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     address_data = {"name": "addr3", "type": "fqdn", "fqdn": "example.com"}
 
-    asyncio.run(server.mcp.call_tool("create_address_object", {"device_id": "probe", "address_data": address_data}))
+    asyncio.run(_call_via_client(server, "create_address_object", {"device_id": "probe", "address_data": address_data}))
 
     mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
     called_payload = mock_api.create_address_object.call_args.args[0]
@@ -231,7 +252,7 @@ def test_service_payload_tcp_variant(tmp_config_path):
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     service_data = {"name": "svc1", "protocol": "TCP", "tcp-portrange": "8080", "comment": "c"}
 
-    asyncio.run(server.mcp.call_tool("create_service_object", {"device_id": "probe", "service_data": service_data}))
+    asyncio.run(_call_via_client(server, "create_service_object", {"device_id": "probe", "service_data": service_data}))
 
     mock_api.create_service_object.assert_called_once_with(service_data, vdom=None)
 
@@ -241,7 +262,7 @@ def test_service_payload_udp_variant(tmp_config_path):
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     service_data = {"name": "svc2", "protocol": "UDP", "udp-portrange": "514"}
 
-    asyncio.run(server.mcp.call_tool("create_service_object", {"device_id": "probe", "service_data": service_data}))
+    asyncio.run(_call_via_client(server, "create_service_object", {"device_id": "probe", "service_data": service_data}))
 
     mock_api.create_service_object.assert_called_once_with(service_data, vdom=None)
     called_payload = mock_api.create_service_object.call_args.args[0]
