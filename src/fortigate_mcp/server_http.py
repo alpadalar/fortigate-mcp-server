@@ -18,10 +18,13 @@ from typing import Optional
 # fastmcp is a pinned direct dependency, so a missing package here means a
 # genuinely broken environment -- fail loudly at import time instead.
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
+from starlette.responses import JSONResponse
 
 from .config.loader import load_config
 from .core.logging import setup_logging
 from .core.fortigate import FortiGateManager
+from .middleware.trace import TraceMiddleware
 from .registry import register_tools
 from .tools.device import DeviceTools
 from .tools.firewall import FirewallTools
@@ -102,6 +105,22 @@ class FortiGateMCPHTTPServer:
         # Register tools from the shared registry (CONS-01)
         register_tools(self.mcp, self, transport="http")
 
+        # HTTP-level readiness route for E2E/liveness polling (CONS-02).
+        # Distinct from the MCP tool literally named "health" registered
+        # above by register_tools()'s http-only branch -- that tool is only
+        # reachable via a full MCP JSON-RPC session, while this is a plain
+        # GET endpoint. Must be registered before any build_http_app()/
+        # http_app() call: custom routes bake into mcp._additional_http_routes,
+        # which http_app() reads at construction time.
+        @self.mcp.custom_route("/health", methods=["GET"])
+        async def health(request):
+            return JSONResponse(
+                {
+                    "status": "healthy",
+                    "registered_devices": len(self.fortigate_manager.devices),
+                }
+            )
+
     def _test_initial_connection(self) -> None:
         """Test initial FortiGate connection."""
         try:
@@ -122,10 +141,28 @@ class FortiGateMCPHTTPServer:
         except Exception as e:
             self.logger.error(f"Initial connection test error: {e}")
 
+    def build_http_app(self):
+        """THE single ASGI app factory.
+
+        ``run()`` and the E2E test fixture (``tests/conftest.py``) both call
+        this -- never construct a second, separate ``http_app()`` anywhere.
+
+        Middleware ordering contract for Phase 4 (documented here, not yet
+        enforced): CORS must be OUTERMOST (first in the list) so an
+        unauthenticated CORS preflight OPTIONS is answered by CORSMiddleware
+        before any future Auth middleware can 401 it. Target order once
+        Phase 4 lands: ``[CORS, TrustedHost, Auth, RateLimit]``,
+        outermost-first. Uses the ``Middleware([...])`` list ONLY -- never
+        FastMCP's own middleware-registration method, which prepends (LIFO
+        order) and would invert this ordering.
+        """
+        middleware = [Middleware(TraceMiddleware)]
+        return self.mcp.http_app(path=self.path, middleware=middleware)
+
     def run(self) -> None:
         """
         Start the HTTP MCP server.
-        
+
         Runs the server with HTTP transport on the configured
         host and port.
         """
@@ -140,14 +177,22 @@ class FortiGateMCPHTTPServer:
         try:
             self.logger.info(f"Starting FortiGate MCP HTTP server on {self.host}:{self.port}{self.path}")
             self.logger.info(f"Registered devices: {len(self.fortigate_manager.devices)}")
-            
-            # Run with FastMCP's built-in HTTP transport
-            self.mcp.run(
-                transport="http",
-                host=self.host,
-                port=self.port,
-                path=self.path
-            )
+
+            # Build the single ASGI app and serve it via a manual uvicorn
+            # server (instead of FastMCP's mcp.run(transport="http", ...)
+            # convenience wrapper) so run() and the E2E fixture serve the
+            # IDENTICAL app object produced by build_http_app().
+            app = self.build_http_app()
+            import uvicorn
+            uvicorn.Server(
+                uvicorn.Config(
+                    app,
+                    host=self.host,
+                    port=self.port,
+                    log_level="info",
+                    lifespan="on",
+                )
+            ).run()
         except Exception as e:
             self.logger.error(f"HTTP server error: {e}")
             sys.exit(1)
