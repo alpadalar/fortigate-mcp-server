@@ -469,7 +469,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         def get_schema_info():
             schema_info = {
                 "server": "FortiGateMCP-HTTP",
-                "version": "0.1.0",
+                "version": tools.config.server.version,
                 "endpoint": f"http://{tools.host}:{tools.port}{tools.path}",
                 "tools": {
                     "device_tools": tools.device_tools.get_schema_info(),
