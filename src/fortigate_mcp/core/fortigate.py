@@ -141,7 +141,8 @@ class FortiGateAPI:
             with httpx.Client(
                 verify=self.config.verify_ssl,
                 timeout=self.config.timeout,
-                auth=auth
+                auth=auth,
+                follow_redirects=False,
             ) as client:
                 response = client.request(
                     method=method,

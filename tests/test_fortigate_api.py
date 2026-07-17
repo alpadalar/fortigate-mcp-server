@@ -105,6 +105,27 @@ class TestFortiGateAPI:
             assert result == {"status": "success", "results": []}
             mock_client.request.assert_called_once()
 
+    def test_make_request_follow_redirects_explicitly_false(self):
+        """SEC-03: httpx.Client must be constructed with an explicit
+        follow_redirects=False kwarg -- not merely rely on httpx's own
+        default -- closing any future httpx-default-change SSRF-via-redirect
+        vector."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "success"}
+
+        with patch('httpx.Client') as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value = mock_client
+            mock_client.__enter__.return_value = mock_client
+            mock_client.__exit__.return_value = None
+            mock_client.request.return_value = mock_response
+
+            self.api._make_request("GET", "monitor/system/status")
+
+            _, call_kwargs = mock_client_class.call_args
+            assert call_kwargs["follow_redirects"] is False
+
     def test_make_request_api_error(self):
         """API error response testi"""
         mock_response = MagicMock()
@@ -644,3 +665,56 @@ class TestCreateExampleConfigSecureDefaults:
         assert parsed["server"]["allow_writes"] is False
         for device_data in parsed["fortigate"]["devices"].values():
             assert device_data["verify_ssl"] is True
+
+
+class TestAddDeviceSSRFPolicy:
+    """SEC-03/T-04-15: the SSRF host policy pinned at the phase boundary --
+    injection-shaped hosts are rejected before any client construction or
+    registry mutation; syntactically valid hosts of ANY network range
+    (public or private) are accepted, per the documented policy decision
+    that multi-device firewall management is the legitimate use case (no
+    network-range restriction is applied).
+
+    Note on scope: route parameters (dst/gateway) are JSON body payload
+    forwarded to the device, not URL-forming inputs -- they never reach
+    this host-validation boundary. route_id path interpolation is already
+    covered by the Phase 2 ENDPOINT_MATRIX tests earlier in this file.
+    """
+
+    def setup_method(self):
+        auth_config = AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+        self.manager = FortiGateManager({}, auth_config)
+
+    @pytest.mark.parametrize("bad_host", INJECTION_CORPUS)
+    def test_add_device_rejects_injection_host_before_any_client_construction(self, bad_host):
+        with patch('httpx.Client') as mock_client_class:
+            with pytest.raises(ValueError):
+                self.manager.add_device(
+                    device_id="evil",
+                    host=bad_host,
+                    api_token="tok",
+                )
+
+            mock_client_class.assert_not_called()
+
+        assert "evil" not in self.manager.devices
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "203.0.113.5",  # RFC 5737 TEST-NET-3 (public documentation range)
+            "10.0.0.5",  # RFC 1918 private range
+        ],
+    )
+    def test_add_device_accepts_valid_public_and_private_hosts(self, host):
+        """Pins the documented policy decision: no network-range
+        restriction is applied to syntactically valid hosts, since
+        multi-device firewall management legitimately spans both public
+        and private addressing."""
+        self.manager.add_device(
+            device_id=f"dev-{host}",
+            host=host,
+            api_token="tok",
+        )
+
+        assert f"dev-{host}" in self.manager.devices
