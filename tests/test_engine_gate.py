@@ -36,6 +36,7 @@ from mcp.server.fastmcp import FastMCP as SDKFastMCP
 from mcp.types import TextContent
 
 from src.fortigate_mcp.registry import register_tools
+from src.fortigate_mcp.server import FortiGateMCPServer
 from tests.test_tool_schema_snapshot import HTTP_GOLDEN, STDIO_GOLDEN, _normalize_schema
 
 # Computed from the committed fixtures during Phase 3 Plan 03 planning --
@@ -152,3 +153,46 @@ def test_full_30_tool_schema_diff_across_engines() -> None:
     assert len(sdk_stdio) == 30
     assert set(sdk_stdio) == set(prefect_stdio)
     assert sdk_stdio == prefect_stdio
+
+
+# --- Runtime compatibility on the REAL, selected-engine production server --
+# (Codex MEDIUM: schema equality proves shape, not behavior -- these prove a
+# full in-memory MCP session against the actual FortiGateMCPServer object.)
+
+
+def test_real_stdio_server_serves_full_mcp_session(tmp_config_path) -> None:
+    """A real FortiGateMCPServer serves a full in-memory MCP session: initialize,
+    list_tools matching the frozen stdio golden's name set, and a sync tool call."""
+
+    async def _run():
+        server = FortiGateMCPServer(tmp_config_path)
+        async with Client(server.mcp) as client:
+            tools = await client.list_tools()
+            assert len(tools) == 30
+            assert {t.name for t in tools} == set(json.loads(STDIO_GOLDEN.read_text()).keys())
+
+            result = await client.call_tool("list_devices", {})
+            assert "default" in result.content[0].text
+
+    asyncio.run(_run())
+
+
+def test_real_stdio_server_dict_payload_roundtrip(tmp_config_path, monkeypatch) -> None:
+    """A dict-payload create tool round-trips through the same real session,
+    proving runtime dispatch (not just schema equality) on the selected engine."""
+
+    async def _run():
+        server = FortiGateMCPServer(tmp_config_path)
+        mock_create = MagicMock(return_value=[TextContent(type="text", text="SENTINEL-route")])
+        monkeypatch.setattr(server.routing_tools, "create_static_route_from_payload", mock_create)
+
+        route_data = {"dst": "10.0.0.0/24", "gateway": "10.0.0.1", "distance": 10}
+        async with Client(server.mcp) as client:
+            result = await client.call_tool(
+                "create_static_route", {"device_id": "default", "route_data": route_data}
+            )
+
+        mock_create.assert_called_once_with("default", route_data, None)
+        assert result.content[0].text == "SENTINEL-route"
+
+    asyncio.run(_run())
