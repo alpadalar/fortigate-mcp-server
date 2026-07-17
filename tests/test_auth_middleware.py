@@ -153,6 +153,43 @@ class TestTokenComparison:
         # exactly once -- no `any(...)` early-exit.
         assert len(calls) == len(tokens)
 
+    async def test_non_ascii_obs_text_authorization_header_denied_not_crash(self):
+        """A 0x80-0xff byte in the Authorization header (valid obs-text per
+        RFC 7230, decoded by Starlette as latin-1) must yield a 401 -- not
+        an unhandled TypeError from hmac.compare_digest on str operands.
+
+        Raw ASGI scope on purpose: httpx normalizes header values, so the
+        obs-text byte must be injected below the client layer to reach the
+        middleware the way uvicorn/h11 would deliver it."""
+        middleware = AuthMiddleware(
+            _downstream_app(), api_tokens=["good-token-not-real"]
+        )
+        sent = []
+
+        async def receive():
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message):
+            sent.append(message)
+
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": "/",
+            "raw_path": b"/",
+            "query_string": b"",
+            "root_path": "",
+            "headers": [(b"authorization", b"Bearer \xff")],
+            "client": ("testclient", 50000),
+            "server": ("testserver", 80),
+        }
+        await middleware(scope, receive, send)
+        start = next(m for m in sent if m["type"] == "http.response.start")
+        assert start["status"] == 401
+
     async def test_duplicate_authorization_headers_first_honored(self):
         async with _wrapped_client(["good-token-not-real"]) as client:
             response = await client.get(
@@ -213,6 +250,12 @@ class TestAuthConfigValidators:
     def test_rejects_control_character_token(self):
         with pytest.raises(ValidationError):
             AuthConfig(require_auth=False, api_tokens=["good-token-not-real\r\n"])
+
+    def test_rejects_non_ascii_token(self):
+        """A non-ASCII configured token would make every Bearer comparison
+        raise TypeError at request time -- must be rejected at config time."""
+        with pytest.raises(ValidationError):
+            AuthConfig(require_auth=False, api_tokens=["café-token-not-real"])
 
     def test_rejects_require_auth_true_with_no_tokens(self):
         with pytest.raises(ValidationError):

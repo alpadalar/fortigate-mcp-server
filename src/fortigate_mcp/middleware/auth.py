@@ -22,6 +22,13 @@ Threat model this closes (04-REVIEWS.md, T-04-09/T-04-10/T-04-11/T-04-16):
   ``|=`` rather than an ``any(...)`` generator that stops at the first
   match, so per-token comparison count does not vary with which token (if
   any) matches.
+- Bytes-only comparison: ``hmac.compare_digest`` on ``str`` operands
+  raises ``TypeError`` for any non-ASCII character, and Starlette decodes
+  header bytes as latin-1 -- so a single ``0x80``-``0xff`` byte in the
+  Authorization header (valid obs-text per RFC 7230) would crash the gate
+  with an unhandled exception instead of a 401. Tokens are encoded once at
+  construction (utf-8); the candidate is re-encoded via latin-1, the exact
+  lossless inverse of Starlette's header decode, which can never raise.
 - Method-scoped /health exemption: GET/HEAD /health bypasses the token
   check (liveness probes must work even when require_auth is True); any
   other verb to /health is NOT exempt and still requires a valid token.
@@ -52,8 +59,11 @@ class AuthMiddleware:
         # Defense in depth: only non-empty-after-strip entries participate
         # in comparison, even though AuthConfig already rejects those at
         # the config layer. A filtered-empty set fails closed below.
-        self._tokens: Tuple[str, ...] = tuple(
-            token for token in api_tokens if token and token.strip()
+        # Encoded to bytes once here: hmac.compare_digest on str raises
+        # TypeError for non-ASCII input, and the candidate side is
+        # attacker-controlled header material.
+        self._tokens: Tuple[bytes, ...] = tuple(
+            token.encode("utf-8") for token in api_tokens if token and token.strip()
         )
 
     async def __call__(self, scope, receive, send) -> None:
@@ -79,9 +89,14 @@ class AuthMiddleware:
             await self._deny(scope, receive, send)
             return
 
+        # Compare bytes, never str: Starlette decoded the header value as
+        # latin-1, so encoding back via latin-1 losslessly recovers the raw
+        # wire bytes and can never raise -- unlike compare_digest on a str
+        # containing obs-text (0x80-0xff), which raises TypeError.
+        candidate_bytes = candidate.encode("latin-1")
         matched = False
         for token in self._tokens:
-            matched |= hmac.compare_digest(candidate, token)
+            matched |= hmac.compare_digest(candidate_bytes, token)
 
         if not matched:
             await self._deny(scope, receive, send)

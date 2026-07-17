@@ -113,6 +113,14 @@ class AuthConfig(StrictConfigModel):
                 raise ValueError(
                     "api_tokens entries must be non-empty, non-whitespace strings"
                 )
+            if not token.isascii():
+                # A non-ASCII configured token would make every Bearer
+                # comparison raise TypeError inside hmac.compare_digest on
+                # str operands -- reject at config time so authentication
+                # can never be bricked by a copy-pasted smart character.
+                raise ValueError(
+                    "api_tokens entries must contain only ASCII characters"
+                )
             if _CONTROL_CHAR_RE.search(token):
                 raise ValueError(
                     "api_tokens entries must not contain control characters"
