@@ -114,10 +114,20 @@ class FortiGateMCPHTTPServer:
         # which http_app() reads at construction time.
         @self.mcp.custom_route("/health", methods=["GET"])
         async def health(request):
+            failed_devices = self.fortigate_manager.failed_devices
+            # HTTP status stays 200 even when devices are degraded: this
+            # route is a process-liveness probe (is the server up and able
+            # to answer at all), not a readiness probe. A load balancer
+            # treating a 5xx/4xx here as "take this instance out of
+            # rotation" would be wrong -- the process itself is healthy
+            # even if a FortiGate device is unreachable. The "status" field
+            # still surfaces device-level degradation for callers that
+            # inspect the body, matching the "health" MCP tool's semantics.
             return JSONResponse(
                 {
-                    "status": "healthy",
+                    "status": "degraded" if failed_devices else "healthy",
                     "registered_devices": len(self.fortigate_manager.devices),
+                    "failed_devices": failed_devices,
                 }
             )
 
