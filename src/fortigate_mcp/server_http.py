@@ -82,7 +82,13 @@ class FortiGateMCPHTTPServer:
 
         # Setup logging
         self.logger = setup_logging(self.config.logging, secrets=secrets)
-        
+
+        if self.config.rate_limiting.enabled:
+            self.logger.warning(
+                "rate_limiting.enabled is true, but rate limiting is NOT "
+                "enforced in this release -- the setting is parsed and ignored"
+            )
+
         self.host = host
         self.port = port
         self.path = path

@@ -59,7 +59,13 @@ class FortiGateMCPServer:
                 secrets.add(api_token.get_secret_value())
 
         self.logger = setup_logging(self.config.logging, secrets=secrets)
-        
+
+        if self.config.rate_limiting.enabled:
+            self.logger.warning(
+                "rate_limiting.enabled is true, but rate limiting is NOT "
+                "enforced in this release -- the setting is parsed and ignored"
+            )
+
         # Initialize core components
         self.fortigate_manager = FortiGateManager(
             self.config.fortigate.devices, 

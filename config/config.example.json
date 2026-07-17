@@ -40,7 +40,7 @@
     "console": true
   },
   "rate_limiting": {
-    "enabled": true,
+    "enabled": false,
     "max_requests_per_minute": 60,
     "burst_size": 10
   }

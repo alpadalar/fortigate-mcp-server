@@ -174,8 +174,11 @@ class ServerConfig(StrictConfigModel):
 class RateLimitConfig(StrictConfigModel):
     """Rate limiting configuration.
 
-    NOT YET ENFORCED: parsed but never checked anywhere in the codebase.
-    Enforcement is a Phase 4 candidate. See SECURITY roadmap.
+    NOT ENFORCED: parsed but never checked anywhere in the codebase.
+    Enforcement is deferred beyond this release (Phase 4 shipped without
+    it); the limitation is documented via the Phase 5 SECURITY.md task.
+    Both server entry points log a startup warning when enabled is true
+    so an operator is never silently misled about the posture.
     """
     enabled: bool = Field(default=True, description="Enable rate limiting")
     max_requests_per_minute: int = Field(default=60, description="Maximum requests per minute")

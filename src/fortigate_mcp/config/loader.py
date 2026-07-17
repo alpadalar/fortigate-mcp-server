@@ -196,7 +196,10 @@ def create_example_config() -> dict:
             "console": True
         },
         "rate_limiting": {
-            "enabled": True,
+            # False in the example on purpose: rate limiting is parsed but
+            # NOT enforced in this release -- advertising it as enabled
+            # would misrepresent the security posture to new users.
+            "enabled": False,
             "max_requests_per_minute": 60,
             "burst_size": 10
         }
