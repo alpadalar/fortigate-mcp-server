@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "fortigate-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/absolute/path/to/fortigate-mcp-server",
+        "python",
+        "-m",
+        "src.fortigate_mcp.server"
+      ],
+      "env": {
+        "FORTIGATE_MCP_CONFIG": "/absolute/path/to/fortigate-mcp-server/config/config.json"
+      }
+    }
+  }
+}

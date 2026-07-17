@@ -6,6 +6,7 @@ the repository root and source tree (stale ``*.backup`` files, and the
 non-pytest ``integration_tests.py`` script that requires a live server).
 """
 
+import json
 import os
 import subprocess
 import zipfile
@@ -17,6 +18,19 @@ import pytest
 def _repo_root() -> Path:
     """Resolve the repository root from this test file's location."""
     return Path(__file__).resolve().parent.parent
+
+
+def _assert_no_underscore_keys(obj, file_label: str) -> None:
+    """Recursively assert no dict key (at any nesting level) starts with '_'."""
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            assert not str(key).startswith("_"), (
+                f"{file_label} contains a non-standard '_'-prefixed key: {key!r}"
+            )
+            _assert_no_underscore_keys(value, file_label)
+    elif isinstance(obj, list):
+        for item in obj:
+            _assert_no_underscore_keys(item, file_label)
 
 
 def test_no_backup_files_in_source_tree():
@@ -154,6 +168,107 @@ def test_http_guide_no_verify_ssl_false_recommendation():
 
     assert "verify_ssl: false" not in text
     assert '"verify_ssl": false' not in text
+
+
+# --- MCP client config examples (examples/*.json) -------------------------
+
+_STDIO_UV_ENTRIES = {
+    "claude_desktop_config.stdio.json": "fortigate-mcp",
+    "claude_code_mcp.json": "fortigate-mcp-stdio",
+    "cursor_mcp_config.json": "fortigate-mcp",
+}
+
+
+def test_mcp_client_examples_are_valid_json():
+    """Every file under examples/*.json must parse as valid JSON."""
+    repo_root = _repo_root()
+
+    for path in sorted((repo_root / "examples").glob("*.json")):
+        json.loads(path.read_text())
+
+
+def test_claude_code_example_sets_explicit_type():
+    """Every mcpServers entry in claude_code_mcp.json must set an explicit
+    'type' -- a URL entry without 'type' is read as stdio and silently
+    skipped by Claude Code."""
+    repo_root = _repo_root()
+    data = json.loads((repo_root / "examples" / "claude_code_mcp.json").read_text())
+
+    assert all("type" in entry for entry in data["mcpServers"].values())
+
+
+def test_stdio_examples_use_uv_run_convention():
+    """The 3 stdio-server entries (Claude Desktop stdio, Claude Code's stdio
+    entry, Cursor's command entry) must launch via 'uv', not bare 'python'.
+    Deliberately excludes claude_desktop_config.http.json, whose entry
+    launches the mcp-remote bridge, not this project's own stdio server."""
+    repo_root = _repo_root()
+
+    for filename, entry_name in _STDIO_UV_ENTRIES.items():
+        data = json.loads((repo_root / "examples" / filename).read_text())
+        entry = data["mcpServers"][entry_name]
+        assert entry["command"] == "uv", (
+            f"{filename}::{entry_name} must use 'uv', got {entry['command']!r}"
+        )
+
+
+def test_claude_desktop_http_bridge_uses_npx_mcp_remote():
+    """claude_desktop_config.http.json is the one file intentionally not
+    uv-based -- it bridges to the HTTP transport via the community
+    mcp-remote npm package launched through npx. Validated separately so
+    this file and the uv-convention test never contradict each other."""
+    repo_root = _repo_root()
+    data = json.loads(
+        (repo_root / "examples" / "claude_desktop_config.http.json").read_text()
+    )
+    entry = next(iter(data["mcpServers"].values()))
+
+    assert entry["command"] == "npx"
+    assert "mcp-remote" in entry["args"]
+
+
+def test_stdio_examples_use_absolute_or_variable_directory_flag():
+    """Each of the 3 uv-based stdio entries must pass --directory. Claude
+    Desktop's and Cursor's entries must use an absolute path (starts with
+    '/'); Claude Code's stdio entry must use its own directory variable
+    instead of a literal absolute path."""
+    repo_root = _repo_root()
+
+    for filename, entry_name in _STDIO_UV_ENTRIES.items():
+        data = json.loads((repo_root / "examples" / filename).read_text())
+        args = data["mcpServers"][entry_name]["args"]
+
+        assert "--directory" in args, f"{filename}::{entry_name} missing --directory"
+        directory_value = args[args.index("--directory") + 1]
+
+        if filename == "claude_code_mcp.json":
+            assert directory_value == "${CLAUDE_PROJECT_DIR}"
+        else:
+            assert directory_value.startswith("/"), (
+                f"{filename}::{entry_name} --directory value must be an "
+                f"absolute path, got {directory_value!r}"
+            )
+
+
+def test_no_examples_target_wildcard_bind_address():
+    """No examples/*.json file may point a client at 0.0.0.0 -- a bind-all
+    address is never a valid client-side destination."""
+    repo_root = _repo_root()
+
+    for path in sorted((repo_root / "examples").glob("*.json")):
+        text = path.read_text()
+        assert "0.0.0.0" not in text, f"{path.name} targets a wildcard bind address"
+
+
+def test_examples_have_no_underscore_prefixed_keys():
+    """No examples/*.json file may carry a non-standard '_'-prefixed key
+    (e.g. a stray '_note' field) -- machine-consumed client config must only
+    contain keys its schema actually defines."""
+    repo_root = _repo_root()
+
+    for path in sorted((repo_root / "examples").glob("*.json")):
+        data = json.loads(path.read_text())
+        _assert_no_underscore_keys(data, path.name)
 
 
 @pytest.mark.slow

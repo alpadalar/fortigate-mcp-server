@@ -1,27 +1,21 @@
 {
   "mcpServers": {
     "fortigate-mcp": {
-      "command": "python",
+      "command": "uv",
       "args": [
+        "run",
+        "--directory",
+        "/path/to/fortigate-mcp-server",
+        "python",
         "-m",
-        "src.fortigate_mcp.server_http",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8814",
-        "--path",
-        "/fortigate-mcp",
-        "--config",
-        "/media/workspace/fortigate-mcp-server/config/config.json"
+        "src.fortigate_mcp.server"
       ],
       "env": {
-        "FORTIGATE_MCP_CONFIG": "/media/workspace/fortigate-mcp-server/config/config.json"
+        "FORTIGATE_MCP_CONFIG": "/path/to/fortigate-mcp-server/config/config.json"
       }
     },
-
-    
     "FortiGateMCP": {
-      "url": "http://0.0.0.0:8814/fortigate-mcp/",
+      "url": "http://127.0.0.1:8814/fortigate-mcp/",
       "transport": "http"
     }
   }

@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "fortigate-mcp-http": {
+      "type": "http",
+      "url": "http://127.0.0.1:8814/fortigate-mcp"
+    },
+    "fortigate-mcp-stdio": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${CLAUDE_PROJECT_DIR}",
+        "python",
+        "-m",
+        "src.fortigate_mcp.server"
+      ],
+      "env": {
+        "FORTIGATE_MCP_CONFIG": "${CLAUDE_PROJECT_DIR}/config/config.json"
+      }
+    }
+  }
+}
