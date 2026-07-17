@@ -1,0 +1,33 @@
+name: Feature Request
+description: Suggest an idea or improvement for fortigate-mcp-server
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement.
+
+        **Note:** The MCP tool surface (tool names and parameter schemas) is frozen for this
+        release line — see `tests/fixtures/tool_schemas_*.json`. Do not file a bug asking for
+        a tool name/parameter change; open a discussion instead.
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What problem are you trying to solve? Why is the current behavior insufficient?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to see happen? Include example tool calls/config if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative approaches you've considered.
+    validations:
+      required: false

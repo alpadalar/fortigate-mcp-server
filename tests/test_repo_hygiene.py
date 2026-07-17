@@ -14,6 +14,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from src.fortigate_mcp.registry import RISK_CLASSIFICATION
 
@@ -359,6 +360,67 @@ def test_examples_have_no_underscore_prefixed_keys():
     for path in sorted((repo_root / "examples").glob("*.json")):
         data = json.loads(path.read_text())
         _assert_no_underscore_keys(data, path.name)
+
+
+# --- CHANGELOG.md / .github templates (REL-04, REL-05) --------------------
+
+
+def test_changelog_has_1_0_0_heading():
+    """CHANGELOG.md must have a '## [1.0.0]' first-release heading."""
+    repo_root = _repo_root()
+    text = (repo_root / "CHANGELOG.md").read_text()
+
+    assert "## [1.0.0]" in text
+
+
+def test_changelog_has_unreleased_heading():
+    """CHANGELOG.md must have a '## [Unreleased]' heading per Keep a
+    Changelog convention, even if currently empty."""
+    repo_root = _repo_root()
+    text = (repo_root / "CHANGELOG.md").read_text()
+
+    assert "## [Unreleased]" in text
+
+
+# TEMPORARY: superseded by Plan 05-04's
+# test_changelog_records_rel06_remediation_accurately, in the same commit
+# that appends the REL-06 entry to CHANGELOG.md's [1.0.0] ### Security
+# subsection (Cycle 2, Codex HIGH-7). This test intentionally guards against
+# a PREMATURE claim before rotation/purge actually succeed -- once that
+# remediation lands for real, this exact assertion would start failing on
+# legitimate content, which is why Plan 05-04 replaces it rather than simply
+# leaving it in place.
+def test_changelog_does_not_claim_rel06_complete():
+    """CHANGELOG.md's [1.0.0] entry must NOT claim REL-06 (token rotation /
+    history purge) is complete -- that entry is Plan 05-04's, added only
+    after rotation and history cleanup both succeed."""
+    repo_root = _repo_root()
+    text = (repo_root / "CHANGELOG.md").read_text().lower()
+
+    for forbidden in ("rotated", "purged", "filter-repo", "rel-06"):
+        assert forbidden not in text, f"CHANGELOG.md prematurely claims: {forbidden!r}"
+
+
+def test_pr_template_references_frozen_tool_surface():
+    """The PR template must reference the golden tool-schema fixtures so
+    contributors see the frozen-tool-surface rule at PR-open time."""
+    repo_root = _repo_root()
+    text = (repo_root / ".github" / "PULL_REQUEST_TEMPLATE.md").read_text()
+
+    assert "tool_schemas" in text
+
+
+def test_issue_template_config_has_security_contact_link():
+    """.github/ISSUE_TEMPLATE/config.yml must keep blank issues enabled and
+    route security reports to Private Vulnerability Reporting, not a blank
+    issue."""
+    repo_root = _repo_root()
+    data = yaml.safe_load((repo_root / ".github" / "ISSUE_TEMPLATE" / "config.yml").read_text())
+
+    assert data["blank_issues_enabled"] is True
+    assert any(
+        "security/advisories" in contact.get("url", "") for contact in data["contact_links"]
+    )
 
 
 @pytest.mark.slow

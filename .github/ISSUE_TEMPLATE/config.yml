@@ -1,0 +1,7 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/alpadalar/fortigate-mcp-server/security/advisories/new
+    about: >-
+      Do not open a public issue for security reports. Use GitHub Private
+      Vulnerability Reporting instead — see SECURITY.md.
