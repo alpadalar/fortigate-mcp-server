@@ -45,7 +45,9 @@ def test_stdio_server_constructs_successfully(tmp_config_path):
 
 
 # Matrix of (tool_name, tools_attr, method_name, args) covering every one of the
-# 27 sync-forwarding wrappers registered by FortiGateMCPServer._setup_tools().
+# 27 sync-forwarding wrappers registered by registry.register_tools() for
+# transport="stdio" (excludes get_firewall_policy_detail, which stays
+# genuinely async, and the 2 stdio-only system tools).
 # Each entry is proven independently by monkeypatching the target Tools-layer
 # method with a sentinel-returning mock and dispatching the stdio tool call.
 TOOL_CALL_MATRIX = [
