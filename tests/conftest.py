@@ -276,6 +276,7 @@ def run_live_server():
 
     uv = None
     thread = None
+    sock_owned_by_uvicorn = False
     try:
         with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
             server = FortiGateMCPHTTPServer(
@@ -298,6 +299,7 @@ def run_live_server():
             )
         )
         thread = threading.Thread(target=lambda: uv.run(sockets=[sock]), daemon=True)
+        sock_owned_by_uvicorn = True
         thread.start()
 
         base_url = f"http://127.0.0.1:{port}"
@@ -324,7 +326,12 @@ def run_live_server():
             thread.join(timeout=5)
             assert not thread.is_alive(), "uvicorn E2E thread failed to terminate within 5s"
         # uvicorn owns and closes sockets passed to run(sockets=...) on
-        # shutdown -- do not close `sock` manually here.
+        # shutdown once thread.start() has actually handed it off. If
+        # construction/build_http_app() raised before that hand-off,
+        # `sock` was never given to uvicorn and must be closed here to
+        # avoid leaking the bound file descriptor.
+        if not sock_owned_by_uvicorn:
+            sock.close()
         try:
             os.unlink(config_path)
         except OSError:
