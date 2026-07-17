@@ -180,7 +180,10 @@ class RateLimitConfig(StrictConfigModel):
     Both server entry points log a startup warning when enabled is true
     so an operator is never silently misled about the posture.
     """
-    enabled: bool = Field(default=True, description="Enable rate limiting")
+    enabled: bool = Field(
+        default=False,
+        description="Enable rate limiting (parsed but NOT enforced in this release)",
+    )
     max_requests_per_minute: int = Field(default=60, description="Maximum requests per minute")
     burst_size: int = Field(default=10, description="Burst request allowance")
 
