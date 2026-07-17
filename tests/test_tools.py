@@ -2,6 +2,8 @@
 MCP Tools tests
 """
 
+import logging
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +13,17 @@ from src.fortigate_mcp.tools.network import NetworkTools
 from src.fortigate_mcp.tools.routing import RoutingTools
 from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
 from src.fortigate_mcp.config.models import AuthConfig
+
+
+class _RecordCapture(logging.Handler):
+    """Capture raw LogRecords so tests can assert on record.getMessage()."""
+
+    def __init__(self):
+        super().__init__()
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
 
 
 class TestDeviceTools:
@@ -131,6 +144,54 @@ class TestDeviceTools:
 
         assert "Error" in result[0].text
         assert len(self.fortigate_manager.devices) == 0
+
+    def test_crlf_device_id_cannot_inject_log_lines_on_not_found_path(self):
+        """WR-04 regression: a CRLF-bearing device_id passed to any
+        device_id-accepting tool (transient path -- never stored) must not
+        reach the log stream or the ValueError message with raw control
+        characters, or an attacker could forge fake log lines on every
+        call. Sanitization happens at the tools/base.py chokepoints
+        (_safe_id in _get_device_api, _handle_error, and
+        _validate_device_exists)."""
+        evil_id = "evil\r\nERROR forged-line"
+
+        capture = _RecordCapture()
+        logger = self.device_tools.logger
+        old_level = logger.level
+        logger.addHandler(capture)
+        logger.setLevel(logging.DEBUG)
+        try:
+            result = self.device_tools.get_device_status(evil_id)
+        finally:
+            logger.removeHandler(capture)
+            logger.setLevel(old_level)
+
+        # At least one error record was emitted for the not-found path,
+        # and no emitted record message contains a bare CR or LF.
+        assert capture.records
+        for record in capture.records:
+            message = record.getMessage()
+            assert "\r" not in message
+            assert "\n" not in message
+        # The forged text survives only in sanitized form.
+        combined_log = " | ".join(r.getMessage() for r in capture.records)
+        assert "evil??ERROR forged-line" in combined_log
+
+        # The MCP error content carries no raw CR/LF sequence from the
+        # client-supplied device_id (format_error_response JSON-escapes
+        # control characters, and the ValueError message itself is built
+        # from the sanitized ID).
+        combined_text = "\n".join(content.text for content in result)
+        assert evil_id not in combined_text
+        assert "evil\rERROR" not in combined_text
+        assert "evil\nERROR" not in combined_text
+
+    def test_safe_id_non_string_and_length_cap(self):
+        """_safe_id must handle non-string input (repr) and cap length."""
+        assert DeviceTools._safe_id(None) == "None"
+        assert DeviceTools._safe_id(123) == "123"
+        assert len(DeviceTools._safe_id("x" * 500)) == 80
+        assert DeviceTools._safe_id("well-formed_id-1") == "well-formed_id-1"
 
 
 class TestFirewallTools:

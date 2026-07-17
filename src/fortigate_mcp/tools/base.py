@@ -11,12 +11,18 @@ All tool implementations inherit from the FortiGateTool base class to ensure
 consistent behavior and error handling across the MCP server.
 """
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional, Union
 from mcp.types import TextContent as Content
 from ..core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from ..core.logging import get_logger, log_tool_call
 from ..formatting import FortiGateFormatters
+
+# C0 control characters (0x00-0x1F) plus DEL (0x7F). CR/LF in particular
+# enable log-line forgery when interpolated into a log format string.
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
 
 class FortiGateTool:
     """Base class for FortiGate MCP tools.
@@ -41,23 +47,42 @@ class FortiGateTool:
         self.fortigate_manager = fortigate_manager
         self.logger = get_logger(f"tools.{self.__class__.__name__.lower()}")
 
+    @staticmethod
+    def _safe_id(device_id: Any) -> str:
+        """Render device_id safely for log/error-message interpolation.
+
+        device_id arrives from any MCP client as a free-form string with no
+        schema-level charset or length limit, and every rejection/not-found
+        path in this class interpolates it into a log format string and/or
+        echoes it in a ValueError message. A raw CR/LF (or other control
+        character) would forge fake log lines on every such call
+        (transient log injection -- reachable without ever storing the
+        device). Sanitize at this single chokepoint: replace C0 controls
+        and DEL with "?", cap length. Well-formed device IDs pass through
+        unchanged, preserving the useful echo in user-facing errors.
+        """
+        if not isinstance(device_id, str):
+            return repr(device_id)
+        return _CONTROL_CHARS.sub("?", device_id)[:80]
+
     def _get_device_api(self, device_id: str) -> FortiGateAPI:
         """Get FortiGate API client for a device.
-        
+
         Args:
             device_id: Device identifier
-            
+
         Returns:
             FortiGateAPI client instance
-            
+
         Raises:
             ValueError: If device not found
         """
         try:
             return self.fortigate_manager.get_device(device_id)
         except ValueError as e:
-            self.logger.error(f"Device {device_id} not found")
-            raise ValueError(f"Device '{device_id}' not found. Available devices: {list(self.fortigate_manager.devices.keys())}")
+            safe_id = self._safe_id(device_id)
+            self.logger.error(f"Device {safe_id} not found")
+            raise ValueError(f"Device '{safe_id}' not found. Available devices: {list(self.fortigate_manager.devices.keys())}")
 
     def _format_response(self, data: Any, resource_type: Optional[str] = None, **kwargs) -> List[Content]:
         """Format response data into MCP content using formatters.
@@ -137,7 +162,14 @@ class FortiGateTool:
             List of Content objects with formatted error message
         """
         error_msg = str(error)
-        self.logger.error(f"Failed to {operation} on device {device_id}: {error_msg}")
+        # device_id is client-supplied and unvalidated on rejection paths --
+        # sanitize before it reaches the log format string. error_msg from
+        # _get_device_api/_validate_device_exists is already built with the
+        # sanitized ID at construction time, so the device_id vector cannot
+        # re-enter through it.
+        self.logger.error(
+            f"Failed to {operation} on device {self._safe_id(device_id)}: {error_msg}"
+        )
 
         # Categorize common error types
         if isinstance(error, FortiGateAPIError):
@@ -197,7 +229,9 @@ class FortiGateTool:
         """
         if device_id not in self.fortigate_manager.devices:
             available = list(self.fortigate_manager.devices.keys())
-            raise ValueError(f"Device '{device_id}' not found. Available devices: {available}")
+            # Echo only the sanitized ID: this message flows into
+            # _handle_error's log line and MCP error content.
+            raise ValueError(f"Device '{self._safe_id(device_id)}' not found. Available devices: {available}")
 
     def _validate_required_params(self, **params) -> None:
         """Validate that required parameters are provided.
