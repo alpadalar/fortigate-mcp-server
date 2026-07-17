@@ -44,14 +44,21 @@ def test_integration_tests_script_removed_from_root():
 
 def test_http_server_docstring_matches_reality():
     """server_http.py's class docstring must not claim capabilities that
-    are not actually enforced (CONF-04): authentication, rate limiting,
-    and CORS are all parsed-but-unenforced config today."""
+    are not actually enforced. Rate limiting and CORS remain
+    parsed-but-unenforced config (CONF-04); authentication is now enforced
+    by AuthMiddleware when require_auth is True (SEC-05, Phase 4) -- the
+    docstring must no longer claim it is unenforced."""
     repo_root = _repo_root()
     text = (repo_root / "src" / "fortigate_mcp" / "server_http.py").read_text()
 
     assert "Authentication (optional)" not in text
     assert "CORS for browser access" not in text
-    assert text.count("not currently enforced") >= 2
+    assert "Authentication is not currently enforced" not in text
+    assert "is enforced by a pure-ASGI Bearer-token middleware" in text
+    # Only rate limiting remains in the "not currently enforced" state --
+    # authentication's bullet was rewritten by SEC-05; CORS uses distinct
+    # "not configured" phrasing, so it was never counted here.
+    assert text.count("not currently enforced") == 1
 
 
 @pytest.mark.slow
