@@ -14,8 +14,6 @@ The server exposes a set of tools for managing FortiGate resources including:
 - Network object management
 - Routing configuration
 """
-import logging
-import json
 import os
 import sys
 import signal
