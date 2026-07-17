@@ -81,6 +81,61 @@ def test_mcp_protocol_session_against_live_server(live_server):
     assert "default" in result.content[0].text
 
 
+def test_unauthenticated_request_denied_with_trace_header_on_401(live_server_auth_required):
+    """The live ordering proof: TraceMiddleware (outermost) still stamps
+    the trace header on a 401 produced by AuthMiddleware (inner), and the
+    denial body never contains the configured token."""
+    base_url, _server, _app = live_server_auth_required
+    response = httpx.get(base_url + "/fortigate-mcp/", timeout=5, trust_env=False)
+    assert response.status_code == 401
+    assert "e2e-test-token-not-real" not in response.text
+    assert response.headers.get("X-FortiGate-MCP-Trace") == "build_http_app"
+
+
+def test_wrong_token_denied_on_live_server(live_server_auth_required):
+    """A wrong non-empty Bearer token is rejected 401 by the real served app."""
+    base_url, _server, _app = live_server_auth_required
+    response = httpx.get(
+        base_url + "/fortigate-mcp/",
+        timeout=5,
+        trust_env=False,
+        headers={"Authorization": "Bearer wrong-token-not-real"},
+    )
+    assert response.status_code == 401
+
+
+def test_health_remains_reachable_without_token_when_auth_required(live_server_auth_required):
+    """GET /health stays token-exempt even on a require_auth=True live server."""
+    base_url, _server, _app = live_server_auth_required
+    response = httpx.get(base_url + "/health", timeout=5, trust_env=False)
+    assert response.status_code == 200
+
+
+async def _mcp_session_probe_with_auth(base_url):
+    """Same protocol probe as ``_mcp_session_probe``, but authenticated:
+    passing a plain str for ``auth`` wraps it in fastmcp's BearerAuth
+    automatically (verified live this session against
+    fastmcp/client/transports.py's ``_set_auth``)."""
+    async with Client(
+        f"{base_url}/fortigate-mcp/", auth="e2e-test-token-not-real"
+    ) as client:
+        tools = await client.list_tools()
+        result = await client.call_tool("list_devices", {})
+        return tools, result
+
+
+def test_mcp_protocol_session_with_bearer_token_against_live_server(
+    live_server_auth_required,
+):
+    """A real fastmcp.Client session with the correct Bearer token
+    completes tools/list and a tools/call against the require_auth=True
+    live server."""
+    base_url, _server, _app = live_server_auth_required
+    tools, result = asyncio.run(_mcp_session_probe_with_auth(base_url))
+    assert len(tools) == 31
+    assert "default" in result.content[0].text
+
+
 def test_run_serves_the_factory_app(tmp_config_path, monkeypatch):
     """Behavioral run()-delegation proof, replacing brittle source-string
     inspection: monkeypatch build_http_app() to a sentinel and uvicorn to

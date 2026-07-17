@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 from contextlib import contextmanager
+from typing import Optional
 
 import pytest
 import asyncio
@@ -214,7 +215,7 @@ def device_config():
 
 
 @contextmanager
-def run_live_server():
+def run_live_server(require_auth: bool = False, api_tokens: Optional[list] = None):
     """Serve the EXACT ``build_http_app()`` output over a real 127.0.0.1
     TCP socket, in a daemon thread, and yield ``(base_url, server, app)``.
 
@@ -244,6 +245,13 @@ def run_live_server():
     construction (same technique as
     ``tests/test_tool_schema_snapshot.py::_build_servers``, line 107) so
     E2E startup performs zero FortiGate network I/O.
+
+    Args:
+        require_auth: threaded into the temp config's ``auth.require_auth``
+            (default False, matching every pre-existing caller of this
+            function -- the default-unauthenticated live server).
+        api_tokens: threaded into the temp config's ``auth.api_tokens``
+            (default ``[]`` when None, matching every pre-existing caller).
     """
     config = {
         "server": {"host": "0.0.0.0", "port": 8814, "name": "test", "version": "1.0.0"},
@@ -258,7 +266,11 @@ def run_live_server():
                 }
             }
         },
-        "auth": {"require_auth": False, "api_tokens": [], "allowed_origins": ["*"]},
+        "auth": {
+            "require_auth": require_auth,
+            "api_tokens": api_tokens or [],
+            "allowed_origins": ["*"],
+        },
         "logging": {"level": "INFO", "console": True},
     }
     fd, config_path = tempfile.mkstemp(suffix=".json", prefix="e2e_config_")
@@ -342,6 +354,22 @@ def run_live_server():
 def live_server():
     """Module-scoped live uvicorn E2E server -- amortizes startup cost
     across every test in ``tests/test_e2e_http.py``. Yields
-    ``(base_url, server, app)``."""
+    ``(base_url, server, app)``.
+
+    ``require_auth`` stays at its default False -- the default,
+    unauthenticated live server proving SEC-05 changed nothing about the
+    pre-existing behavior every test in this module already relies on."""
     with run_live_server() as ctx:
+        yield ctx
+
+
+@pytest.fixture(scope="module")
+def live_server_auth_required():
+    """Module-scoped live uvicorn E2E server with ``require_auth=True`` and
+    a single configured Bearer token, proving SEC-05's HTTP auth
+    enforcement against a real served app (not a hand-built stand-in).
+    Yields ``(base_url, server, app)``."""
+    with run_live_server(
+        require_auth=True, api_tokens=["e2e-test-token-not-real"]
+    ) as ctx:
         yield ctx
