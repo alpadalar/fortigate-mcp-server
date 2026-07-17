@@ -2,13 +2,17 @@
 FortiGate API tests
 """
 
+import json
+
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
+import respx
 
 from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
 from src.fortigate_mcp.tools.firewall import FirewallTools
+from tests.support.fake_fortigate import fortigate_router
 
 
 # 13 identifier-bearing FortiGateAPI methods x their expected dispatch shape:
@@ -518,3 +522,55 @@ class TestFortiGateAPITokenLeak:
                 self.api._make_request("GET", "monitor/system/status")
 
         assert self.FAKE_TOKEN not in caplog.text
+
+
+class TestFortiGateAPIRespx:
+    """respx-based HTTP-boundary tests (CONS-03): FortiGateAPI is exercised
+    through the real httpx.Client request path against a respx mock router,
+    with zero code changes to core/fortigate.py. Regression-tests the
+    dict-vs-string create-tool bug class at the wire, and proves
+    scrub_secrets fires on a real error-response body (non-vacuous)."""
+
+    FAKE_TOKEN = "test-token-not-real"
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10",
+            api_token=self.FAKE_TOKEN,
+            vdom="root",
+        )
+        self.api = FortiGateAPI("test_device", config)
+
+    def test_get_firewall_policies_via_respx(self, fake_fortigate_router):
+        """Uses the ACTIVE conftest fixture -- proving it is live, not dead
+        code. The router is already entered by the fixture."""
+        result = self.api.get_firewall_policies()
+
+        assert result["results"][0]["name"] == "Allow_HTTP"
+
+    def test_create_address_object_request_body_preserves_fqdn_payload(self):
+        """HTTP-boundary regression for the historical dict-vs-string
+        create-tool bug class: the exact input dict must cross the wire
+        unchanged (fqdn preserved, no spurious 'subnet' key)."""
+        with fortigate_router() as router:
+            self.api.create_address_object(
+                {"name": "addr3", "type": "fqdn", "fqdn": "example.com"}, vdom="root"
+            )
+
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {"name": "addr3", "type": "fqdn", "fqdn": "example.com"}
+
+    def test_401_response_raises_scrubbed_error(self):
+        """Non-vacuous redaction proof: the 401 fixture's error text
+        deliberately embeds 'Bearer test-token-not-real'. Asserting the
+        ***REDACTED*** marker's PRESENCE proves scrub_secrets actually ran
+        on this exact string, not merely that the fixture was token-free."""
+        with fortigate_router() as router:
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                self.api.get_system_status()
+
+        assert exc_info.value.status_code == 401
+        assert "***REDACTED***" in str(exc_info.value)
+        assert self.FAKE_TOKEN not in str(exc_info.value)
+        assert "Not Authorized" in str(exc_info.value)
