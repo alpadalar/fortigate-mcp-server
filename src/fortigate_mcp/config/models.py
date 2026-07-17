@@ -44,7 +44,16 @@ class FortiGateDeviceConfig(StrictConfigModel):
     password: Optional[SecretStr] = Field(default=None, description="Password for authentication")
     api_token: Optional[SecretStr] = Field(default=None, description="API token for authentication")
     vdom: str = Field(default="root", description="Virtual Domain name")
-    verify_ssl: bool = Field(default=False, description="SSL certificate verification")
+    # Config-loaded devices are secure-by-default (SEC-04). Note the runtime
+    # asymmetry: the add_device MCP tool's verify_ssl parameter keeps its own
+    # frozen schema default of False (registry.py) because the MCP tool
+    # surface is a byte-frozen contract for this release line -- devices
+    # added at runtime without an explicit verify_ssl=true remain unverified.
+    # ACCEPTED EXCEPTION, documented for Phase 5 SECURITY.md.
+    verify_ssl: bool = Field(
+        default=True,
+        description="Verify the device TLS certificate; defaults to true for configured devices",
+    )
     timeout: int = Field(default=30, gt=0, description="Request timeout in seconds")
 
     @field_validator("host")

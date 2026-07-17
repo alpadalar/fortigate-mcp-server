@@ -53,6 +53,17 @@ class FortiGateAPI:
         self.config = config
         self.logger = get_logger(f"device.{device_id}")
 
+        # SEC-04: explicit opt-out of TLS verification is a deliberate,
+        # logged operator/caller choice -- fires at construction time for
+        # both config-loaded devices and devices added at runtime, since
+        # both paths construct a FortiGateAPI here.
+        if not config.verify_ssl:
+            self.logger.warning(
+                f"Device {device_id}: TLS certificate verification is DISABLED "
+                f"(verify_ssl=False) -- this connection is exposed to "
+                f"man-in-the-middle tampering"
+            )
+
         # Build base URL (IPv6 literals must be bracketed in the URL authority --
         # a validated host containing ':' can only be an IPv6 literal, since
         # validate_host rejects embedded :port for IPv4/hostnames)

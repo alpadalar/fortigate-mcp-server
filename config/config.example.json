@@ -3,7 +3,8 @@
     "host": "0.0.0.0",
     "port": 8814,
     "name": "fortigate-mcp-server",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "allow_writes": false
   },
   "fortigate": {
     "devices": {
@@ -14,7 +15,7 @@
         "password": "your_password",
         "api_token": "",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       },
       "backup": {
@@ -22,7 +23,7 @@
         "port": 443,
         "api_token": "your_api_token_here",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       }
     }

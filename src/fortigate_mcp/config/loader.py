@@ -159,7 +159,8 @@ def create_example_config() -> dict:
             "host": "0.0.0.0",
             "port": 8814,
             "name": "fortigate-mcp-server",
-            "version": "1.0.0"
+            "version": "1.0.0",
+            "allow_writes": False
         },
         "fortigate": {
             "devices": {
@@ -170,15 +171,15 @@ def create_example_config() -> dict:
                     "password": "your_password",
                     "api_token": "",
                     "vdom": "root",
-                    "verify_ssl": False,
+                    "verify_ssl": True,
                     "timeout": 30
                 },
                 "backup": {
-                    "host": "192.168.1.2", 
+                    "host": "192.168.1.2",
                     "port": 443,
                     "api_token": "your_api_token_here",
                     "vdom": "root",
-                    "verify_ssl": False,
+                    "verify_ssl": True,
                     "timeout": 30
                 }
             }

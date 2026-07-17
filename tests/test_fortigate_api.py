@@ -11,6 +11,7 @@ import respx
 
 from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
+from src.fortigate_mcp.config.loader import create_example_config
 from src.fortigate_mcp.tools.firewall import FirewallTools
 from tests.support.fake_fortigate import fortigate_router
 
@@ -574,3 +575,72 @@ class TestFortiGateAPIRespx:
         assert "***REDACTED***" in str(exc_info.value)
         assert self.FAKE_TOKEN not in str(exc_info.value)
         assert "Not Authorized" in str(exc_info.value)
+
+
+class TestFortiGateDeviceConfigTLSDefault:
+    """SEC-04: config-loaded devices are secure-by-default for TLS
+    verification; an explicit opt-out is still possible but is logged."""
+
+    def test_verify_ssl_omitted_defaults_to_true(self):
+        config = FortiGateDeviceConfig(host="198.51.100.10", api_token="tok")
+
+        assert config.verify_ssl is True
+
+    def test_verify_ssl_explicit_false_still_constructs_and_warns(self, caplog):
+        """Explicit opt-out is still permitted, but must emit an unmissable
+        WARNING naming the device -- constructor placement means this fires
+        for both startup-configured AND runtime-added (add_device) devices."""
+        caplog.set_level("WARNING")
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10", api_token="tok", verify_ssl=False
+        )
+
+        api = FortiGateAPI("insecure_device", config)
+
+        assert api.config.verify_ssl is False
+        warning_records = [r for r in caplog.records if r.levelname == "WARNING"]
+        assert any("insecure_device" in r.message for r in warning_records)
+        assert any(
+            "TLS certificate verification is DISABLED" in r.message
+            for r in warning_records
+        )
+
+    def test_verify_ssl_true_emits_no_tls_warning(self, caplog):
+        caplog.set_level("WARNING")
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10", api_token="tok", verify_ssl=True
+        )
+
+        FortiGateAPI("secure_device", config)
+
+        assert not any(
+            "TLS certificate verification is DISABLED" in r.message
+            for r in caplog.records
+        )
+
+
+class TestCreateExampleConfigSecureDefaults:
+    """SEC-04/T-04-08: both config examples (checked-in JSON and the
+    generated create_example_config()) must show the secure defaults, so
+    neither copy-paste template drifts insecure."""
+
+    def test_create_example_config_shows_verify_ssl_true_and_writes_disabled(self):
+        example = create_example_config()
+
+        assert example["server"]["allow_writes"] is False
+        devices = example["fortigate"]["devices"]
+        assert len(devices) > 0
+        for device_id, device_data in devices.items():
+            assert device_data["verify_ssl"] is True, (
+                f"device '{device_id}' example must default verify_ssl to true"
+            )
+
+    def test_create_example_config_output_is_json_serializable_and_parses(self):
+        example = create_example_config()
+
+        serialized = json.dumps(example)
+        parsed = json.loads(serialized)
+
+        assert parsed["server"]["allow_writes"] is False
+        for device_data in parsed["fortigate"]["devices"].values():
+            assert device_data["verify_ssl"] is True
