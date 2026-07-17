@@ -5,7 +5,6 @@ This module provides an HTTP transport layer for the MCP server,
 supporting HTTP transport for web-based integrations and external access.
 """
 
-import logging
 import os
 import sys
 import signal
@@ -31,8 +30,6 @@ from .tools.firewall import FirewallTools
 from .tools.network import NetworkTools
 from .tools.routing import RoutingTools
 from .tools.virtual_ip import VirtualIPTools
-
-logger = logging.getLogger("fortigate-mcp.http")
 
 class FortiGateMCPHTTPServer:
     """
