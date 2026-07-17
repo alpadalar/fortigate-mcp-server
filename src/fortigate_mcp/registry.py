@@ -62,6 +62,54 @@ from .tools.definitions import (
 )
 
 
+RISK_CLASSIFICATION = {
+    # read -- list/get/discover/test/health/schema/server-info, never gated
+    "list_devices": "read",
+    "get_device_status": "read",
+    "test_device_connection": "read",
+    "discover_vdoms": "read",
+    "list_firewall_policies": "read",
+    "get_firewall_policy_detail": "read",
+    "list_address_objects": "read",
+    "list_service_objects": "read",
+    "list_static_routes": "read",
+    "get_routing_table": "read",
+    "list_interfaces": "read",
+    "get_interface_status": "read",
+    "get_static_route_detail": "read",
+    "list_virtual_ips": "read",
+    "get_virtual_ip_detail": "read",
+    "health_check": "read",
+    "get_server_info": "read",
+    "test_connection": "read",
+    "health": "read",
+    "get_schema_info": "read",
+    # write -- create_*/update_*/add_device
+    "add_device": "write",
+    "create_firewall_policy": "write",
+    "update_firewall_policy": "write",
+    "create_address_object": "write",
+    "create_service_object": "write",
+    "update_static_route": "write",
+    "create_static_route": "write",
+    "create_virtual_ip": "write",
+    "update_virtual_ip": "write",
+    # destructive -- delete_*/remove_device
+    "remove_device": "destructive",
+    "delete_firewall_policy": "destructive",
+    "delete_static_route": "destructive",
+    "delete_virtual_ip": "destructive",
+}
+"""Canonical per-tool risk classification (SEC-02).
+
+Single source of truth for BOTH the dispatch-layer read-only gate (SEC-01,
+``_tool()``'s ``_gate`` helper below) and Phase 5's SECURITY.md tool-risk
+table. Covers all 33 unique tool names registered across transports;
+completeness is enforced by ``tests/test_write_gate.py``. An unclassified
+name is a registration-time KeyError (see ``_gate``), not a silent gap.
+"""
+
+
 def _format_json_response(data: Any, operation: str = "operation", logger: Any = None) -> List[Content]:
     """Module-level replacement for server_http.py's ``self._format_response``.
 
