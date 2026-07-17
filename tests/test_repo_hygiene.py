@@ -8,11 +8,14 @@ non-pytest ``integration_tests.py`` script that requires a live server).
 
 import json
 import os
+import re
 import subprocess
 import zipfile
 from pathlib import Path
 
 import pytest
+
+from src.fortigate_mcp.registry import RISK_CLASSIFICATION
 
 
 def _repo_root() -> Path:
@@ -168,6 +171,93 @@ def test_http_guide_no_verify_ssl_false_recommendation():
 
     assert "verify_ssl: false" not in text
     assert '"verify_ssl": false' not in text
+
+
+# --- SECURITY.md (REL-03) --------------------------------------------------
+
+_ROW_GRAMMAR = re.compile(r"^\| `(\w+)` \| (read|write|destructive) \|$")
+
+
+def test_security_md_risk_table_matches_registry():
+    """SECURITY.md's '### Tool Risk Classification' table must parse to
+    EXACTLY RISK_CLASSIFICATION -- row count checked on the raw list BEFORE
+    any dict conversion (so a duplicated row cannot silently collapse and
+    pass), and every table-body line must match the exact row grammar or
+    the test fails immediately (Cycle 2, Codex HIGH-3)."""
+    repo_root = _repo_root()
+    text = (repo_root / "SECURITY.md").read_text()
+
+    match = re.search(r"### Tool Risk Classification\n(.*?)\n\n", text, re.DOTALL)
+    assert match, "'### Tool Risk Classification' section not found in SECURITY.md"
+
+    table_lines = [
+        line.strip() for line in match.group(1).splitlines() if line.strip().startswith("|")
+    ]
+    # First two "|"-prefixed lines are the header row and the "|---|---|"
+    # separator row -- everything after that is table body.
+    body_lines = table_lines[2:]
+
+    parsed_rows = []
+    for line in body_lines:
+        row_match = _ROW_GRAMMAR.match(line)
+        assert row_match, f"Table body line does not match expected row grammar: {line!r}"
+        parsed_rows.append((row_match.group(1), row_match.group(2)))
+
+    # (1) Row count checked on the LIST, before any dict conversion.
+    assert len(parsed_rows) == len(RISK_CLASSIFICATION), (
+        f"Parsed {len(parsed_rows)} rows, expected {len(RISK_CLASSIFICATION)} "
+        "(RISK_CLASSIFICATION entry count) -- a duplicated row would silently "
+        "collapse if checked only after dict conversion."
+    )
+    # (2) Exact dict equality -- not a subset/superset check.
+    assert dict(parsed_rows) == RISK_CLASSIFICATION
+
+
+def test_security_md_documents_add_device_tls_exception():
+    """The add_device verify_ssl runtime exception must appear as a windowed,
+    same-section limitation -- not merely 'appears anywhere in the file'."""
+    repo_root = _repo_root()
+    text = (repo_root / "SECURITY.md").read_text()
+
+    heading_index = text.index("## Known Security Limitations")
+    window = text[heading_index : heading_index + 1500]
+
+    assert "add_device" in window
+    assert "verify_ssl" in window
+
+
+def test_security_md_does_not_overclaim_rate_limiting():
+    """SECURITY.md must state rate limiting is not enforced, and must not
+    instruct readers to 'Enable rate limiting' as if it were a working control."""
+    repo_root = _repo_root()
+    text = (repo_root / "SECURITY.md").read_text()
+    lowered = text.lower()
+
+    assert "not enforced" in lowered
+    assert "rate limiting" in lowered
+    assert "enable rate limiting" not in lowered
+
+
+def test_security_md_mentions_pvr_reporting_channel():
+    """SECURITY.md must name GitHub Private Vulnerability Reporting (or link
+    the security/advisories path) as the vulnerability-reporting channel."""
+    repo_root = _repo_root()
+    text = (repo_root / "SECURITY.md").read_text()
+
+    assert "Private Vulnerability Reporting" in text or "security/advisories" in text
+
+
+def test_security_md_recommends_loopback_bind():
+    """SECURITY.md's Implemented Security Controls section must recommend
+    127.0.0.1 (loopback) for unauthenticated HTTP, contrasted with 0.0.0.0."""
+    repo_root = _repo_root()
+    text = (repo_root / "SECURITY.md").read_text()
+
+    heading_index = text.index("Implemented Security Controls")
+    window = text[heading_index:]
+
+    assert "127.0.0.1" in window
+    assert "0.0.0.0" in window
 
 
 # --- MCP client config examples (examples/*.json) -------------------------
