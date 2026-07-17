@@ -1,20 +1,24 @@
 # FortiGate MCP Server
 
-FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for managing FortiGate devices. This project provides programmatic access to FortiGate devices and enables integration with MCP-compatible tools like Cursor.
+FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for managing FortiGate devices. This project provides programmatic access to FortiGate devices and enables integration with MCP-compatible clients such as Claude Desktop, Claude Code, and Cursor.
 
 ## 🚀 Features
+
+FortiGate MCP Server exposes 33 unique tools, 61 total tool-surface registrations across stdio (30) and HTTP (31) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
 
 - **Device Management**: Add, remove, and test connections to FortiGate devices
 - **Firewall Management**: List, create, update, and delete firewall rules
 - **Network Management**: Manage address and service objects
 - **Routing Management**: Manage static routes and interfaces
+- **Virtual IP Management**: Manage virtual IPs (VIP/DNAT)
 - **HTTP Transport**: MCP protocol over HTTP using FastMCP
 - **Docker Support**: Easy installation and deployment
-- **Cursor Integration**: Full integration with Cursor IDE
+- **MCP Client Integration**: Works with Claude Desktop, Claude Code, Cursor, and other MCP-compatible clients
 
 ## 📋 Requirements
 
-- Python 3.8+
+- Python 3.11+
+- `uv` package manager (recommended) or `pip`
 - Access to FortiGate device
 - API token or username/password
 
@@ -23,39 +27,46 @@ FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for m
 ### 1. Clone the Project
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/alpadalar/fortigate-mcp-server.git
 cd fortigate-mcp-server
 ```
 
 ### 2. Install Dependencies
 
 ```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# or
-.venv\Scripts\activate  # Windows
+# Using uv (recommended) - installs the locked, reproducible dependency set
+uv sync --locked
 
-# Install dependencies
-pip install -r requirements.txt
+# Or using pip
+pip install -e .
 ```
 
 ### 3. Configuration
 
-Edit the `config/config.json` file:
+Create your local config from the committed example (`config/config.json` is gitignored and does
+not exist on a fresh clone):
+
+```bash
+cp config/config.example.json config/config.json
+```
+
+Then edit `config/config.json`:
 
 ```json
 {
+  "server": {
+    "allow_writes": false
+  },
   "fortigate": {
     "devices": {
       "default": {
         "host": "192.168.1.1",
         "port": 443,
         "username": "admin",
-        "password": "password",
+        "password": "your_password",
         "api_token": "your-api-token",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       }
     }
@@ -77,11 +88,15 @@ Edit the `config/config.json` file:
 
 # Or manually
 python -m src.fortigate_mcp.server_http \
-  --host 0.0.0.0 \
+  --host 127.0.0.1 \
   --port 8814 \
   --path /fortigate-mcp \
   --config config/config.json
 ```
+
+Use `--host 0.0.0.0` only if you need access from other machines on the network AND have
+`auth.require_auth=true` configured in `config/config.json`; otherwise keep `127.0.0.1` —
+unauthenticated HTTP should never bind wider than loopback.
 
 ### Run with Docker
 
@@ -93,65 +108,62 @@ docker-compose up -d
 docker-compose logs -f fortigate-mcp-server
 ```
 
-## 🔧 Cursor MCP Integration
+## 🔧 MCP Client Integration
 
-### 1. Cursor MCP Configuration
+FortiGate MCP Server works with any MCP-compatible client. Verified, ready-to-use config examples
+are provided for Claude Desktop, Claude Code, and Cursor:
 
-Edit `~/.cursor/mcp_servers.json` in Cursor:
+- [`examples/claude_desktop_config.stdio.json`](examples/claude_desktop_config.stdio.json) — Claude Desktop, stdio transport (recommended)
+- [`examples/claude_desktop_config.http.json`](examples/claude_desktop_config.http.json) — Claude Desktop, HTTP transport via the `mcp-remote` bridge
+- [`examples/claude_code_mcp.json`](examples/claude_code_mcp.json) — Claude Code project-scope `.mcp.json` (stdio and HTTP entries)
+- [`examples/cursor_mcp_config.json`](examples/cursor_mcp_config.json) — Cursor MCP configuration
 
-#### Option 1: Command Connection
+Every stdio example in this project launches the server via `uv run --directory <path> python -m
+src.fortigate_mcp.server` instead of a bare `python -m ...` command. This matters because
+GUI-launched MCP clients (like Claude Desktop) commonly start commands from a directory other than
+the repo root — the explicit `--directory` flag makes the invocation working-directory
+independent, so it keeps working regardless of where the client process happens to start from.
+
+### Claude Code (`.mcp.json`)
+
+Add a project-scope `.mcp.json` at your repository root (see
+`examples/claude_code_mcp.json` for the full file, including the HTTP entry):
 
 ```json
 {
   "mcpServers": {
-    "fortigate-mcp": {
-      "command": "python",
-      "args": [
-        "-m",
-        "src.fortigate_mcp.server_http",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8814",
-        "--path",
-        "/fortigate-mcp",
-        "--config",
-        "/path/to/your/config.json"
-      ],
+    "fortigate-mcp-stdio": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "${CLAUDE_PROJECT_DIR}", "python", "-m", "src.fortigate_mcp.server"],
       "env": {
-        "FORTIGATE_MCP_CONFIG": "/path/to/your/config.json"
+        "FORTIGATE_MCP_CONFIG": "${CLAUDE_PROJECT_DIR}/config/config.json"
       }
     }
   }
 }
 ```
 
-#### Option 2: URL Connection (Recommended)
+Or register the HTTP transport via the Claude Code CLI:
 
-```json
-{
-  "mcpServers": {
-    "FortiGateMCP": {
-      "url": "http://0.0.0.0:8814/fortigate-mcp/",
-      "transport": "http"
-    }
-  }
-}
-```
-
-### 2. Using in Cursor
-
-To use FortiGate MCP in Cursor:
-
-1. **Start the server:**
 ```bash
-cd /media/workspace/fortigate-mcp-server
-python -m src.fortigate_mcp.server_http --host 0.0.0.0 --port 8814 --path /fortigate-mcp --config config/config.json
+claude mcp add --transport http fortigate-mcp http://127.0.0.1:8814/fortigate-mcp --header "Authorization: Bearer <token>"
 ```
 
-2. **Restart Cursor**
-3. **Ensure MCP server is running**
-4. **Use FortiGate commands in Cursor**
+`--header` is only needed when `auth.require_auth=true` is set in `config/config.json`.
+
+### Claude Desktop
+
+Claude Desktop's native config schema validates stdio servers only. Use
+`examples/claude_desktop_config.stdio.json` for the stdio transport (recommended). For the HTTP
+transport, `examples/claude_desktop_config.http.json` bridges to this server through the
+community `mcp-remote` npm package (`npx -y mcp-remote ...`) — this package is not vetted or
+installed by this project; inspect it yourself before running it, since `npx` fetches and
+executes third-party code on your behalf.
+
+### Cursor
+
+See `examples/cursor_mcp_config.json` for a working stdio configuration.
 
 ## 📚 API Commands
 
@@ -208,54 +220,40 @@ python -m src.fortigate_mcp.server_http --host 0.0.0.0 --port 8814 --path /forti
 ### Run Tests
 
 ```bash
-# Run all unit tests (default)
-python -m pytest
+# Fast subset
+uv run pytest -q
 
-# Run with coverage
-python -m pytest --cov=src --cov-report=html
+# Full suite with coverage (--cov-fail-under=67 enforced per pyproject.toml)
+uv run pytest
 
-# Run specific test categories
-python -m pytest tests/test_device_manager.py
-python -m pytest tests/test_fortigate_api.py
-python -m pytest tests/test_tools.py
+# Run specific test files
+uv run pytest tests/test_device_manager.py
+uv run pytest tests/test_fortigate_api.py
+uv run pytest tests/test_tools.py
 
-# Run integration tests (requires server running)
-python integration_tests.py
+# Verbose output
+uv run pytest -v
 
-# Run only unit tests (default)
-python -m pytest tests/
-
-# Run with verbose output
-python -m pytest -v
-
-# Run with detailed error information
-python -m pytest --tb=long
+# Detailed error information
+uv run pytest --tb=long
 ```
 
 ### Test Categories
 
 - **Unit Tests**: Test individual components and functions
-- **Integration Tests**: Test HTTP server functionality (requires server running)
 - **Coverage**: Code coverage reporting with HTML output
-
-### HTTP Server Test
-
-```bash
-# Run test script
-python test_http_server.py
-```
 
 ### Manual Testing
 
 ```bash
 # Health check
-curl -X POST http://localhost:8814/fortigate-mcp \
+curl -X POST http://127.0.0.1:8814/fortigate-mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "health", "params": {}}'
 
 # List devices
-curl -X POST http://localhost:8814/fortigate-mcp \
+curl -X POST http://127.0.0.1:8814/fortigate-mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "list_devices", "params": {}}'
@@ -268,22 +266,26 @@ fortigate-mcp-server/
 ├── src/
 │   └── fortigate_mcp/
 │       ├── __init__.py
+│       ├── server.py               # STDIO MCP server
 │       ├── server_http.py          # HTTP MCP server
 │       ├── config/                 # Configuration management
 │       ├── core/                   # Core components
 │       ├── tools/                  # MCP tools
 │       └── formatting/             # Response formatting
 ├── config/
-│   ├── config.json                # Main configuration
+│   ├── config.json                # Main configuration (gitignored, created from example)
 │   └── config.example.json        # Example configuration
 ├── examples/
-│   └── cursor_mcp_config.json     # Cursor MCP config
+│   ├── claude_desktop_config.stdio.json  # Claude Desktop, stdio transport
+│   ├── claude_desktop_config.http.json   # Claude Desktop, HTTP via mcp-remote
+│   ├── claude_code_mcp.json               # Claude Code .mcp.json
+│   └── cursor_mcp_config.json             # Cursor MCP config
 ├── logs/                          # Log files
 ├── tests/                         # Test files
 ├── docker-compose.yml             # Docker compose
 ├── Dockerfile                     # Docker image
-├── start_http_server.sh           # Startup script
-├── test_http_server.py            # Test script
+├── start_server.sh                # STDIO startup script
+├── start_http_server.sh           # HTTP startup script
 └── README.md                      # This file
 ```
 
@@ -294,7 +296,9 @@ fortigate-mcp-server/
 1. **Connection Error**
    - Ensure FortiGate device is accessible
    - Verify API token or username/password
-   - Use `verify_ssl: false` for SSL certificate issues
+   - If you see SSL certificate errors, install the FortiGate device's certificate as trusted (or
+     replace it with a CA-signed certificate) — do not disable certificate verification.
+     `verify_ssl` defaults to `true` and must stay `true`; see SECURITY.md for the rationale.
 
 2. **Port Conflict**
    - Ensure port 8814 is available
@@ -304,10 +308,10 @@ fortigate-mcp-server/
    - Ensure `config.json` is properly formatted
    - Check JSON syntax
 
-4. **Cursor MCP Connection Issue**
-   - Ensure server is running
-   - Verify URL is correct
-   - Restart Cursor
+4. **MCP Client Connection Issue**
+   - Ensure the server is running
+   - Verify the config file path and URL are correct
+   - Restart the MCP client (Claude Desktop / Claude Code / Cursor)
 
 ### Logs
 
@@ -323,23 +327,33 @@ docker-compose logs -f fortigate-mcp-server
 
 ## 🔒 Security
 
-### Recommendations
+### Implemented Controls
 
-1. **Use API Tokens**
-   - Use API tokens instead of username/password
-   - Store tokens securely
+1. **Write protection (default: read-only)**
+   - Write and destructive tools are rejected unless explicitly enabled via
+     `server.allow_writes: true` in config, or the `FORTIGATE_MCP_ALLOW_WRITES=1` environment
+     variable
 
-2. **SSL Certificate**
-   - Use SSL certificates in production
-   - Set `verify_ssl: true`
+2. **TLS certificate verification (default: on)**
+   - Config-loaded devices verify TLS certificates by default (`verify_ssl: true`)
 
-3. **Network Security**
-   - Run MCP server only on secure networks
-   - Restrict access with firewall rules
+3. **Bearer-token authentication (optional, default: off)**
+   - Available via `auth.require_auth` / `auth.api_tokens`; unauthenticated by default — run only
+     on trusted networks when disabled
 
-4. **Rate Limiting**
-   - Enable rate limiting
-   - Limit API calls
+4. **Secret redaction**
+   - API tokens and passwords are stored as `SecretStr` and are never written to logs
+
+### Known Limitations
+
+- Rate limiting is parsed from config but **not enforced** — do not rely on it as a working
+  control.
+- Unauthenticated HTTP (the default) should bind to `127.0.0.1` (loopback) only; binding to
+  `0.0.0.0` for wider network access requires enabling Bearer auth
+  (`auth.require_auth=true`) plus network-level controls (firewall rules, VPN, reverse-proxy
+  allowlists).
+
+See [SECURITY.md](SECURITY.md) for the full threat model and known limitations.
 
 ## 🤝 Contributing
 
@@ -357,12 +371,11 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 - [FastMCP](https://gofastmcp.com/) - For MCP HTTP transport
 - [FortiGate API](https://docs.fortinet.com/document/fortigate/7.4.0/administration-guide/109229/rest-api) - For FortiGate integration
-- [Cursor](https://cursor.sh/) - For MCP support
 
 ## 📞 Support
 
 For issues:
-- Use the [Issues](https://github.com/your-repo/issues) page
+- Use the [Issues](https://github.com/alpadalar/fortigate-mcp-server/issues) page
 - Check the documentation
 - Review the logs
 

@@ -61,6 +61,74 @@ def test_http_server_docstring_matches_reality():
     assert text.count("not currently enforced") == 1
 
 
+def test_readme_tr_removed():
+    """The Turkish-duplicate readme_tr.md must stay removed -- one canonical
+    English README going forward (05-CONTEXT.md locked decision)."""
+    repo_root = _repo_root()
+
+    assert not (repo_root / "readme_tr.md").exists(), (
+        "readme_tr.md reappeared at the repo root. This project ships a "
+        "single canonical English README; no bilingual sync going forward."
+    )
+
+
+def test_readme_has_no_requirements_txt_reference():
+    """README.md must not reference a requirements file that does not exist
+    anywhere in this repository -- the real install path is uv/pyproject.toml."""
+    repo_root = _repo_root()
+    text = (repo_root / "README.md").read_text()
+
+    assert "requirements.txt" not in text
+
+
+def test_readme_python_version_matches_pyproject():
+    """README.md must state the actual >=3.11 requirement from pyproject.toml,
+    not the stale 3.8+ claim."""
+    repo_root = _repo_root()
+    text = (repo_root / "README.md").read_text()
+
+    assert "3.11+" in text
+    assert "3.8+" not in text
+
+
+def test_readme_tool_count_phrasing():
+    """README.md must use the qualified tool-count phrasing from
+    tests/test_tool_schema_snapshot.py's docstring -- a bare '61 tools'
+    claim is misleading (61 is transport registrations, not unique tools)."""
+    repo_root = _repo_root()
+    text = (repo_root / "README.md").read_text()
+
+    assert "33 unique tools" in text
+
+
+def test_dockerfile_does_not_copy_pytest_ini():
+    """Dockerfile must not COPY the deleted pytest.ini -- pytest config now
+    lives entirely in pyproject.toml."""
+    repo_root = _repo_root()
+    text = (repo_root / "Dockerfile").read_text()
+
+    assert "pytest.ini" not in text
+
+
+def test_readme_no_verify_ssl_false_recommendation():
+    """README.md must never recommend disabling TLS certificate verification,
+    in its config example block or its Troubleshooting section."""
+    repo_root = _repo_root()
+    text = (repo_root / "README.md").read_text()
+
+    assert "verify_ssl: false" not in text
+    assert '"verify_ssl": false' not in text
+
+
+def test_readme_recommends_loopback_bind():
+    """README.md must present 127.0.0.1 (loopback) as the bind-address
+    recommendation for unauthenticated HTTP."""
+    repo_root = _repo_root()
+    text = (repo_root / "README.md").read_text()
+
+    assert "127.0.0.1" in text
+
+
 @pytest.mark.slow
 @pytest.mark.skipif(
     os.environ.get("PACKAGING_CHECKS") != "1",

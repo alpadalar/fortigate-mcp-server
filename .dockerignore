@@ -77,6 +77,13 @@ docs/_build/
 .env.local
 .env.production
 
+# Local runtime config containing live secrets (API tokens/passwords) -
+# gitignored and must never be baked into a built image; config.example.json
+# (the only config file this repo tracks) is unaffected by this exclusion.
+config/config.json
+config/config.yaml
+config/local_config.yaml
+
 # Temporary files
 *.tmp
 *.temp

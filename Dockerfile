@@ -43,7 +43,6 @@ RUN uv pip install --system --no-cache-dir -e .
 # Copy remaining application code
 COPY config/ config/
 COPY tests/ tests/
-COPY pytest.ini .
 
 # Create logs directory
 RUN mkdir -p /app/logs && \
