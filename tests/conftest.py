@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
+from tests.support.fake_fortigate import fortigate_router
 
 
 @pytest.fixture
@@ -173,6 +174,20 @@ def tmp_config_path(tmp_path):
         )
     )
     yield str(config_file)
+
+
+# Two supported styles for consuming the respx FortiGate mock harness:
+# - `fake_fortigate_router` (below): ACTIVE fixture, enters the router
+#   context for the whole test -- use when a single router instance
+#   covers the entire test body.
+# - `fortigate_router()` called explicitly inside a `with` block: use
+#   when per-test scoping (a fresh router per assertion) reads better.
+@pytest.fixture
+def fake_fortigate_router():
+    """Active respx router fixture (calls cleared once context exits)."""
+    router = fortigate_router()
+    with router:
+        yield router
 
 
 @pytest.fixture
