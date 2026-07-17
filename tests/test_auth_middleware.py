@@ -19,6 +19,10 @@ only, matching this repo's existing convention (see test_config_strict.py).
 """
 
 import hmac
+import json
+import os
+import tempfile
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -28,8 +32,12 @@ from starlette.routing import Route
 from starlette.applications import Starlette
 
 from src.fortigate_mcp.config.models import AuthConfig
+from src.fortigate_mcp.core import logging as core_logging
 from src.fortigate_mcp.middleware import auth as auth_module
 from src.fortigate_mcp.middleware.auth import AuthMiddleware
+from fastmcp.server.http import RequestContextMiddleware
+from src.fortigate_mcp.middleware.trace import TraceMiddleware
+from src.fortigate_mcp.server_http import FortiGateMCPHTTPServer
 
 
 async def _root(request):
@@ -225,3 +233,71 @@ class TestAuthConfigValidators:
         with pytest.raises(ValidationError) as excinfo:
             AuthConfig(require_auth=False, api_tokens=[secret_shaped + "\r\n"])
         assert secret_shaped not in str(excinfo.value)
+
+
+# --- Task 2: build_http_app() wiring proofs against server_http.py itself ---
+
+
+def _build_http_server(require_auth: bool, api_tokens) -> FortiGateMCPHTTPServer:
+    """Construct a real FortiGateMCPHTTPServer with zero socket access,
+    mirroring tests/test_tool_schema_snapshot.py::_build_servers's
+    tempfile-config + _test_initial_connection no-op patch pattern."""
+    config = {
+        "server": {"host": "0.0.0.0", "port": 8814, "name": "test", "version": "1.0.0"},
+        "fortigate": {
+            "devices": {
+                "default": {
+                    "host": "198.51.100.10",
+                    "api_token": "test-token-not-real",
+                    "vdom": "root",
+                    "verify_ssl": False,
+                    "timeout": 1,
+                }
+            }
+        },
+        "auth": {
+            "require_auth": require_auth,
+            "api_tokens": api_tokens,
+            "allowed_origins": ["*"],
+        },
+        "logging": {"level": "INFO", "console": True},
+    }
+    fd, config_path = tempfile.mkstemp(suffix=".json", prefix="auth_wiring_config_")
+    with os.fdopen(fd, "w") as f:
+        json.dump(config, f)
+    try:
+        with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
+            return FortiGateMCPHTTPServer(config_path=config_path)
+    finally:
+        os.unlink(config_path)
+
+
+class TestBuildHttpAppWiring:
+    """Structural proofs against server_http.py's build_http_app() itself.
+
+    Note: fastmcp's own ``http_app()`` unconditionally appends
+    ``RequestContextMiddleware`` AFTER whatever list ``build_http_app()``
+    passes it (verified live this session against the installed fastmcp
+    2.11.3) -- it is not something build_http_app() adds itself. The
+    equality assertions below pin the full observed order (our own
+    middleware plus fastmcp's own addition) rather than a bare membership
+    check, so a regression in EITHER our wiring or fastmcp's own append
+    behavior is caught.
+    """
+
+    def test_require_auth_true_wires_trace_then_auth_in_order(self):
+        server = _build_http_server(True, ["wiring-test-token-not-real"])
+        app = server.build_http_app()
+        classes = [m.cls for m in app.user_middleware]
+        assert classes == [TraceMiddleware, AuthMiddleware, RequestContextMiddleware]
+
+    def test_require_auth_false_wires_trace_only(self):
+        server = _build_http_server(False, [])
+        app = server.build_http_app()
+        classes = [m.cls for m in app.user_middleware]
+        assert AuthMiddleware not in classes
+        assert classes == [TraceMiddleware, RequestContextMiddleware]
+
+    def test_require_auth_true_registers_token_for_redaction(self):
+        _build_http_server(True, ["wiring-test-token-not-real"])
+        assert "wiring-test-token-not-real" in core_logging._redaction_filter._secrets

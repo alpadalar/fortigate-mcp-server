@@ -23,6 +23,7 @@ from starlette.responses import JSONResponse
 from .config.loader import load_config
 from .core.logging import setup_logging
 from .core.fortigate import FortiGateManager
+from .middleware.auth import AuthMiddleware
 from .middleware.trace import TraceMiddleware
 from .registry import register_tools
 from .tools.device import DeviceTools
@@ -37,9 +38,11 @@ class FortiGateMCPHTTPServer:
 
     This server supports:
     - HTTP transport for web integration
-    - Authentication is not currently enforced (AuthConfig.require_auth is
-      parsed but never checked; the server is unauthenticated by default --
-      run only on trusted networks; enforcement is planned for Phase 4)
+    - Authentication is enforced by a pure-ASGI Bearer-token middleware
+      (middleware/auth.py::AuthMiddleware) when AuthConfig.require_auth is
+      True (default False -- unauthenticated by default; run only on
+      trusted networks). GET/HEAD /health stays token-exempt for liveness
+      probes even when require_auth is True.
     - Rate limiting is not currently enforced (RateLimitConfig is parsed
       but never checked)
     - CORS is not configured (AuthConfig.allowed_origins is parsed but not
@@ -65,13 +68,17 @@ class FortiGateMCPHTTPServer:
 
         # Collect boot-time device secrets so the redaction filter can
         # scrub them from any log line before the first handler is even
-        # created.
+        # created. HTTP bearer tokens (AuthConfig.api_tokens) are covered
+        # by the same filter as device secrets (T-04-12).
         secrets: set = set()
         for device_config in self.config.fortigate.devices.values():
             if device_config.api_token:
                 secrets.add(device_config.api_token.get_secret_value())
             if device_config.password:
                 secrets.add(device_config.password.get_secret_value())
+        for api_token in self.config.auth.api_tokens:
+            if api_token:
+                secrets.add(api_token)
 
         # Setup logging
         self.logger = setup_logging(self.config.logging, secrets=secrets)
@@ -154,16 +161,20 @@ class FortiGateMCPHTTPServer:
         ``run()`` and the E2E test fixture (``tests/conftest.py``) both call
         this -- never construct a second, separate ``http_app()`` anywhere.
 
-        Middleware ordering contract for Phase 4 (documented here, not yet
-        enforced): CORS must be OUTERMOST (first in the list) so an
-        unauthenticated CORS preflight OPTIONS is answered by CORSMiddleware
-        before any future Auth middleware can 401 it. Target order once
-        Phase 4 lands: ``[CORS, TrustedHost, Auth, RateLimit]``,
-        outermost-first. Uses the ``Middleware([...])`` list ONLY -- never
-        FastMCP's own middleware-registration method, which prepends (LIFO
-        order) and would invert this ordering.
+        Middleware ordering contract (enforced): Trace is OUTERMOST (first
+        in the list), Auth is next, applied only when
+        ``config.auth.require_auth`` is True. Trace stays outermost so the
+        trace-header canary still appears on a 401 response, proving the
+        middleware stack attached even when Auth denies a request. If CORS
+        is ever added, it goes outermost of all (ahead of Trace) so an
+        unauthenticated CORS preflight OPTIONS is answered before Auth can
+        401 it. Uses the ``Middleware([...])`` list ONLY -- never FastMCP's
+        own middleware-registration method, which prepends (LIFO order) and
+        would invert this ordering.
         """
         middleware = [Middleware(TraceMiddleware)]
+        if self.config.auth.require_auth:
+            middleware.append(Middleware(AuthMiddleware, api_tokens=self.config.auth.api_tokens))
         return self.mcp.http_app(path=self.path, middleware=middleware)
 
     def run(self) -> None:
