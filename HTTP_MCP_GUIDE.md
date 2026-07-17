@@ -6,26 +6,30 @@ Bu rehber, FortiGate MCP HTTP Server'ının nasıl kurulacağını ve kullanıla
 
 ### 1. Gereksinimler
 
-- Python 3.8+
-- pip veya uv
+- Python 3.11+
+- `uv` (önerilen) veya pip
 - FortiGate cihazına erişim
 
 ### 2. Bağımlılıkları Yükleme
 
 ```bash
-# Virtual environment oluştur
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# veya
-.venv\Scripts\activate  # Windows
+# uv ile (önerilen) -- kilitli, tekrarlanabilir bağımlılık kümesini kurar
+uv sync --locked
 
-# Bağımlılıkları yükle
-pip install -r requirements.txt
+# Veya pip ile
+pip install -e .
 ```
 
 ### 3. Konfigürasyon
 
-`config/config.json` dosyasını düzenleyin:
+Örnek dosyadan kendi yerel konfigürasyonunuzu oluşturun (`config/config.json` git tarafından
+takip edilmez ve temiz bir klonda mevcut değildir):
+
+```bash
+cp config/config.example.json config/config.json
+```
+
+Ardından `config/config.json` dosyasını düzenleyin:
 
 ```json
 {
@@ -38,7 +42,7 @@ pip install -r requirements.txt
         "password": "password",
         "api_token": "your-api-token",
         "vdom": "root",
-        "verify_ssl": false,
+        "verify_ssl": true,
         "timeout": 30
       }
     }
@@ -76,38 +80,28 @@ docker-compose up -d
 docker-compose logs -f fortigate-mcp-server
 ```
 
-## Cursor MCP Entegrasyonu
+## MCP İstemci Entegrasyonu
 
-### 1. Cursor MCP Konfigürasyonu
+FortiGate MCP Server, herhangi bir MCP uyumlu istemciyle çalışır. Claude Desktop, Claude Code ve
+Cursor için doğrulanmış konfigürasyon örnekleri `examples/` dizini altında bulunur:
 
-Cursor'da `~/.cursor/mcp_servers.json` dosyasını düzenleyin:
+- `examples/claude_desktop_config.stdio.json` — Claude Desktop, stdio transport (önerilen)
+- `examples/claude_desktop_config.http.json` — Claude Desktop, `mcp-remote` köprüsü üzerinden HTTP transport
+- `examples/claude_code_mcp.json` — Claude Code proje-kapsamlı `.mcp.json` (stdio + HTTP)
+- `examples/cursor_mcp_config.json` — Cursor MCP konfigürasyonu
 
-```json
-{
-  "mcpServers": {
-    "fortigate-mcp": {
-      "command": "python",
-      "args": [
-        "-m",
-        "src.fortigate_mcp.server_http",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8814",
-        "--path",
-        "/fortigate-mcp",
-        "--config",
-        "/path/to/your/config.json"
-      ],
-      "env": {
-        "FORTIGATE_MCP_CONFIG": "/path/to/your/config.json"
-      }
-    }
-  }
-}
-```
+Her stdio örneği, `python -m ...` yerine `uv run --directory <yol> python -m
+src.fortigate_mcp.server` çağrısını kullanır -- Claude Desktop gibi GUI tabanlı istemciler komutu
+genellikle repo kökü dışındaki bir dizinden başlattığı için `--directory` bayrağı bu çağrıyı
+çalışma dizininden bağımsız kılar. Bu proje README.md'nin "MCP Client Integration" bölümünde aynı
+örnekleri İngilizce olarak da açıklar; bu bölüm o anlatımı tekrar etmek yerine örnek dosyalara
+işaret eder.
 
-### 2. Cursor'da Kullanım
+Yetkisiz (kimlik doğrulamasız) HTTP sunucusu için `127.0.0.1` (loopback) adresine bağlanmanız
+önerilir; `auth.require_auth=true` etkinleştirilmeden `0.0.0.0` gibi daha geniş bir adrese
+bağlanmayın.
+
+### Cursor'da Kullanım
 
 Cursor'da FortiGate MCP'yi kullanmak için:
 
@@ -151,13 +145,6 @@ Cursor'da FortiGate MCP'yi kullanmak için:
 
 ## Test
 
-### HTTP Server Test
-
-```bash
-# Test script'ini çalıştır
-python test_http_server.py
-```
-
 ### Manuel Test
 
 ```bash
@@ -179,7 +166,10 @@ curl -X POST http://localhost:8814/fortigate-mcp \
 1. **Bağlantı Hatası**
    - FortiGate cihazının erişilebilir olduğundan emin olun
    - API token veya kullanıcı adı/şifre doğru olmalı
-   - SSL sertifikası sorunları için `verify_ssl: false` kullanın
+   - SSL sertifikası hatası alıyorsanız, FortiGate cihazının sertifikasını güvenilir olarak
+     yükleyin (veya CA imzalı bir sertifika ile değiştirin) -- sertifika doğrulamasını asla
+     devre dışı bırakmayın. `verify_ssl` varsayılan olarak `true` değerini alır ve bu şekilde
+     kalmalıdır; ayrıntılar için SECURITY.md dosyasına bakın.
 
 2. **Port Çakışması**
    - 8814 portunun kullanılabilir olduğundan emin olun
@@ -211,15 +201,17 @@ docker-compose logs -f fortigate-mcp-server
 
 2. **SSL Sertifikası**
    - Üretim ortamında SSL sertifikası kullanın
-   - `verify_ssl: true` yapın
+   - `verify_ssl: true` yapın (varsayılan değerdir, değiştirmeyin)
 
 3. **Ağ Güvenliği**
    - MCP server'ı sadece güvenli ağlarda çalıştırın
+   - Yetkisiz (kimlik doğrulamasız) HTTP için `127.0.0.1` (loopback) adresine bağlanın;
+     `0.0.0.0` gibi daha geniş bir adrese bağlanmak `auth.require_auth=true` gerektirir
    - Firewall kuralları ile erişimi kısıtlayın
 
 4. **Rate Limiting**
-   - Rate limiting'i etkinleştirin
-   - API çağrılarını sınırlayın
+   - Rate limiting şu anda parse edilir ama uygulanmaz (enforce edilmez) -- çalışan bir kontrol
+     olarak güvenmeyin
 
 ## Katkıda Bulunma
 

@@ -129,6 +129,33 @@ def test_readme_recommends_loopback_bind():
     assert "127.0.0.1" in text
 
 
+def test_http_guide_has_no_requirements_txt_reference():
+    """HTTP_MCP_GUIDE.md must not reference a requirements file that does not
+    exist anywhere in this repository -- the real install path is uv/pyproject.toml."""
+    repo_root = _repo_root()
+    text = (repo_root / "HTTP_MCP_GUIDE.md").read_text()
+
+    assert "requirements.txt" not in text
+
+
+def test_http_guide_python_version_matches_pyproject():
+    """HTTP_MCP_GUIDE.md must not claim the stale Python 3.8+ requirement."""
+    repo_root = _repo_root()
+    text = (repo_root / "HTTP_MCP_GUIDE.md").read_text()
+
+    assert "3.8+" not in text
+
+
+def test_http_guide_no_verify_ssl_false_recommendation():
+    """HTTP_MCP_GUIDE.md must never recommend disabling TLS certificate
+    verification, in its config example block or its Sorun Giderme section."""
+    repo_root = _repo_root()
+    text = (repo_root / "HTTP_MCP_GUIDE.md").read_text()
+
+    assert "verify_ssl: false" not in text
+    assert '"verify_ssl": false' not in text
+
+
 @pytest.mark.slow
 @pytest.mark.skipif(
     os.environ.get("PACKAGING_CHECKS") != "1",
