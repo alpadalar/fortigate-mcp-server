@@ -21,10 +21,14 @@ the ``mcp`` object passed in, so it is duck-typed across whichever engine(s)
 stdio and HTTP end up on (``mcp.server.fastmcp.FastMCP`` and/or
 ``fastmcp.FastMCP``).
 """
+import asyncio
+import functools
 import json
+import os
 from datetime import datetime
 from typing import Annotated, Any, List, Literal, Optional
 
+from fastmcp.exceptions import ToolError
 from pydantic import Field
 from mcp.types import TextContent as Content
 
@@ -150,10 +154,63 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
 
     registered: list = []
 
+    def _writes_allowed() -> bool:
+        """Read config + env fresh on EVERY call -- never cached at
+        import/registration time, so a test's or operator's override
+        always takes effect immediately. Mirrors server.py:90's
+        RUN_TESTS_ON_START truthy-parsing convention verbatim for
+        FORTIGATE_MCP_ALLOW_WRITES.
+        """
+        if tools.config.server.allow_writes:
+            return True
+        return os.getenv("FORTIGATE_MCP_ALLOW_WRITES", "0").lower() in ("1", "true", "yes", "on")
+
+    def _gate(fn):
+        """Wrap a write/destructive tool closure with the SEC-01
+        read-only-by-default gate. Looks up ``RISK_CLASSIFICATION[fn.__name__]``
+        -- an uncaught KeyError here is intentional: an unclassified tool
+        must crash registration loudly instead of shipping ungated. Returns
+        ``fn`` unchanged for read-classified tools (never gated).
+
+        Denial raises ``ToolError`` -- a protocol-level tool error
+        (``CallToolResult.is_error=True``), not ordinary Content, so MCP
+        clients can distinguish it mechanically from tool output.
+        """
+        risk_class = RISK_CLASSIFICATION[fn.__name__]
+        if risk_class == "read":
+            return fn
+
+        denial_message = (
+            f"{fn.__name__} is a {risk_class} tool and this server is running "
+            "in read-only mode; set server.allow_writes=true or "
+            "FORTIGATE_MCP_ALLOW_WRITES=1 to enable it"
+        )
+
+        if asyncio.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def async_wrapper(*args, **kwargs):
+                if not _writes_allowed():
+                    raise ToolError(denial_message)
+                return await fn(*args, **kwargs)
+            return async_wrapper
+
+        @functools.wraps(fn)
+        def sync_wrapper(*args, **kwargs):
+            if not _writes_allowed():
+                raise ToolError(denial_message)
+            return fn(*args, **kwargs)
+        return sync_wrapper
+
     def _tool(description):
         def decorator(fn):
             registered.append(fn.__name__)
-            return mcp.tool(description=description)(fn)
+            # Gate is the INNER wrap, mcp.tool() stays OUTER: FastMCP
+            # introspects whatever _gate(fn) returns, and functools.wraps
+            # keeps that introspectable signature byte-identical to `fn`'s
+            # for read-classified tools (_gate returns fn unchanged) and
+            # gated tools alike -- this is what keeps the golden schema
+            # byte-frozen (SEC-01 must never change tools/list surface).
+            return mcp.tool(description=description)(_gate(fn))
         return decorator
 
     # --- (A) 24 unconditionally-registered, schema-identical tools ---------

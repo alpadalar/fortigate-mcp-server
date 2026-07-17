@@ -31,8 +31,14 @@ def _fake_tools():
         routing_tools=MagicMock(),
         virtual_ip_tools=MagicMock(),
         fortigate_manager=MagicMock(devices={}, failed_devices={}),
+        # allow_writes=True: this file's tests exist to prove dispatch
+        # wiring, not gating semantics -- gating is owned exclusively by
+        # tests/test_write_gate.py, whose own fake keeps the genuine
+        # allow_writes=False default.
         config=types.SimpleNamespace(
-            server=types.SimpleNamespace(name="test", version="1.0.0", host="0.0.0.0", port=8814)
+            server=types.SimpleNamespace(
+                name="test", version="1.0.0", host="0.0.0.0", port=8814, allow_writes=True
+            )
         ),
         host="127.0.0.1",
         port=8814,

@@ -56,8 +56,12 @@ def _fake_tools():
         routing_tools=MagicMock(),
         virtual_ip_tools=MagicMock(),
         fortigate_manager=MagicMock(devices={}, failed_devices={}),
+        # allow_writes=True: this file proves engine/schema equivalence, not
+        # gating semantics (owned by tests/test_write_gate.py).
         config=types.SimpleNamespace(
-            server=types.SimpleNamespace(name="test", version="1.0.0", host="0.0.0.0", port=8814)
+            server=types.SimpleNamespace(
+                name="test", version="1.0.0", host="0.0.0.0", port=8814, allow_writes=True
+            )
         ),
         host="127.0.0.1",
         port=8814,
@@ -180,6 +184,10 @@ def test_real_stdio_server_serves_full_mcp_session(tmp_config_path) -> None:
 def test_real_stdio_server_dict_payload_roundtrip(tmp_config_path, monkeypatch) -> None:
     """A dict-payload create tool round-trips through the same real session,
     proving runtime dispatch (not just schema equality) on the selected engine."""
+    # create_static_route is a write tool: this real server's ServerConfig
+    # now defaults allow_writes=False (SEC-01), so the env override is
+    # required for this round-trip to reach the mocked target at all.
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
 
     async def _run():
         server = FortiGateMCPServer(tmp_config_path)

@@ -145,7 +145,12 @@ def test_all_sync_wrappers_dispatch(tmp_config_path, tool_name, tools_attr, meth
     replaced with a sentinel-returning mock, the stdio tool is dispatched
     through the real MCP call path, and the sentinel text plus the exactly-
     once call are asserted.
+
+    This matrix proves dispatch wiring, not gating semantics (owned by
+    tests/test_write_gate.py) -- writes are unconditionally enabled here so
+    write/destructive entries in the matrix reach their mocked target too.
     """
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server = FortiGateMCPServer(tmp_config_path)
     tools_instance = getattr(server, tools_attr)
     mock_method = MagicMock(return_value=[TextContent(type="text", text=f"SENTINEL-{tool_name}")])
@@ -200,8 +205,9 @@ def _server_with_mocked_device(tmp_config_path):
     return server, mock_api
 
 
-def test_route_payload_preserves_optional_fields(tmp_config_path):
+def test_route_payload_preserves_optional_fields(tmp_config_path, monkeypatch):
     """create_static_route forwards distance/comment, not just dst/gateway."""
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     route_data = {
         "dst": "10.0.0.0/24",
@@ -216,8 +222,9 @@ def test_route_payload_preserves_optional_fields(tmp_config_path):
     mock_api.create_static_route.assert_called_once_with(route_data, vdom=None)
 
 
-def test_address_payload_ipmask_variant(tmp_config_path):
+def test_address_payload_ipmask_variant(tmp_config_path, monkeypatch):
     """create_address_object forwards the full ipmask payload unchanged."""
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     address_data = {"name": "addr1", "type": "ipmask", "subnet": "10.0.0.0/24", "comment": "c"}
 
@@ -226,8 +233,9 @@ def test_address_payload_ipmask_variant(tmp_config_path):
     mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
 
 
-def test_address_payload_iprange_variant(tmp_config_path):
+def test_address_payload_iprange_variant(tmp_config_path, monkeypatch):
     """create_address_object forwards start-ip AND end-ip for the iprange variant."""
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     address_data = {"name": "addr2", "type": "iprange", "start-ip": "10.0.0.10", "end-ip": "10.0.0.20"}
 
@@ -236,8 +244,9 @@ def test_address_payload_iprange_variant(tmp_config_path):
     mock_api.create_address_object.assert_called_once_with(address_data, vdom=None)
 
 
-def test_address_payload_fqdn_variant(tmp_config_path):
+def test_address_payload_fqdn_variant(tmp_config_path, monkeypatch):
     """create_address_object keeps the fqdn key as-is, never remapped to subnet."""
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     address_data = {"name": "addr3", "type": "fqdn", "fqdn": "example.com"}
 
@@ -249,8 +258,9 @@ def test_address_payload_fqdn_variant(tmp_config_path):
     assert called_payload["fqdn"] == "example.com"
 
 
-def test_service_payload_tcp_variant(tmp_config_path):
+def test_service_payload_tcp_variant(tmp_config_path, monkeypatch):
     """create_service_object forwards tcp-portrange and comment intact."""
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     service_data = {"name": "svc1", "protocol": "TCP", "tcp-portrange": "8080", "comment": "c"}
 
@@ -259,8 +269,9 @@ def test_service_payload_tcp_variant(tmp_config_path):
     mock_api.create_service_object.assert_called_once_with(service_data, vdom=None)
 
 
-def test_service_payload_udp_variant(tmp_config_path):
+def test_service_payload_udp_variant(tmp_config_path, monkeypatch):
     """create_service_object forwards udp-portrange intact, not remapped to a generic 'port'."""
+    monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
     server, mock_api = _server_with_mocked_device(tmp_config_path)
     service_data = {"name": "svc2", "protocol": "UDP", "udp-portrange": "514"}
 

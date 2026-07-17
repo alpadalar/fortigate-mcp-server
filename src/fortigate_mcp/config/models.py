@@ -110,6 +110,13 @@ class ServerConfig(StrictConfigModel):
     port: int = Field(default=8814, ge=1, le=65535, description="Server port")
     name: str = Field(default="fortigate-mcp-server", description="Server name")
     version: str = Field(default="1.0.0", description="Server version")
+    allow_writes: bool = Field(
+        default=False,
+        description=(
+            "Enable write/destructive MCP tools; read-only by default. "
+            "FORTIGATE_MCP_ALLOW_WRITES=1 overrides to true."
+        ),
+    )
 
 class RateLimitConfig(StrictConfigModel):
     """Rate limiting configuration.
