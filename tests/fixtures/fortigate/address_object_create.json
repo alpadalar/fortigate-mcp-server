@@ -1,0 +1,7 @@
+{
+  "http_method": "POST",
+  "revision": "fake-rev-0001",
+  "mkey": "test_addr_1",
+  "status": "success",
+  "http_status": 200
+}

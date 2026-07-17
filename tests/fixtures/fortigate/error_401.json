@@ -1,0 +1,6 @@
+{
+  "http_method": "GET",
+  "status": "error",
+  "http_status": 401,
+  "error": "Not Authorized: request rejected for Authorization: Bearer test-token-not-real"
+}

@@ -1,0 +1,18 @@
+{
+  "http_method": "GET",
+  "results": [
+    {
+      "policyid": 1,
+      "name": "Allow_HTTP",
+      "action": "accept",
+      "srcintf": [{"name": "port1"}],
+      "dstintf": [{"name": "port2"}],
+      "srcaddr": [{"name": "all"}],
+      "dstaddr": [{"name": "all"}],
+      "service": [{"name": "ALL"}],
+      "status": "enable"
+    }
+  ],
+  "vdom": "root",
+  "status": "success"
+}
