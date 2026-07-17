@@ -10,7 +10,8 @@ directly in ``AuthMiddleware`` (via ``httpx.ASGITransport``):
 - Fail-closed filtering of empty/whitespace-only configured tokens.
 - Method-scoped GET/HEAD /health exemption (a POST to /health is NOT
   exempt).
-- Non-"http" ASGI scope passthrough.
+- ASGI scope-type policy: "lifespan" passes through, "websocket" is
+  closed (1008) unforwarded, unknown scope types are dropped.
 - 401 response bodies never contain a configured token substring.
 - ``AuthConfig`` field/model validator invariants (config/models.py).
 
@@ -220,7 +221,7 @@ class TestHealthExemption:
 
 
 class TestScopePassthrough:
-    async def test_non_http_scope_passes_through_untouched(self):
+    async def test_lifespan_scope_passes_through_untouched(self):
         observed = {}
 
         async def downstream(scope, receive, send):
@@ -236,6 +237,49 @@ class TestScopePassthrough:
 
         await middleware({"type": "lifespan"}, receive, send)
         assert observed["scope_type"] == "lifespan"
+
+    async def test_websocket_scope_denied_never_forwarded(self):
+        """An auth gate must fail closed on connection classes it cannot
+        vet: a websocket scope is closed with policy-violation code 1008
+        and never reaches the wrapped app."""
+        forwarded = []
+        sent = []
+
+        async def downstream(scope, receive, send):
+            forwarded.append(scope["type"])
+
+        middleware = AuthMiddleware(downstream, api_tokens=["good-token-not-real"])
+
+        async def receive():
+            return {"type": "websocket.connect"}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware(
+            {"type": "websocket", "path": "/", "headers": []}, receive, send
+        )
+        assert forwarded == []
+        assert sent == [{"type": "websocket.close", "code": 1008}]
+
+    async def test_unknown_scope_type_dropped_never_forwarded(self):
+        forwarded = []
+        sent = []
+
+        async def downstream(scope, receive, send):
+            forwarded.append(scope["type"])
+
+        middleware = AuthMiddleware(downstream, api_tokens=["good-token-not-real"])
+
+        async def receive():
+            return {}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware({"type": "future-scope-type"}, receive, send)
+        assert forwarded == []
+        assert sent == []
 
 
 class TestAuthConfigValidators:

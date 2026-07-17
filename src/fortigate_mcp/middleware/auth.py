@@ -1,10 +1,14 @@
 """Pure-ASGI Bearer-token auth middleware enforcing SEC-05.
 
-Mirrors ``middleware/trace.py::TraceMiddleware``'s pure-ASGI shape exactly
-(no Starlette ``BaseHTTPMiddleware`` response-buffering, which is unsafe on
+Mirrors ``middleware/trace.py::TraceMiddleware``'s pure-ASGI shape (no
+Starlette ``BaseHTTPMiddleware`` response-buffering, which is unsafe on
 the streamable-HTTP MCP mount this middleware sits in front of): the
-constructor takes ``app``; ``__call__(self, scope, receive, send)`` passes
-non-"http" scope types straight through untouched.
+constructor takes ``app``; ``__call__(self, scope, receive, send)``. Unlike
+TraceMiddleware, non-"http" scopes are NOT passed through wholesale: only
+"lifespan" is forwarded; "websocket" is closed with policy-violation code
+1008 and any other scope type is dropped -- an auth gate fails closed on
+every connection class it cannot vet, so a future websocket route (or a
+fastmcp upgrade that adds one) can never be served unauthenticated.
 
 Threat model this closes (04-REVIEWS.md, T-04-09/T-04-10/T-04-11/T-04-16):
 
@@ -67,8 +71,16 @@ class AuthMiddleware:
         )
 
     async def __call__(self, scope, receive, send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] == "lifespan":
             await self.app(scope, receive, send)
+            return
+        if scope["type"] != "http":
+            # Auth gate fails closed on any connection type it cannot vet.
+            # Today no websocket route exists behind this middleware, but a
+            # wholesale non-http passthrough would silently exempt any
+            # future one from the token check.
+            if scope["type"] == "websocket":
+                await send({"type": "websocket.close", "code": 1008})
             return
 
         if scope["path"] == "/health" and scope["method"] in ("GET", "HEAD"):
