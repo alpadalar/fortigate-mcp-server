@@ -490,17 +490,31 @@ class FortiGateManager:
         
         # Create API client
         self.devices[device_id] = FortiGateAPI(device_id, device_config)
+        # A device that failed at startup is absent from self.devices, so
+        # re-adding it with corrected settings succeeds -- clear the stale
+        # failure entry, otherwise health_check/health//health report
+        # "degraded" forever for a now-working device.
+        self.failed_devices.pop(device_id, None)
         self.logger.info(f"Added device: {device_id}")
-    
+
     def remove_device(self, device_id: str) -> None:
         """Remove a device from the manager.
-        
+
+        Also clears a startup-failure entry for the device, so an operator
+        can retire a device that never initialized without restarting the
+        process.
+
         Args:
             device_id: Device identifier to remove
         """
+        if device_id in self.failed_devices:
+            del self.failed_devices[device_id]
+            if device_id not in self.devices:
+                self.logger.info(f"Cleared failed device: {device_id}")
+                return
         if device_id not in self.devices:
             raise ValueError(f"Device '{device_id}' not found")
-        
+
         del self.devices[device_id]
         self.logger.info(f"Removed device: {device_id}")
     
