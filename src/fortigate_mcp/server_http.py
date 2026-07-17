@@ -78,7 +78,7 @@ class FortiGateMCPHTTPServer:
                 secrets.add(device_config.password.get_secret_value())
         for api_token in self.config.auth.api_tokens:
             if api_token:
-                secrets.add(api_token)
+                secrets.add(api_token.get_secret_value())
 
         # Setup logging
         self.logger = setup_logging(self.config.logging, secrets=secrets)
@@ -175,7 +175,18 @@ class FortiGateMCPHTTPServer:
         """
         middleware = [Middleware(TraceMiddleware)]
         if self.config.auth.require_auth:
-            middleware.append(Middleware(AuthMiddleware, api_tokens=self.config.auth.api_tokens))
+            # AuthConfig.api_tokens are SecretStr -- unwrap once here, at
+            # the single point of consumption, so the middleware compares
+            # plain token values.
+            middleware.append(
+                Middleware(
+                    AuthMiddleware,
+                    api_tokens=[
+                        token.get_secret_value()
+                        for token in self.config.auth.api_tokens
+                    ],
+                )
+            )
         return self.mcp.http_app(path=self.path, middleware=middleware)
 
     def run(self) -> None:

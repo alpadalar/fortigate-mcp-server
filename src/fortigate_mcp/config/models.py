@@ -102,18 +102,21 @@ class AuthConfig(StrictConfigModel):
     CORS middleware exists in this codebase.
     """
     require_auth: bool = Field(default=False, description="Whether authentication is required")
-    api_tokens: List[str] = Field(default_factory=list, description="Valid API tokens")
+    # SecretStr like the device credentials: repr()/model_dump() of the
+    # config object must never print an HTTP bearer token in cleartext.
+    api_tokens: List[SecretStr] = Field(default_factory=list, description="Valid API tokens")
     allowed_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
 
     @field_validator("api_tokens")
     @classmethod
-    def _validate_api_tokens(cls, v: List[str]) -> List[str]:
+    def _validate_api_tokens(cls, v: List[SecretStr]) -> List[SecretStr]:
         for token in v:
-            if not isinstance(token, str) or not token.strip():
+            value = token.get_secret_value()
+            if not value.strip():
                 raise ValueError(
                     "api_tokens entries must be non-empty, non-whitespace strings"
                 )
-            if not token.isascii():
+            if not value.isascii():
                 # A non-ASCII configured token would make every Bearer
                 # comparison raise TypeError inside hmac.compare_digest on
                 # str operands -- reject at config time so authentication
@@ -121,7 +124,7 @@ class AuthConfig(StrictConfigModel):
                 raise ValueError(
                     "api_tokens entries must contain only ASCII characters"
                 )
-            if _CONTROL_CHAR_RE.search(token):
+            if _CONTROL_CHAR_RE.search(value):
                 raise ValueError(
                     "api_tokens entries must not contain control characters"
                 )

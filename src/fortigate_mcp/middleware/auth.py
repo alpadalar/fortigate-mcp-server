@@ -54,7 +54,8 @@ _BEARER_PREFIX = "bearer "
 class AuthMiddleware:
     """Pure-ASGI Bearer-token gate for build_http_app()'s middleware stack.
 
-    Constructed with the raw, unfiltered ``AuthConfig.api_tokens`` list;
+    Constructed with the unfiltered plaintext token values (unwrapped from
+    ``AuthConfig.api_tokens``'s ``SecretStr`` entries by build_http_app());
     filtering happens once here at construction time.
     """
 

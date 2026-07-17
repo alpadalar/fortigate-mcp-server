@@ -313,7 +313,17 @@ class TestAuthConfigValidators:
     def test_require_auth_true_with_valid_token_is_valid(self):
         config = AuthConfig(require_auth=True, api_tokens=["good-token-not-real"])
         assert config.require_auth is True
-        assert config.api_tokens == ["good-token-not-real"]
+        assert [t.get_secret_value() for t in config.api_tokens] == [
+            "good-token-not-real"
+        ]
+
+    def test_api_tokens_are_secretstr_and_never_leak_via_repr(self):
+        """WR-04: HTTP bearer tokens must be SecretStr like device
+        credentials -- repr()/model_dump() of the config object must not
+        print them in cleartext."""
+        config = AuthConfig(require_auth=True, api_tokens=["repr-token-not-real"])
+        assert "repr-token-not-real" not in repr(config)
+        assert "repr-token-not-real" not in str(config.model_dump())
 
     def test_validation_error_never_echoes_token_value(self):
         secret_shaped = "totally-secret-value-not-real"
