@@ -218,23 +218,23 @@ def run_live_server():
     """Serve the EXACT ``build_http_app()`` output over a real 127.0.0.1
     TCP socket, in a daemon thread, and yield ``(base_url, server, app)``.
 
-    Codex-review mitigations (03-REVIEWS.md, 03-05 section) baked in:
+    Correctness properties this fixture guarantees:
 
-    - TOCTOU port race (MEDIUM): the listening socket is bound here, ONCE,
-      and handed directly to uvicorn's ``run()`` via its ``sockets`` kwarg --
+    - TOCTOU port race: the listening socket is bound here, ONCE, and
+      handed directly to uvicorn's ``run()`` via its ``sockets`` kwarg --
       no probe-then-rebind window for another process to steal the port.
-    - Unverified thread termination (MEDIUM): teardown asserts the daemon
-      thread is no longer alive after ``should_exit`` + ``join``, instead of
-      merely joining and hoping.
-    - mkstemp descriptor leak (MEDIUM): the descriptor returned by
+    - Unverified thread termination: teardown asserts the daemon thread is
+      no longer alive after ``should_exit`` + ``join``, instead of merely
+      joining and hoping.
+    - mkstemp descriptor leak: the descriptor returned by
       ``tempfile.mkstemp`` is consumed via ``os.fdopen`` (matching
       ``tests/test_tool_schema_snapshot.py::_build_servers``), never left
       open.
-    - httpx proxy-env inheritance (LOW): the readiness poll uses
+    - httpx proxy-env inheritance: the readiness poll uses
       ``trust_env=False`` so an ambient ``HTTP_PROXY`` can never hijack
       loopback traffic during the poll.
-    - Served-app identity (HIGH): ``build_http_app()`` is called exactly
-      once here; the SAME object is both served by uvicorn and yielded to
+    - Served-app identity: ``build_http_app()`` is called exactly once
+      here; the SAME object is both served by uvicorn and yielded to
       tests, so structural middleware checks never construct a second app.
 
     ``load_config`` rejects an empty device set ("At least one FortiGate
@@ -285,7 +285,7 @@ def run_live_server():
                 path="/fortigate-mcp",
             )
         # Built EXACTLY ONCE: this same object is served by uvicorn AND
-        # yielded to tests for structural inspection (Codex HIGH).
+        # yielded to tests for structural inspection.
         app = server.build_http_app()
 
         uv = uvicorn.Server(

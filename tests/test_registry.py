@@ -2,11 +2,12 @@
 
 Proves register_tools' tool counts, transport validation, dispatch
 correctness for the 3 divergent create-tools plus the unified async
-get_firewall_policy_detail, AND -- per Codex review -- protocol-level
-invocation through each engine's REAL MCP call path (SDK call_tool /
-fastmcp in-memory Client), not only direct .fn() closure calls. None of
-this depends on server.py/server_http.py wiring (that happens in later
-plans).
+get_firewall_policy_detail, AND protocol-level invocation through each
+engine's REAL MCP call path (SDK call_tool / fastmcp in-memory Client),
+not only direct .fn() closure calls -- exercising the .fn() closure alone
+would miss any registration-layer bug that a real dispatch path would
+catch. None of this depends on server.py/server_http.py wiring (that
+happens in later plans).
 """
 import asyncio
 import types

@@ -11,12 +11,12 @@ import sys
 import signal
 from typing import Optional
 
-# Codex HIGH (03-REVIEWS.md, 03-04): the official SDK's embedded FastMCP
-# engine has neither custom_route() nor http_app() -- a fallback to that
-# engine can never produce this HTTP server and would only defer failure
-# to a confusing runtime AttributeError deep inside build_http_app().
-# fastmcp is a pinned direct dependency, so a missing package here means a
-# genuinely broken environment -- fail loudly at import time instead.
+# The official SDK's embedded FastMCP engine has neither custom_route() nor
+# http_app() -- a fallback to that engine can never produce this HTTP
+# server and would only defer failure to a confusing runtime
+# AttributeError deep inside build_http_app(). fastmcp is a pinned direct
+# dependency, so a missing package here means a genuinely broken
+# environment -- fail loudly at import time instead.
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse

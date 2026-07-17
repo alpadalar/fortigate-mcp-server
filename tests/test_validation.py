@@ -1,7 +1,7 @@
 """Tests for the centralized injection-safe validator module (CONF-02/CONF-03).
 
 Covers the CONTEXT.md negative corpus (path traversal, CRLF, query/fragment
-characters, spaces) plus the Codex-mandated boundary cases: numeric "0",
+characters, spaces) plus additional boundary cases: numeric "0",
 non-string inputs, trailing \\n and \\r, Unicode decimal digits, overlong
 values, scoped IPv6, and embedded :port.
 """

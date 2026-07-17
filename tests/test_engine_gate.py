@@ -14,8 +14,8 @@ tests with distinct remedies:
     engines genuinely disagree on schema shape -- the fallback trigger.
 
 Golden immutability is enforced independently of git-diff windows via
-embedded SHA-256 hashes (Codex MEDIUM) -- an accidentally regenerated-and-
-committed fixture fails these forever, not just within one commit's diff.
+embedded SHA-256 hashes -- an accidentally regenerated-and-committed
+fixture fails these forever, not just within one commit's diff.
 
 Runtime/protocol compatibility on the REAL, selected-engine production
 server (not just fake-tools schema snapshots) is proven by the
@@ -119,7 +119,7 @@ def _load_golden(path) -> Dict[str, Dict[str, Any]]:
     return json.loads(path.read_text())
 
 
-# --- Golden immutability guards (Codex MEDIUM) ------------------------------
+# --- Golden immutability guards ----------------------------------------------
 
 
 def test_stdio_golden_sha256_frozen() -> None:
@@ -130,7 +130,7 @@ def test_http_golden_sha256_frozen() -> None:
     assert hashlib.sha256(HTTP_GOLDEN.read_bytes()).hexdigest() == HTTP_GOLDEN_SHA256
 
 
-# --- Cause-separated gate tests (Codex HIGH) --------------------------------
+# --- Cause-separated gate tests -----------------------------------------------
 
 
 def test_registry_stdio_output_matches_frozen_golden() -> None:
@@ -156,8 +156,8 @@ def test_full_30_tool_schema_diff_across_engines() -> None:
 
 
 # --- Runtime compatibility on the REAL, selected-engine production server --
-# (Codex MEDIUM: schema equality proves shape, not behavior -- these prove a
-# full in-memory MCP session against the actual FortiGateMCPServer object.)
+# (Schema equality proves shape, not behavior -- these prove a full
+# in-memory MCP session against the actual FortiGateMCPServer object.)
 
 
 def test_real_stdio_server_serves_full_mcp_session(tmp_config_path) -> None:

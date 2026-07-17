@@ -1,13 +1,12 @@
 """Pure-ASGI trace middleware proving the build_http_app() middleware seam.
 
-Codex MEDIUM (03-REVIEWS.md, 03-04): Starlette's base-class HTTP middleware
-helper buffers and re-wraps the entire HTTP response before it is allowed
-through, which is unsafe on the streamable-HTTP MCP mount this middleware
-runs in front of (SSE/chunked responses can be corrupted or deadlocked by
-that buffering). ``TraceMiddleware`` is implemented as pure ASGI instead: it
-appends exactly one header on the ``http.response.start`` message and
-otherwise passes every ASGI message through untouched, so it is fully
-transparent to streaming responses.
+Starlette's base-class HTTP middleware helper buffers and re-wraps the
+entire HTTP response before it is allowed through, which is unsafe on the
+streamable-HTTP MCP mount this middleware runs in front of (SSE/chunked
+responses can be corrupted or deadlocked by that buffering). ``TraceMiddleware``
+is implemented as pure ASGI instead: it appends exactly one header on the
+``http.response.start`` message and otherwise passes every ASGI message
+through untouched, so it is fully transparent to streaming responses.
 """
 from starlette.datastructures import MutableHeaders
 

@@ -1,7 +1,7 @@
 """Live end-to-end HTTP harness proving the ``build_http_app`` factory seam
 (CONS-02).
 
-Three independent proofs, per Codex review (03-REVIEWS.md, 03-05 section):
+Three independent proofs:
 
 1. Behavioral middleware proof -- a real HTTP response served over a real
    TCP socket on 127.0.0.1 carries ``X-FortiGate-MCP-Trace``.
@@ -49,10 +49,10 @@ def test_trace_header_present_on_served_app(live_server):
 
 
 def test_trace_middleware_class_present_on_the_served_app(live_server):
-    """Structural proof on THE SERVED instance (Codex HIGH): never call
-    the factory again here -- that would construct a second app and reopen
-    the drift blind spot this phase exists to close. Inspect the exact
-    object the fixture already handed to uvicorn."""
+    """Structural proof on THE SERVED instance: never call the factory
+    again here -- that would construct a second app and reopen the drift
+    blind spot this phase exists to close. Inspect the exact object the
+    fixture already handed to uvicorn."""
     _base_url, _server, app = live_server
     middleware_classes = [m.cls for m in app.user_middleware]
     assert TraceMiddleware in middleware_classes
@@ -70,11 +70,11 @@ async def _mcp_session_probe(base_url):
 
 
 def test_mcp_protocol_session_against_live_server(live_server):
-    """Codex-HIGH-mandated proof: /health alone cannot prove the manually
-    assembled MCP mount, lifespan, and session manager survived the
-    manual-uvicorn run() refactor. A real fastmcp.Client session -- session
-    initialize, tools/list, and one harmless tools/call -- exercises that
-    entire path end-to-end."""
+    """/health alone cannot prove the manually assembled MCP mount,
+    lifespan, and session manager survived the manual-uvicorn run()
+    refactor. A real fastmcp.Client session -- session initialize,
+    tools/list, and one harmless tools/call -- exercises that entire path
+    end-to-end."""
     base_url, _server, _app = live_server
     tools, result = asyncio.run(_mcp_session_probe(base_url))
     assert len(tools) == 31
@@ -82,10 +82,10 @@ def test_mcp_protocol_session_against_live_server(live_server):
 
 
 def test_run_serves_the_factory_app(tmp_config_path, monkeypatch):
-    """Behavioral run()-delegation proof (Codex MEDIUM/LOW), replacing
-    brittle source-string inspection: monkeypatch build_http_app() to a
-    sentinel and uvicorn to capture what it is constructed with, then prove
-    run() passes the factory's exact return value through, unmodified."""
+    """Behavioral run()-delegation proof, replacing brittle source-string
+    inspection: monkeypatch build_http_app() to a sentinel and uvicorn to
+    capture what it is constructed with, then prove run() passes the
+    factory's exact return value through, unmodified."""
     with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
         server = FortiGateMCPHTTPServer(
             config_path=tmp_config_path,

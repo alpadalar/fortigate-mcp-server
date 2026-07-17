@@ -48,7 +48,8 @@ def test_console_script_stays_alive(tmp_config_path):
     stdio transport does not see EOF and exit early. Any early exit --
     for ANY reason -- fails this test with the captured stdout/stderr,
     not just a specific exception string. There is no early-exit
-    whitelist here by design (see 01-REVIEWS.md, HIGH finding).
+    whitelist here by design: a narrower check could silently pass while
+    masking a real startup crash.
     """
     proc = subprocess.Popen(
         ["uv", "run", "fortigate-mcp-server"],

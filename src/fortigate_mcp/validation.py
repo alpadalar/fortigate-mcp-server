@@ -13,7 +13,7 @@ Neutrality constraint (load-bearing):
     (sibling of `config/` and `core/`, not inside either) and imports
     ONLY the Python standard library. It MUST NEVER import from
     `fortigate_mcp.config` or `fortigate_mcp.core`. Doing so would
-    recreate a circular import identified during cross-AI review:
+    recreate a circular import:
     `core/__init__.py` eagerly imports `core.logging`, which imports
     `config.models` -- so `config.models -> core.validation -> core
     (__init__) -> core.logging -> config.models` deadlocks at import
