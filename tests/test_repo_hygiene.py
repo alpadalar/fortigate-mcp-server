@@ -480,24 +480,32 @@ def test_issue_template_config_has_security_contact_link():
 
 
 def test_no_ai_attribution_in_new_docs():
-    """New release-facing docs must contain none of the fragment-assembled
-    AI-residue markers. Deliberately EXCLUDES CONTRIBUTING.md, which is the
-    one file allowed to reference the Co-Authored-By trailer pattern as
-    policy prose explaining the project's no-AI-attribution rule."""
+    """Release-facing docs must contain none of the fragment-assembled
+    AI-residue markers, and every one of them must EXIST (each is a required
+    release deliverable -- a silently deleted file must not pass vacuously).
+    CONTRIBUTING.md is scanned against every marker EXCEPT the commit-trailer
+    one: it is the single file allowed to reference that trailer pattern, as
+    policy prose explaining the project's no-AI-attribution rule (framing
+    verified by the proximity test below)."""
     repo_root = _repo_root()
 
-    for filename in (
-        "README.md",
-        "HTTP_MCP_GUIDE.md",
-        "CHANGELOG.md",
-        "SECURITY.md",
-        "CODE_OF_CONDUCT.md",
-    ):
+    non_trailer_markers = tuple(
+        marker for marker in _ALL_RESIDUE_MARKERS if marker != _TRAILER_MARKER
+    )
+    scan_plan = {
+        "README.md": _ALL_RESIDUE_MARKERS,
+        "HTTP_MCP_GUIDE.md": _ALL_RESIDUE_MARKERS,
+        "CHANGELOG.md": _ALL_RESIDUE_MARKERS,
+        "SECURITY.md": _ALL_RESIDUE_MARKERS,
+        "CODE_OF_CONDUCT.md": _ALL_RESIDUE_MARKERS,
+        "CONTRIBUTING.md": non_trailer_markers,
+    }
+
+    for filename, markers in scan_plan.items():
         path = repo_root / filename
-        if not path.exists():
-            continue
+        assert path.exists(), f"{filename} is a release-facing doc and must exist"
         text = path.read_text()
-        for marker in _ALL_RESIDUE_MARKERS:
+        for marker in markers:
             assert marker not in text, f"{filename} contains AI-residue marker {marker!r}"
 
 
