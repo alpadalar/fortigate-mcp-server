@@ -60,3 +60,9 @@ First public release.
 - TLS certificate verification enabled by default for config-loaded devices (SEC-04)
 - Dispatch-layer read-only gate: write and destructive MCP tools are rejected unless
   explicitly enabled via `server.allow_writes` or `FORTIGATE_MCP_ALLOW_WRITES` (SEC-01)
+- FortiGate API token rotated on the live device (Plan 05-01, primary mitigation); the
+  dangling pre-rotation commits, kept alive only by leftover filter-branch backup refs, were
+  removed from local git history via refs/original cleanup and git gc (Plan 05-04, secondary
+  hygiene), without ever fetching from or altering origin/main (REL-06). GitHub's server-side
+  cache of the pre-rotation commit may still resolve it by direct SHA indefinitely (documented,
+  accepted residual risk).

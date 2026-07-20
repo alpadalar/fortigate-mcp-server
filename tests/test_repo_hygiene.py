@@ -382,23 +382,21 @@ def test_changelog_has_unreleased_heading():
     assert "## [Unreleased]" in text
 
 
-# TEMPORARY: superseded by Plan 05-04's
-# test_changelog_records_rel06_remediation_accurately, in the same commit
-# that appends the REL-06 entry to CHANGELOG.md's [1.0.0] ### Security
-# subsection (Cycle 2, Codex HIGH-7). This test intentionally guards against
-# a PREMATURE claim before rotation/purge actually succeed -- once that
-# remediation lands for real, this exact assertion would start failing on
-# legitimate content, which is why Plan 05-04 replaces it rather than simply
-# leaving it in place.
-def test_changelog_does_not_claim_rel06_complete():
-    """CHANGELOG.md's [1.0.0] entry must NOT claim REL-06 (token rotation /
-    history purge) is complete -- that entry is Plan 05-04's, added only
-    after rotation and history cleanup both succeed."""
+def test_changelog_records_rel06_remediation_accurately():
+    """CHANGELOG.md's [1.0.0] Security subsection must record the completed
+    REL-06 remediation accurately: token rotation (the primary mitigation)
+    plus local refs cleanup (the secondary hygiene step) -- and must NOT
+    claim git-filter-repo was used (Plan 05-04 dropped it entirely, per its
+    Cycle-2 redesign) or that history was fully removed from GitHub (the
+    residual-risk framing must stay honest)."""
     repo_root = _repo_root()
-    text = (repo_root / "CHANGELOG.md").read_text().lower()
+    text = (repo_root / "CHANGELOG.md").read_text()
+    lowered = text.lower()
 
-    for forbidden in ("rotated", "purged", "filter-repo", "rel-06"):
-        assert forbidden not in text, f"CHANGELOG.md prematurely claims: {forbidden!r}"
+    assert "REL-06" in text
+    assert "rotated" in lowered
+    assert "filter-repo" not in lowered
+    assert "fully removed from github" not in lowered
 
 
 def test_pr_template_references_frozen_tool_surface():
