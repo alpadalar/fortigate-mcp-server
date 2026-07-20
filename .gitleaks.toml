@@ -1,8 +1,13 @@
 # gitleaks config for fortigate-mcp-server (REL-06)
 #
-# Extends gitleaks' default ruleset with one custom rule targeting the
-# FortiGate REST API token shape as it appears in this repository's
-# config/config.json `api_token` field.
+# Extends gitleaks' default ruleset with one custom rule targeting FortiGate
+# REST API tokens placed near an `api_token`/`api-token` key. The key anchor
+# is deliberately kept (see the disabled bare-string variant below for why),
+# but the value/separator shape is broad on purpose: it covers the JSON form
+# from config/config.json plus YAML (`api_token: <tok>`), Python kwargs
+# (`api_token="<tok>"`), env-style (`FORTIGATE_API_TOKEN=<tok>`), and
+# single-quoted serializations -- all demonstrated bypasses of the earlier
+# exact-JSON-only regex.
 #
 # Source: gitleaks config schema, github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
@@ -11,8 +16,9 @@ useDefault = true
 
 [[rules]]
 id = "fortigate-api-token"
-description = "FortiGate REST API token (config.json api_token field)"
-regex = '''"api_token"\s*:\s*"[A-Za-z0-9]{20,40}"'''
+description = "FortiGate REST API token near an api_token key"
+regex = '''(?i)api[_-]?token['"]?\s*[:=]\s*['"]?[A-Za-z0-9]{20,64}['"]?'''
+keywords = ["api_token", "api-token"]
 tags = ["fortigate", "api-key"]
 
 # NOT enabled as an active rule (documented false-positive risk against unrelated
