@@ -178,6 +178,30 @@ def test_readme_recommends_loopback_bind():
     assert "127.0.0.1" in text
 
 
+def test_http_guide_startup_example_does_not_bind_wildcard():
+    """HTTP_MCP_GUIDE.md's startup command must not instruct --host 0.0.0.0.
+
+    The shipped config defaults to auth.require_auth=false, so a wildcard
+    bind in the primary startup instruction would expose an unauthenticated
+    firewall-management API on every interface -- contradicting the guide's
+    own loopback guidance, README, and SECURITY.md."""
+    repo_root = _repo_root()
+    text = (repo_root / "HTTP_MCP_GUIDE.md").read_text()
+
+    assert "--host 0.0.0.0" not in text
+
+
+def test_start_http_server_script_defaults_to_loopback():
+    """start_http_server.sh must default MCP_HTTP_HOST to 127.0.0.1, not a
+    wildcard bind -- both README and HTTP_MCP_GUIDE endorse this script as
+    the primary start method for the (default-unauthenticated) HTTP server."""
+    repo_root = _repo_root()
+    text = (repo_root / "start_http_server.sh").read_text()
+
+    assert "${MCP_HTTP_HOST:-127.0.0.1}" in text
+    assert "MCP_HTTP_HOST:-0.0.0.0" not in text
+
+
 def test_http_guide_has_no_requirements_txt_reference():
     """HTTP_MCP_GUIDE.md must not reference a requirements file that does not
     exist anywhere in this repository -- the real install path is uv/pyproject.toml."""

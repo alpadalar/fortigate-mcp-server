@@ -64,11 +64,17 @@ Ardından `config/config.json` dosyasını düzenleyin:
 
 # Veya manuel olarak
 python -m src.fortigate_mcp.server_http \
-  --host 0.0.0.0 \
+  --host 127.0.0.1 \
   --port 8814 \
   --path /fortigate-mcp \
   --config config/config.json
 ```
+
+`--host` için `0.0.0.0` değerini yalnızca ağdaki başka makinelerden erişim gerekiyorsa VE
+`config/config.json` içinde `auth.require_auth=true` etkinse kullanın; aksi halde `127.0.0.1`
+değerinde kalın — kimlik doğrulamasız HTTP asla loopback'ten daha geniş bir adrese
+bağlanmamalıdır. (`./start_http_server.sh` de varsayılan olarak `127.0.0.1` adresine bağlanır;
+daha geniş bir bind için `MCP_HTTP_HOST` ortam değişkenini bilinçli olarak ayarlamanız gerekir.)
 
 ### Docker ile Çalıştırma
 
