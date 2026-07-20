@@ -119,7 +119,7 @@ Cursor'da FortiGate MCP'yi kullanmak için:
 
 ### Temel Endpoints
 
-- `GET /fortigate-mcp/health` - Sağlık kontrolü
+- `GET /health` - Sağlık kontrolü (uygulama kökünde; `/fortigate-mcp` altında değil)
 - `POST /fortigate-mcp` - MCP komutları
 
 ### MCP Komutları
