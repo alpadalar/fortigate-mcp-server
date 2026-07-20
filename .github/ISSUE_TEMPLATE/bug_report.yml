@@ -12,7 +12,7 @@ body:
         a tool name/parameter change; open a discussion instead.
 
         If you believe you've found a **security vulnerability**, please do not file a public
-        bug report — use [GitHub Private Vulnerability Reporting](../../security/advisories/new)
+        bug report — use [GitHub Private Vulnerability Reporting](https://github.com/alpadalar/fortigate-mcp-server/security/advisories/new)
         instead (see SECURITY.md).
   - type: textarea
     id: reproduction-steps
