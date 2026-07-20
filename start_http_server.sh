@@ -9,7 +9,9 @@ set -e
 # MCP_HTTP_HOST explicitly (with auth.require_auth=true) for a wider bind.
 HOST="${MCP_HTTP_HOST:-127.0.0.1}"
 PORT="${MCP_HTTP_PORT:-8814}"
-PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"
+# MCP_PATH (not PATH): assigning the MCP mount path to PATH would clobber the
+# shell's executable search path and break the python lookup below.
+MCP_PATH="${MCP_HTTP_PATH:-/fortigate-mcp}"
 CONFIG="${FORTIGATE_MCP_CONFIG:-$(pwd)/config/config.json}"
 
 # Check if config exists
@@ -22,7 +24,7 @@ fi
 echo "Starting FortiGate MCP HTTP Server..."
 echo "Host: $HOST"
 echo "Port: $PORT"
-echo "Path: $PATH"
+echo "Path: $MCP_PATH"
 echo "Config: $CONFIG"
 echo ""
 
@@ -36,5 +38,5 @@ fi
 exec python -m src.fortigate_mcp.server_http \
     --host "$HOST" \
     --port "$PORT" \
-    --path "$PATH" \
+    --path "$MCP_PATH" \
     --config "$CONFIG"
