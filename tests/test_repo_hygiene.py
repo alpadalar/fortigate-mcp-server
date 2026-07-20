@@ -24,6 +24,37 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+# --- AI-residue scan marker fragments (REL-07) -----------------------------
+#
+# Every marker below is assembled from fragments at runtime so that NONE of
+# these matchable substrings ever appears as one contiguous literal anywhere
+# in this file's own source. A tree-content scan of HEAD (05-05 Task 1, Scan
+# B) greps for these exact marker shapes; if this file wrote them as
+# contiguous literals it would self-match its own guard tests the moment it
+# was committed (Cycle 2, Codex HIGH-4).
+_NOREPLY_LOCAL = "noreply"
+_NOREPLY_DOMAIN = "@anthropic"
+_NOREPLY_MARKER = _NOREPLY_LOCAL + _NOREPLY_DOMAIN
+
+_ROBOT_EMOJI = chr(0x1F916)  # constructed at runtime; never the raw glyph in source
+
+_GENERATED_PREFIX = "Generated with "
+_GENERATED_CLAUDE = _GENERATED_PREFIX + "Claude"
+_GENERATED_CODEX = _GENERATED_PREFIX + "Codex"
+
+_TRAILER_PREFIX = "Co-Authored-"
+_TRAILER_SUFFIX = "By:"
+_TRAILER_MARKER = _TRAILER_PREFIX + _TRAILER_SUFFIX
+
+_ALL_RESIDUE_MARKERS = (
+    _NOREPLY_MARKER,
+    _ROBOT_EMOJI,
+    _GENERATED_CLAUDE,
+    _GENERATED_CODEX,
+    _TRAILER_MARKER,
+)
+
+
 def _assert_no_underscore_keys(obj, file_label: str) -> None:
     """Recursively assert no dict key (at any nesting level) starts with '_'."""
     if isinstance(obj, dict):
@@ -419,6 +450,59 @@ def test_issue_template_config_has_security_contact_link():
     assert any(
         "security/advisories" in contact.get("url", "") for contact in data["contact_links"]
     )
+
+
+# --- AI-residue and badge hygiene (REL-07, REL-08) ------------------------
+
+
+def test_no_ai_attribution_in_new_docs():
+    """New release-facing docs must contain none of the fragment-assembled
+    AI-residue markers. Deliberately EXCLUDES CONTRIBUTING.md, which is the
+    one file allowed to reference the Co-Authored-By trailer pattern as
+    policy prose explaining the project's no-AI-attribution rule."""
+    repo_root = _repo_root()
+
+    for filename in (
+        "README.md",
+        "HTTP_MCP_GUIDE.md",
+        "CHANGELOG.md",
+        "SECURITY.md",
+        "CODE_OF_CONDUCT.md",
+    ):
+        path = repo_root / filename
+        if not path.exists():
+            continue
+        text = path.read_text()
+        for marker in _ALL_RESIDUE_MARKERS:
+            assert marker not in text, f"{filename} contains AI-residue marker {marker!r}"
+
+
+def test_contributing_md_mentions_trailer_as_policy_not_accident():
+    """CONTRIBUTING.md must mention the Co-Authored-By trailer pattern as
+    deliberate policy prose (explaining the prohibition), not as an
+    accidental real trailer -- confirmed by proximity to a negation word."""
+    repo_root = _repo_root()
+    text = (repo_root / "CONTRIBUTING.md").read_text()
+
+    index = text.find(_TRAILER_MARKER)
+    assert index != -1, "CONTRIBUTING.md must mention the Co-Authored-By trailer pattern"
+
+    window = text[max(0, index - 80) : index + 80].lower()
+    assert any(word in window for word in ("no", "not", "prohibited", "forbidden")), (
+        "CONTRIBUTING.md's Co-Authored-By mention must be framed as a prohibition"
+    )
+
+
+def test_readme_has_no_badges():
+    """README.md must ship with zero badge markdown. As of this test's
+    authoring, README has zero markdown images of any kind (spot-checked
+    live), so the blanket '![' absence check is used rather than a narrower
+    badge-shaped substring list."""
+    repo_root = _repo_root()
+    text = (repo_root / "README.md").read_text()
+
+    assert "![" not in text
+    assert "shields.io" not in text
 
 
 @pytest.mark.slow
