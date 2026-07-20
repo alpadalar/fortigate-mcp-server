@@ -32,6 +32,14 @@ def _repo_root() -> Path:
 # B) greps for these exact marker shapes; if this file wrote them as
 # contiguous literals it would self-match its own guard tests the moment it
 # was committed (Cycle 2, Codex HIGH-4).
+#
+# Scan-pattern contract (Scan B and any history/tree AI-residue scan): the
+# commit-trailer marker is matched ONLY in its full colon-suffixed form
+# assembled below (_TRAILER_PREFIX + _TRAILER_SUFFIX) -- scans must not grep
+# the shorter colon-less prefix on its own. CONTRIBUTING.md is the single
+# allowlisted file for the trailer marker; it quotes the trailer shape as
+# policy prose explaining the prohibition, and that framing is verified by
+# test_contributing_md_mentions_trailer_as_policy_not_accident below.
 _NOREPLY_LOCAL = "noreply"
 _NOREPLY_DOMAIN = "@anthropic"
 _NOREPLY_MARKER = _NOREPLY_LOCAL + _NOREPLY_DOMAIN
@@ -510,18 +518,18 @@ def test_no_ai_attribution_in_new_docs():
 
 
 def test_contributing_md_mentions_trailer_as_policy_not_accident():
-    """CONTRIBUTING.md must mention the Co-Authored-By trailer pattern as
+    """CONTRIBUTING.md must mention the AI co-author trailer pattern as
     deliberate policy prose (explaining the prohibition), not as an
     accidental real trailer -- confirmed by proximity to a negation word."""
     repo_root = _repo_root()
     text = (repo_root / "CONTRIBUTING.md").read_text()
 
     index = text.find(_TRAILER_MARKER)
-    assert index != -1, "CONTRIBUTING.md must mention the Co-Authored-By trailer pattern"
+    assert index != -1, "CONTRIBUTING.md must mention the AI co-author trailer pattern"
 
     window = text[max(0, index - 80) : index + 80].lower()
     assert any(word in window for word in ("no", "not", "prohibited", "forbidden")), (
-        "CONTRIBUTING.md's Co-Authored-By mention must be framed as a prohibition"
+        "CONTRIBUTING.md's AI co-author trailer mention must be framed as a prohibition"
     )
 
 
