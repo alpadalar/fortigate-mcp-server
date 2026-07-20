@@ -1,0 +1,26 @@
+# gitleaks config for fortigate-mcp-server (REL-06)
+#
+# Extends gitleaks' default ruleset with one custom rule targeting the
+# FortiGate REST API token shape as it appears in this repository's
+# config/config.json `api_token` field.
+#
+# Source: gitleaks config schema, github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "fortigate-api-token"
+description = "FortiGate REST API token (config.json api_token field)"
+regex = '''"api_token"\s*:\s*"[A-Za-z0-9]{20,40}"'''
+tags = ["fortigate", "api-key"]
+
+# NOT enabled as an active rule (documented false-positive risk against unrelated
+# 30-char alphanumeric strings such as hashes/identifiers with no JSON context).
+# Kept here only as an optional stricter variant for future consideration:
+#
+# [[rules]]
+# id = "fortigate-api-token-bare"
+# description = "Bare FortiGate-shaped token string, no JSON context"
+# regex = '''\b[A-Za-z0-9]{30}\b'''
+# tags = ["fortigate", "high-entropy"]
