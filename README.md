@@ -220,8 +220,9 @@ See `examples/cursor_mcp_config.json` for a working stdio configuration.
 ### Run Tests
 
 ```bash
-# Fast subset
-uv run pytest -q
+# Quick run with coverage disabled (a bare -q only reduces verbosity;
+# without --no-cov the coverage gate from pyproject.toml addopts still runs)
+uv run pytest -q --no-cov
 
 # Full suite with coverage (--cov-fail-under=67 enforced per pyproject.toml)
 uv run pytest

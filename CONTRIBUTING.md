@@ -27,8 +27,9 @@ These commands are copied verbatim from this project's actual configured tool se
 `pyproject.toml` — run them locally before opening a pull request:
 
 ```bash
-# Fast test run (no coverage gate)
-uv run pytest -q
+# Quick test run with coverage disabled (--no-cov switches off collection AND the
+# gate; a bare `-q` only reduces verbosity — addopts still enforce the coverage gate)
+uv run pytest -q --no-cov
 
 # Full test run — enforces the coverage gate (--cov-fail-under=67, currently ~75%)
 uv run pytest
