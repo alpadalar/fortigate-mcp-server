@@ -245,19 +245,37 @@ uv run pytest --tb=long
 
 ### Manual Testing
 
-```bash
-# Health check
-curl -X POST http://127.0.0.1:8814/fortigate-mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "health", "params": {}}'
+The `/health` route lives at the app root, is exempt from Bearer-token auth, and works with
+plain `curl`:
 
-# List devices
-curl -X POST http://127.0.0.1:8814/fortigate-mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "list_devices", "params": {}}'
+```bash
+# Liveness probe
+curl http://127.0.0.1:8814/health
 ```
+
+The MCP protocol itself cannot be exercised with a bare `curl` POST: the streamable-HTTP
+transport requires an `initialize` handshake, session management, and `tools/call` framing.
+Use a real MCP client for protocol-level testing — for example `fastmcp.Client`:
+
+```bash
+uv run python - <<'PY'
+import asyncio
+from fastmcp import Client
+
+async def main():
+    # Trailing slash matches the mount convention; the non-slash form 307-redirects
+    async with Client("http://127.0.0.1:8814/fortigate-mcp/") as client:
+        tools = await client.list_tools()
+        print(f"{len(tools)} tools registered")
+        result = await client.call_tool("health", {})
+        print(result.content[0].text)
+
+asyncio.run(main())
+PY
+```
+
+Alternatively, bridge with `npx -y mcp-remote http://127.0.0.1:8814/fortigate-mcp` or use the
+MCP Inspector.
 
 ## 📁 Project Structure
 

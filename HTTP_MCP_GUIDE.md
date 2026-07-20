@@ -153,17 +153,37 @@ Cursor'da FortiGate MCP'yi kullanmak için:
 
 ### Manuel Test
 
-```bash
-# Health check
-curl -X POST http://localhost:8814/fortigate-mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "health", "params": {}}'
+`/health` ucu uygulama kökünde bulunur, Bearer-token doğrulamasından muaftır ve düz `curl`
+ile çalışır:
 
-# List devices
-curl -X POST http://localhost:8814/fortigate-mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "list_devices", "params": {}}'
+```bash
+# Canlılık kontrolü (liveness probe)
+curl http://127.0.0.1:8814/health
 ```
+
+MCP protokolünün kendisi düz bir `curl` POST ile test edilemez: streamable-HTTP taşıyıcısı
+`initialize` el sıkışması, oturum yönetimi ve `tools/call` çerçevelemesi gerektirir. Protokol
+seviyesinde test için gerçek bir MCP istemcisi kullanın — örneğin `fastmcp.Client`:
+
+```bash
+uv run python - <<'PY'
+import asyncio
+from fastmcp import Client
+
+async def main():
+    # Sondaki '/' mount kuralıyla eşleşir; eğik çizgisiz form 307 ile yönlendirilir
+    async with Client("http://127.0.0.1:8814/fortigate-mcp/") as client:
+        tools = await client.list_tools()
+        print(f"{len(tools)} tool kayıtlı")
+        result = await client.call_tool("health", {})
+        print(result.content[0].text)
+
+asyncio.run(main())
+PY
+```
+
+Alternatif olarak `npx -y mcp-remote http://127.0.0.1:8814/fortigate-mcp` köprüsü veya MCP
+Inspector da kullanılabilir.
 
 ## Sorun Giderme
 
