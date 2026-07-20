@@ -220,6 +220,10 @@ See `examples/cursor_mcp_config.json` for a working stdio configuration.
 ### Run Tests
 
 ```bash
+# One-time setup: test dependencies (pytest, pytest-cov, respx, pyyaml) live in the
+# dev/test extras — the plain `uv sync --locked` from the install step does not install them
+uv sync --locked --all-extras
+
 # Quick run with coverage disabled (a bare -q only reduces verbosity;
 # without --no-cov the coverage gate from pyproject.toml addopts still runs)
 uv run pytest -q --no-cov
