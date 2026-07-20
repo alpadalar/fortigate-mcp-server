@@ -86,6 +86,11 @@ docker-compose up -d
 docker-compose logs -f fortigate-mcp-server
 ```
 
+Compose dosyası 8814 portunu yalnızca loopback üzerinde (`127.0.0.1:8814:8814`) yayınlar; sunucuya
+sadece Docker host'un kendisinden erişilebilir. Portu `127.0.0.1` dışına açmadan önce
+`config/config.json` içinde `auth.require_auth=true` ayarlayın ve `ports:` eşlemesini bilinçli
+olarak genişletin — bkz. SECURITY.md.
+
 ## MCP İstemci Entegrasyonu
 
 FortiGate MCP Server, herhangi bir MCP uyumlu istemciyle çalışır. Claude Desktop, Claude Code ve

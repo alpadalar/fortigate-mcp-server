@@ -210,6 +210,19 @@ def test_start_http_server_script_defaults_to_loopback():
     assert "MCP_HTTP_HOST:-0.0.0.0" not in text
 
 
+def test_docker_compose_publishes_loopback_only():
+    """docker-compose.yml must not publish the (default-unauthenticated) MCP
+    port on all host interfaces -- an unrestricted "8814:8814" publish spec
+    binds 0.0.0.0 on the host, and SECURITY.md forbids wildcard exposure.
+    Both README and HTTP_MCP_GUIDE endorse `docker-compose up -d` as a
+    coequal start method, so the compose default must be loopback-only."""
+    repo_root = _repo_root()
+    text = (repo_root / "docker-compose.yml").read_text()
+
+    assert '"8814:8814"' not in text
+    assert "127.0.0.1:8814:8814" in text
+
+
 def test_http_guide_has_no_requirements_txt_reference():
     """HTTP_MCP_GUIDE.md must not reference a requirements file that does not
     exist anywhere in this repository -- the real install path is uv/pyproject.toml."""

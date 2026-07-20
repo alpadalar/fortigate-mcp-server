@@ -108,6 +108,11 @@ docker-compose up -d
 docker-compose logs -f fortigate-mcp-server
 ```
 
+The compose file publishes port 8814 on loopback only (`127.0.0.1:8814:8814`), so the server is
+reachable solely from the Docker host itself. To expose it beyond `127.0.0.1`, first set
+`auth.require_auth=true` in `config/config.json`, then widen the `ports:` mapping deliberately —
+see SECURITY.md.
+
 ## 🔧 MCP Client Integration
 
 FortiGate MCP Server works with any MCP-compatible client. Verified, ready-to-use config examples

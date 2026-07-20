@@ -8,7 +8,11 @@ services:
     container_name: fortigate-mcp-server
     restart: unless-stopped
     ports:
-      - "8814:8814"
+      # Loopback-only publish: the shipped config defaults to
+      # auth.require_auth=false, and SECURITY.md forbids exposing the
+      # unauthenticated server beyond 127.0.0.1. Widen this mapping only
+      # after enabling auth.require_auth=true in config/config.json.
+      - "127.0.0.1:8814:8814"
     volumes:
       # Mount configuration file (required)
       - ./config/config.json:/app/config/config.json:ro
