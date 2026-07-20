@@ -211,16 +211,33 @@ def test_start_http_server_script_defaults_to_loopback():
 
 
 def test_docker_compose_publishes_loopback_only():
-    """docker-compose.yml must not publish the (default-unauthenticated) MCP
-    port on all host interfaces -- an unrestricted "8814:8814" publish spec
-    binds 0.0.0.0 on the host, and SECURITY.md forbids wildcard exposure.
-    Both README and HTTP_MCP_GUIDE endorse `docker-compose up -d` as a
-    coequal start method, so the compose default must be loopback-only."""
-    repo_root = _repo_root()
-    text = (repo_root / "docker-compose.yml").read_text()
+    """Every host-port publish spec in docker-compose.yml must bind loopback.
 
-    assert '"8814:8814"' not in text
-    assert "127.0.0.1:8814:8814" in text
+    The shipped config defaults to auth.require_auth=false, and SECURITY.md
+    forbids exposing the unauthenticated server on 0.0.0.0 or any routable
+    interface. This iterates ALL services' publish specs (parsed from YAML,
+    so quoting variants cannot slip past a substring check) rather than
+    checking only the MCP service's mapping: the removed optional nginx
+    profile published 80/443 on all host interfaces and proxied straight to
+    the unauthenticated backend over the internal network, silently
+    bypassing the MCP service's loopback publish. Any reintroduced sidecar
+    or extra mapping must also bind 127.0.0.1 to pass."""
+    repo_root = _repo_root()
+    compose = yaml.safe_load((repo_root / "docker-compose.yml").read_text())
+
+    publish_specs = [
+        str(spec)
+        for service in compose["services"].values()
+        for spec in service.get("ports", [])
+    ]
+
+    assert "127.0.0.1:8814:8814" in publish_specs
+    non_loopback = [spec for spec in publish_specs if not spec.startswith("127.0.0.1:")]
+    assert non_loopback == [], (
+        f"docker-compose.yml publishes non-loopback host ports: {non_loopback}. "
+        "Bind 127.0.0.1, or document the exposure and require "
+        "auth.require_auth=true before widening -- see SECURITY.md."
+    )
 
 
 def test_http_guide_has_no_requirements_txt_reference():

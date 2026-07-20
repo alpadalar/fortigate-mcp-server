@@ -41,6 +41,15 @@ First public release.
 - pytest configuration consolidated entirely into `pyproject.toml`; coverage gate calibrated
   to a real measured baseline
 
+### Removed
+
+- The undocumented optional nginx reverse-proxy profile in `docker-compose.yml` (and its
+  `nginx/nginx.conf`): when activated, it published ports 80/443 on all host interfaces and
+  proxied straight to the default-unauthenticated MCP backend over the internal Docker
+  network, bypassing the compose file's loopback-only publish; its TLS server block was
+  entirely commented out and no release document referenced the profile. A repository
+  hygiene test now requires every compose publish spec to bind 127.0.0.1.
+
 ### Fixed
 
 - The stdio server's async/sync tool-registration mismatch, where awaiting synchronous tool
