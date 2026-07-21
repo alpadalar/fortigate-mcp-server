@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Four GitHub Actions workflows (`test.yml`, `lint.yml`, `security.yml`, `release.yml`),
+  each with every `uses:` action pinned to a live-verified 40-character commit SHA and
+  each proven hosted-green with a real run on `origin/main` (CI-01, CI-02, CI-03, CI-04)
+- A tag-safe release/publish workflow (`release.yml`) that gates GHCR's `:latest` tag on
+  the actual triggering event (`flavor: latest=auto` only on real tag pushes, never on
+  `workflow_dispatch`), proven via a hosted dry run on both trigger paths before any real
+  semver tag was ever pushed (CI-05)
+- Four HTTP-200-verified README badges (Test, Lint, Security, Release), added only after
+  each referenced workflow had a real hosted-green (or hosted-verified dry-run, for
+  `release.yml`) run, with a hygiene test guarding that every badge references a workflow
+  file that actually exists on disk (CI-06)
+
+### Changed
+
+- `ruff` added as a pinned lint dependency and calibrated clean against its built-in
+  default rule set across `src/` and `tests/`; `mypy src/` now exits 0 under the
+  pre-existing strict `[tool.mypy]` config, with zero strictness dialed back (CI-02)
+- Dockerfile now installs via `uv sync --locked --no-dev --no-editable` instead of an
+  unlocked `uv pip install --system -e .`, so the built image's dependency graph is
+  byte-identical to the audited `uv.lock` (CI-05)
+
 ### Security
 
 - `fastmcp` dependency ceiling raised from `>=2.11,<3` to `>=3.2.0` (resolved 3.4.0),
