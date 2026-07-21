@@ -179,6 +179,38 @@ def test_dockerfile_installs_from_lockfile():
     assert "uv pip install --system --no-cache-dir -e ." not in text
 
 
+def test_dockerfile_images_are_pinned():
+    """FROM / COPY --from= image references must never use the mutable
+    ``latest`` tag, and the uv toolchain image -- which performs the entire
+    dependency install -- must be digest-pinned. A floating registry tag is
+    the same mutable-reference supply-chain class the workflows eliminate
+    with SHA-pinned ``uses:`` (T-06-05-01)."""
+    repo_root = _repo_root()
+    text = (repo_root / "Dockerfile").read_text()
+
+    image_refs = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("FROM "):
+            image_refs.append(stripped.split()[1])
+        match = re.search(r"--from=(\S+)", stripped)
+        if match:
+            image_refs.append(match.group(1))
+
+    assert image_refs, "Dockerfile must contain at least one FROM"
+    for ref in image_refs:
+        assert not ref.endswith(":latest"), (
+            f"mutable :latest image reference in Dockerfile: {ref}"
+        )
+
+    uv_refs = [ref for ref in image_refs if "astral-sh/uv" in ref]
+    assert uv_refs, "Dockerfile must COPY the uv binary from the uv image"
+    for ref in uv_refs:
+        assert re.search(r"@sha256:[0-9a-f]{64}$", ref), (
+            f"uv toolchain image must be digest-pinned (@sha256:...): {ref}"
+        )
+
+
 def test_dockerfile_cmd_does_not_sync_at_runtime():
     """The container CMD must never perform an implicit ``uv sync`` at
     startup: a bare ``uv run`` re-syncs the project on every container

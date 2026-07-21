@@ -30,8 +30,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+# Install uv. Version- AND digest-pinned: this binary performs the entire
+# dependency install, so a floating tag here is the same mutable-reference
+# supply-chain class the workflows eliminate with SHA-pinned `uses:`.
+# Digest verified live against the registry (OCI index for tag 0.11.30):
+#   GET https://ghcr.io/v2/astral-sh/uv/manifests/0.11.30
+COPY --from=ghcr.io/astral-sh/uv:0.11.30@sha256:93b61e21202b1dab861092748e46bbd6e0e41dd84f59b9174efd2353186e1b47 /uv /uvx /usr/local/bin/
 
 # Copy project files needed for installation
 COPY pyproject.toml README.md uv.lock ./
