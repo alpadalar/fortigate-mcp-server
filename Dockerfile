@@ -37,8 +37,25 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 COPY pyproject.toml README.md uv.lock ./
 COPY src/ src/
 
-# Install Python dependencies with uv
-RUN uv sync --locked --no-dev --no-editable
+# Install Python dependencies with uv. --no-cache avoids baking uv's ~85MB
+# build/download cache (which can retain build-time-only copies of packages
+# like setuptools/wheel at whatever version was current when the cache was
+# populated) into the image layer -- the app only ever needs the resulting
+# .venv, never uv's cache.
+RUN uv sync --locked --no-dev --no-editable --no-cache
+
+# The python:3.11-slim base image bootstraps its own system-level pip,
+# setuptools, and wheel via ensurepip. The application never uses them --
+# uv manages /app/.venv directly via the standalone uv binary above, and the
+# container's CMD runs `uv run`, not the system python's pip -- but they
+# still ship in the image and setuptools vendors its own copies of `wheel`
+# and `jaraco.context` internally (setuptools/_vendor/), which can lag
+# behind the patched versions pinned in uv.lock and trip container
+# vulnerability scanning (e.g. CVE-2026-24049 in vendored wheel 0.45.1,
+# CVE-2026-23949 in vendored jaraco.context 5.3.0). Removing this unused
+# toolchain eliminates that surface entirely rather than chasing vendored
+# copies we don't control via uv.lock.
+RUN python3 -m pip uninstall --yes pip setuptools wheel
 
 # Copy remaining application code
 COPY config/ config/
