@@ -61,6 +61,7 @@ lint = [
     "isort>=5.12.0",
     "flake8>=6.0.0",
     "mypy>=1.0.0",
+    "ruff>=0.15.0",
 ]
 security = [
     "bandit>=1.7.0",
@@ -127,6 +128,10 @@ line_length = 88
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
 
 [tool.mypy]
 python_version = "3.11"
