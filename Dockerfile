@@ -75,5 +75,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE ${MCP_SERVER_PORT}
 
-# Default command
-CMD ["uv", "run", "python", "-m", "src.fortigate_mcp.server_http", "--host", "0.0.0.0", "--port", "8814", "--path", "/fortigate-mcp", "--config", "/app/config/config.json"]
+# Default command. --no-sync is load-bearing: a bare `uv run` performs an
+# implicit `uv sync` at every container start, which re-installs the project
+# editable (the build used --no-editable) and -- because the image was built
+# with --no-cache -- must reach PyPI to re-fetch the build backend, mutating
+# the audited uv.lock venv and failing outright in egress-restricted
+# deployments. --no-sync executes against /app/.venv exactly as built.
+CMD ["uv", "run", "--no-sync", "python", "-m", "src.fortigate_mcp.server_http", "--host", "0.0.0.0", "--port", "8814", "--path", "/fortigate-mcp", "--config", "/app/config/config.json"]

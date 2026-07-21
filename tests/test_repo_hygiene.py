@@ -179,6 +179,30 @@ def test_dockerfile_installs_from_lockfile():
     assert "uv pip install --system --no-cache-dir -e ." not in text
 
 
+def test_dockerfile_cmd_does_not_sync_at_runtime():
+    """The container CMD must never perform an implicit ``uv sync`` at
+    startup: a bare ``uv run`` re-syncs the project on every container
+    start, re-installing it editable (the build used --no-editable) and --
+    because the image is built with --no-cache -- fetching the build
+    backend from PyPI, which mutates the audited uv.lock venv and fails
+    outright in egress-restricted deployments. Require ``uv run
+    --no-sync`` (or a global UV_NO_SYNC=1 env) on any uv-run CMD."""
+    repo_root = _repo_root()
+    text = (repo_root / "Dockerfile").read_text()
+
+    cmd_lines = [
+        line for line in text.splitlines() if line.strip().startswith("CMD ")
+    ]
+    assert cmd_lines, "Dockerfile must declare a CMD"
+
+    for line in cmd_lines:
+        if '"uv"' in line and '"run"' in line:
+            assert '"--no-sync"' in line or "ENV UV_NO_SYNC=1" in text, (
+                "Dockerfile CMD invokes `uv run` without --no-sync and "
+                f"without UV_NO_SYNC=1: {line.strip()!r}"
+            )
+
+
 def test_readme_no_verify_ssl_false_recommendation():
     """README.md must never recommend disabling TLS certificate verification,
     in its config example block or its Troubleshooting section."""
