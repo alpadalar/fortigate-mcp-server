@@ -304,9 +304,15 @@ class FortiGateTemplates:
             f"  NAT: {'Yes' if policy.get('nat') == 'enable' else 'No'}",
         ])
         
-        # Schedule
-        schedule = policy.get('schedule', [])
-        schedule_name = schedule[0].get('name') if schedule and isinstance(schedule[0], dict) else str(schedule[0]) if schedule else 'always'
+        # Schedule -- cmdb policy responses carry this as a plain string
+        # (e.g. "always"); indexing a string would render its first char.
+        schedule = policy.get('schedule', 'always')
+        if isinstance(schedule, str):
+            schedule_name = schedule or 'always'
+        elif schedule and isinstance(schedule[0], dict):
+            schedule_name = schedule[0].get('name', 'always')
+        else:
+            schedule_name = str(schedule[0]) if schedule else 'always'
         lines.append(f"  Schedule: {schedule_name}")
         
         # Comments

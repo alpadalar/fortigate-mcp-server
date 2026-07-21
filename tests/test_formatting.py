@@ -82,6 +82,40 @@ class TestFortiGateTemplates:
         assert "WAN->ManDown-Project" in result
         assert "test_device" in result
     
+    def test_firewall_policy_detail_renders_string_schedule_whole(self):
+        """cmdb policy responses carry `schedule` as a plain string
+        (e.g. "always"); the template must render the whole value, not
+        its first character."""
+        policy_data = {
+            "results": {
+                "policyid": 1,
+                "name": "test-policy",
+                "schedule": "always",
+                "action": "accept",
+            }
+        }
+
+        result = FortiGateTemplates.firewall_policy_detail(policy_data, "test_device")
+
+        assert "Schedule: always" in result
+        assert "Schedule: a\n" not in result
+
+    def test_firewall_policy_detail_renders_list_schedule_name(self):
+        """A list-shaped schedule (member objects) must render the member
+        name."""
+        policy_data = {
+            "results": {
+                "policyid": 2,
+                "name": "test-policy",
+                "schedule": [{"name": "workhours"}],
+                "action": "accept",
+            }
+        }
+
+        result = FortiGateTemplates.firewall_policy_detail(policy_data, "test_device")
+
+        assert "Schedule: workhours" in result
+
     def test_address_objects_empty(self):
         """Empty address objects template test"""
         data = {"results": []}
