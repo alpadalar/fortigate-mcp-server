@@ -587,6 +587,80 @@ def test_readme_has_no_badges():
     assert "shields.io" not in text
 
 
+# --- GitHub Actions workflow hygiene (CI-01..CI-05) ------------------------
+
+_WORKFLOW_FILES = (
+    "test.yml",
+    "lint.yml",
+    "security.yml",
+    "release.yml",
+)
+
+_SHA_PINNED_USES = re.compile(r"^[^@]+@[0-9a-f]{40}$")
+
+
+def _workflow_triggers(data: dict) -> dict:
+    """Return a workflow YAML's trigger ("on:") mapping.
+
+    PyYAML follows the YAML 1.1 spec, under which a bare `on` scalar key is
+    a boolean literal -- ``yaml.safe_load`` parses GitHub Actions' `on:` key
+    as the Python boolean ``True``, not the string ``"on"``. Handle both so
+    this helper is correct regardless of which key PyYAML produced.
+    """
+    return data["on"] if "on" in data else data[True]
+
+
+def test_all_workflow_actions_are_sha_pinned():
+    """Every `uses:` reference across all 4 workflow files must be pinned to
+    a full 40-hex-char commit SHA, never a mutable tag -- the T-06-05-01
+    supply-chain mitigation (a moved tag can silently swap in malicious
+    code, per the CLAUDE.md-cited trivy-action incident)."""
+    repo_root = _repo_root()
+
+    for filename in _WORKFLOW_FILES:
+        path = repo_root / ".github" / "workflows" / filename
+        data = yaml.safe_load(path.read_text())
+
+        for job_name, job in data["jobs"].items():
+            for step in job.get("steps", []):
+                uses = step.get("uses")
+                if uses is None:
+                    continue
+                assert _SHA_PINNED_USES.match(uses), (
+                    f"{filename} job {job_name!r} has a non-SHA-pinned "
+                    f"uses: {uses!r}"
+                )
+
+
+def test_release_workflow_never_triggers_on_pull_request():
+    """release.yml must never trigger on pull_request -- it is the only
+    workflow in this phase that can push to GHCR, and a fork PR must never
+    reach that path (T-06-05-04)."""
+    repo_root = _repo_root()
+    data = yaml.safe_load((repo_root / ".github" / "workflows" / "release.yml").read_text())
+
+    assert "pull_request" not in _workflow_triggers(data)
+
+
+def test_release_workflow_latest_flavor_is_conditional_on_push_event():
+    """release.yml's `latest` tag flavor must be gated on a real push (tag-ref)
+    event, never auto-applied on a workflow_dispatch dry run (CI-05)."""
+    repo_root = _repo_root()
+    text = (repo_root / ".github" / "workflows" / "release.yml").read_text()
+
+    assert "latest=${{ github.event_name == 'push' && 'auto' || 'false' }}" in text
+
+
+def test_release_workflow_never_uses_branch_tag_scheme():
+    """release.yml must never rely on docker/metadata-action's `{{branch}}`
+    token -- it renders empty on the tag-push events this workflow triggers
+    on (06-RESEARCH.md Pitfall 4)."""
+    repo_root = _repo_root()
+    text = (repo_root / ".github" / "workflows" / "release.yml").read_text()
+
+    assert "{{branch}}" not in text
+
+
 @pytest.mark.slow
 @pytest.mark.skipif(
     os.environ.get("PACKAGING_CHECKS") != "1",
