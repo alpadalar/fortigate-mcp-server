@@ -12,7 +12,7 @@ consistent behavior and error handling across the MCP server.
 """
 import re
 import time
-from typing import Any, List, Optional
+from typing import Any, Awaitable, Callable, List, Optional, cast
 from mcp.types import TextContent as Content
 from ..core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from ..core.logging import get_logger, log_tool_call
@@ -83,7 +83,7 @@ class FortiGateTool:
             self.logger.error(f"Device {safe_id} not found")
             raise ValueError(f"Device '{safe_id}' not found. Available devices: {list(self.fortigate_manager.devices.keys())}")
 
-    def _format_response(self, data: Any, resource_type: Optional[str] = None, **kwargs) -> List[Content]:
+    def _format_response(self, data: Any, resource_type: Optional[str] = None, **kwargs: Any) -> List[Content]:
         """Format response data into MCP content using formatters.
 
         This method handles formatting of various FortiGate resource types into
@@ -191,8 +191,8 @@ class FortiGateTool:
         
         return FortiGateFormatters.format_error_response(operation, device_id, error_msg)
 
-    async def _execute_with_logging(self, operation: str, device_id: str, 
-                                   func, *args, **kwargs) -> List[Content]:
+    async def _execute_with_logging(self, operation: str, device_id: str,
+                                   func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any) -> List[Content]:
         """Execute a function with logging and error handling.
         
         Args:
@@ -211,7 +211,7 @@ class FortiGateTool:
             result = await func(*args, **kwargs)
             duration_ms = (time.time() - start_time) * 1000
             log_tool_call(self.logger, operation, device_id, True, duration_ms)
-            return result
+            return cast(List[Content], result)
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
             log_tool_call(self.logger, operation, device_id, False, duration_ms, str(e))
@@ -232,7 +232,7 @@ class FortiGateTool:
             # _handle_error's log line and MCP error content.
             raise ValueError(f"Device '{self._safe_id(device_id)}' not found. Available devices: {available}")
 
-    def _validate_required_params(self, **params) -> None:
+    def _validate_required_params(self, **params: Any) -> None:
         """Validate that required parameters are provided.
         
         Args:

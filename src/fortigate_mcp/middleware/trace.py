@@ -8,7 +8,10 @@ is implemented as pure ASGI instead: it appends exactly one header on the
 ``http.response.start`` message and otherwise passes every ASGI message
 through untouched, so it is fully transparent to streaming responses.
 """
+from typing import Any, Callable
+
 from starlette.datastructures import MutableHeaders
+from starlette.types import Message, Receive, Scope, Send
 
 
 class TraceMiddleware:
@@ -31,15 +34,15 @@ class TraceMiddleware:
        stack failed to attach.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: Callable[[Scope, Receive, Send], Any]) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
-        async def send_with_trace(message):
+        async def send_with_trace(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = MutableHeaders(scope=message)
                 headers.append("X-FortiGate-MCP-Trace", "build_http_app")

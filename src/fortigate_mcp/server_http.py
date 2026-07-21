@@ -8,7 +8,7 @@ supporting HTTP transport for web-based integrations and external access.
 import os
 import sys
 import signal
-from typing import Optional
+from typing import Any, Dict, Optional
 
 # The official SDK's embedded FastMCP engine has neither custom_route() nor
 # http_app() -- a fallback to that engine can never produce this HTTP
@@ -17,7 +17,9 @@ from typing import Optional
 # dependency, so a missing package here means a genuinely broken
 # environment -- fail loudly at import time instead.
 from fastmcp import FastMCP
+from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp
 
 from .config.loader import load_config
 from .core.logging import setup_logging
@@ -122,7 +124,7 @@ class FortiGateMCPHTTPServer:
         # http_app() call: custom routes bake into mcp._additional_http_routes,
         # which http_app() reads at construction time.
         @self.mcp.custom_route("/health", methods=["GET"])
-        async def health(request):
+        async def health(request: Request) -> JSONResponse:
             # HTTP status stays 200 even when devices are degraded: this
             # route is a process-liveness probe (is the server up and able
             # to answer at all), not a readiness probe. A load balancer
@@ -161,7 +163,7 @@ class FortiGateMCPHTTPServer:
         except Exception as e:
             self.logger.error(f"Initial connection test error: {e}")
 
-    def build_http_app(self):
+    def build_http_app(self) -> ASGIApp:
         """THE single ASGI app factory.
 
         ``run()`` and the E2E test fixture (``tests/conftest.py``) both call
@@ -207,7 +209,7 @@ class FortiGateMCPHTTPServer:
         Runs the server with HTTP transport on the configured
         host and port.
         """
-        def signal_handler(signum, frame):
+        def signal_handler(signum: int, frame: Any) -> None:
             self.logger.info("Received signal to shutdown HTTP server...")
             sys.exit(0)
 
@@ -248,10 +250,10 @@ class FortiGateMCPCommand:
     
     help = "FortiGate MCP HTTP Server"
     
-    def __init__(self):
-        self.server = None
-    
-    def add_arguments(self, parser):
+    def __init__(self) -> None:
+        self.server: Optional[FortiGateMCPHTTPServer] = None
+
+    def add_arguments(self, parser: Any) -> None:
         """Add command line arguments."""
         parser.add_argument(
             '--host',
@@ -277,7 +279,7 @@ class FortiGateMCPCommand:
             help='Configuration file path'
         )
     
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         """Handle the command execution."""
         config_path = options.get('config') or os.getenv('FORTIGATE_MCP_CONFIG')
         
@@ -291,16 +293,16 @@ class FortiGateMCPCommand:
         self.server.run()
 
 
-def main():
+def main() -> None:
     """Main entry point for standalone execution."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description='FortiGate MCP HTTP Server')
     command = FortiGateMCPCommand()
     command.add_arguments(parser)
-    
+
     args = parser.parse_args()
-    options = vars(args)
+    options: Dict[str, Any] = vars(args)
     
     try:
         command.handle(**options)

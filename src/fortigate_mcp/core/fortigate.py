@@ -9,9 +9,10 @@ This module provides the core FortiGate API integration:
 - Error handling and recovery
 """
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, cast
 import httpx
 import json
+from pydantic import SecretStr
 from ..config.models import FortiGateDeviceConfig, AuthConfig
 from ..validation import (
     scrub_secrets,
@@ -178,7 +179,7 @@ class FortiGateAPI:
                 
                 # Parse response
                 try:
-                    return response.json()
+                    return cast(Dict[str, Any], response.json())
                 except json.JSONDecodeError:
                     # Some endpoints may return empty responses
                     return {"status": "success"}
@@ -480,8 +481,8 @@ class FortiGateManager:
             host=host,
             port=port,
             username=username,
-            password=password,
-            api_token=api_token,
+            password=SecretStr(password) if password is not None else None,
+            api_token=SecretStr(api_token) if api_token is not None else None,
             vdom=vdom,
             verify_ssl=verify_ssl,
             timeout=timeout

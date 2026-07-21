@@ -33,6 +33,7 @@ Error contract:
 
 import ipaddress
 import re
+from typing import Iterable, Optional
 
 # RFC-1123-style hostname: dot-separated labels, each 1-63 chars of
 # [A-Za-z0-9-], no leading/trailing hyphen per label, 253-char overall cap.
@@ -213,7 +214,7 @@ def validate_interface_name(name: str) -> str:
     return name
 
 
-def scrub_secrets(text: str, secrets) -> str:
+def scrub_secrets(text: str, secrets: Iterable[Optional[str]]) -> str:
     """Redact known secret values and Bearer-pattern tokens from `text`.
 
     The single shared scrubbing primitive: `core/fortigate.py` applies
@@ -234,7 +235,7 @@ def scrub_secrets(text: str, secrets) -> str:
         independently of the known-secrets set.
     """
     if not isinstance(text, str):
-        return text
+        return text  # type: ignore[unreachable]  # defensive: callers may bypass the str hint
 
     # Longest-first: two registered secrets can be in a substring
     # relationship (e.g. a rotated token that extends an older still-

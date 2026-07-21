@@ -43,10 +43,11 @@ Threat model this closes (04-REVIEWS.md, T-04-09/T-04-10/T-04-11/T-04-16):
   configured token, header value, or other request material.
 """
 import hmac
-from typing import Iterable, Tuple
+from typing import Any, Callable, Iterable, Tuple
 
 from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
+from starlette.types import Receive, Scope, Send
 
 _BEARER_PREFIX = "bearer "
 
@@ -59,7 +60,7 @@ class AuthMiddleware:
     filtering happens once here at construction time.
     """
 
-    def __init__(self, app, api_tokens: Iterable[str]):
+    def __init__(self, app: Callable[[Scope, Receive, Send], Any], api_tokens: Iterable[str]) -> None:
         self.app = app
         # Defense in depth: only non-empty-after-strip entries participate
         # in comparison, even though AuthConfig already rejects those at
@@ -71,7 +72,7 @@ class AuthMiddleware:
             token.encode("utf-8") for token in api_tokens if token and token.strip()
         )
 
-    async def __call__(self, scope, receive, send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "lifespan":
             await self.app(scope, receive, send)
             return
@@ -118,6 +119,6 @@ class AuthMiddleware:
         await self.app(scope, receive, send)
 
     @staticmethod
-    async def _deny(scope, receive, send) -> None:
+    async def _deny(scope: Scope, receive: Receive, send: Send) -> None:
         response = JSONResponse({"error": "unauthorized"}, status_code=401)
         await response(scope, receive, send)

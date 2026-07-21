@@ -17,7 +17,7 @@ The server exposes a set of tools for managing FortiGate resources including:
 import os
 import sys
 import signal
-from typing import Optional
+from typing import Any, Optional
 
 from fastmcp import FastMCP
 
@@ -88,7 +88,7 @@ class FortiGateMCPServer:
         """Start the MCP server."""
         import anyio
 
-        def signal_handler(signum, frame):
+        def signal_handler(signum: int, frame: Any) -> None:
             self.logger.info("Received signal to shutdown...")
             sys.exit(0)
 
