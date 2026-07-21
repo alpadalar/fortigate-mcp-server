@@ -30,7 +30,7 @@ class NetworkTools(FortiGateTool):
             }
             
             api_client = self._get_device_api(device_id)
-            result = api_client.create_address_object(address_data, vdom=vdom)
+            api_client.create_address_object(address_data, vdom=vdom)
             return self._format_operation_result("create address object", device_id, True, f"Address object '{name}' created successfully")
         except Exception as e:
             return self._handle_error("create address object", device_id, e)
@@ -51,7 +51,7 @@ class NetworkTools(FortiGateTool):
             self._validate_required_params(name=address_data.get("name"), type=address_data.get("type"))
 
             api_client = self._get_device_api(device_id)
-            result = api_client.create_address_object(address_data, vdom=vdom)
+            api_client.create_address_object(address_data, vdom=vdom)
             return self._format_operation_result("create address object", device_id, True, f"Address object '{address_data.get('name')}' created successfully")
         except Exception as e:
             return self._handle_error("create address object", device_id, e)
@@ -72,7 +72,7 @@ class NetworkTools(FortiGateTool):
             self._validate_required_params(name=service_data.get("name"), protocol=service_data.get("protocol"))
 
             api_client = self._get_device_api(device_id)
-            result = api_client.create_service_object(service_data, vdom=vdom)
+            api_client.create_service_object(service_data, vdom=vdom)
             return self._format_operation_result("create service object", device_id, True, f"Service object '{service_data.get('name')}' created successfully")
         except Exception as e:
             return self._handle_error("create service object", device_id, e)
@@ -104,7 +104,7 @@ class NetworkTools(FortiGateTool):
                 service_data["port"] = port
             
             api_client = self._get_device_api(device_id)
-            result = api_client.create_service_object(service_data, vdom=vdom)
+            api_client.create_service_object(service_data, vdom=vdom)
             return self._format_operation_result("create service object", device_id, True, f"Service object '{name}' created successfully")
         except Exception as e:
             return self._handle_error("create service object", device_id, e)

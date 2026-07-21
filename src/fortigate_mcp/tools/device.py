@@ -10,7 +10,6 @@ This module provides MCP tools for managing FortiGate devices:
 from typing import Dict, Any, List, Optional
 from mcp.types import TextContent as Content
 from .base import FortiGateTool
-from ..core.fortigate import FortiGateAPIError
 from ..core.logging import register_secrets
 from ..validation import validate_object_name
 

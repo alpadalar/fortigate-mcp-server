@@ -24,7 +24,7 @@ class FirewallTools(FortiGateTool):
             self._validate_required_params(policy_data=policy_data)
             
             api_client = self._get_device_api(device_id)
-            result = api_client.create_firewall_policy(policy_data, vdom=vdom)
+            api_client.create_firewall_policy(policy_data, vdom=vdom)
             return self._format_operation_result("create firewall policy", device_id, True, "Policy created successfully")
         except Exception as e:
             return self._handle_error("create firewall policy", device_id, e)
@@ -37,7 +37,7 @@ class FirewallTools(FortiGateTool):
             self._validate_required_params(policy_id=policy_id, policy_data=policy_data)
             
             api_client = self._get_device_api(device_id)
-            result = api_client.update_firewall_policy(policy_id, policy_data, vdom=vdom)
+            api_client.update_firewall_policy(policy_id, policy_data, vdom=vdom)
             return self._format_operation_result("update firewall policy", device_id, True, f"Policy {policy_id} updated successfully")
         except Exception as e:
             return self._handle_error("update firewall policy", device_id, e)
@@ -57,12 +57,12 @@ class FirewallTools(FortiGateTool):
             # Get address and service objects for resolution
             try:
                 address_objects = api_client.get_address_objects(vdom=vdom)
-            except:
+            except Exception:
                 address_objects = None
                 
             try:
                 service_objects = api_client.get_service_objects(vdom=vdom)
-            except:
+            except Exception:
                 service_objects = None
             
             return self._format_response(
@@ -83,7 +83,7 @@ class FirewallTools(FortiGateTool):
             self._validate_required_params(policy_id=policy_id)
             
             api_client = self._get_device_api(device_id)
-            result = api_client.delete_firewall_policy(policy_id, vdom=vdom)
+            api_client.delete_firewall_policy(policy_id, vdom=vdom)
             return self._format_operation_result("delete firewall policy", device_id, True, f"Policy {policy_id} deleted successfully")
         except Exception as e:
             return self._handle_error("delete firewall policy", device_id, e)
@@ -103,12 +103,12 @@ class FirewallTools(FortiGateTool):
             # Get address and service objects for resolution
             try:
                 address_objects = api_client.get_address_objects(vdom=vdom)
-            except:
+            except Exception:
                 address_objects = None
                 
             try:
                 service_objects = api_client.get_service_objects(vdom=vdom)
-            except:
+            except Exception:
                 service_objects = None
             
             return self._format_response(

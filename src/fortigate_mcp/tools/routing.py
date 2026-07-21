@@ -32,7 +32,7 @@ class RoutingTools(FortiGateTool):
                 route_data["device"] = device
             
             api_client = self._get_device_api(device_id)
-            result = api_client.create_static_route(route_data, vdom=vdom)
+            api_client.create_static_route(route_data, vdom=vdom)
             return self._format_operation_result("create static route", device_id, True, f"Static route to {dst} created successfully")
         except Exception as e:
             return self._handle_error("create static route", device_id, e)
@@ -51,7 +51,7 @@ class RoutingTools(FortiGateTool):
             self._validate_required_params(dst=route_data.get("dst"), gateway=route_data.get("gateway"))
 
             api_client = self._get_device_api(device_id)
-            result = api_client.create_static_route(route_data, vdom=vdom)
+            api_client.create_static_route(route_data, vdom=vdom)
             return self._format_operation_result("create static route", device_id, True, f"Static route to {route_data.get('dst')} created successfully")
         except Exception as e:
             return self._handle_error("create static route", device_id, e)
@@ -97,7 +97,7 @@ class RoutingTools(FortiGateTool):
             self._validate_required_params(route_id=route_id)
             
             api_client = self._get_device_api(device_id)
-            result = api_client.update_static_route(route_id, route_data, vdom=vdom)
+            api_client.update_static_route(route_id, route_data, vdom=vdom)
             return self._format_operation_result("update static route", device_id, True, f"Static route {route_id} updated successfully")
         except Exception as e:
             return self._handle_error("update static route", device_id, e)
@@ -109,7 +109,7 @@ class RoutingTools(FortiGateTool):
             self._validate_required_params(route_id=route_id)
             
             api_client = self._get_device_api(device_id)
-            result = api_client.delete_static_route(route_id, vdom=vdom)
+            api_client.delete_static_route(route_id, vdom=vdom)
             return self._format_operation_result("delete static route", device_id, True, f"Static route {route_id} deleted successfully")
         except Exception as e:
             return self._handle_error("delete static route", device_id, e)

@@ -10,10 +10,9 @@ This module provides the foundation for all FortiGate MCP tools, including:
 All tool implementations inherit from the FortiGateTool base class to ensure
 consistent behavior and error handling across the MCP server.
 """
-import logging
 import re
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional
 from mcp.types import TextContent as Content
 from ..core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from ..core.logging import get_logger, log_tool_call
@@ -79,7 +78,7 @@ class FortiGateTool:
         """
         try:
             return self.fortigate_manager.get_device(device_id)
-        except ValueError as e:
+        except ValueError:
             safe_id = self._safe_id(device_id)
             self.logger.error(f"Device {safe_id} not found")
             raise ValueError(f"Device '{safe_id}' not found. Available devices: {list(self.fortigate_manager.devices.keys())}")
