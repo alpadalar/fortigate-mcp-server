@@ -1,5 +1,10 @@
 # FortiGate MCP Server
 
+[![Test](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/test.yml/badge.svg)](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/test.yml)
+[![Lint](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/lint.yml/badge.svg)](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/lint.yml)
+[![Security](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/security.yml/badge.svg)](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/security.yml)
+[![Release](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/release.yml/badge.svg)](https://github.com/alpadalar/fortigate-mcp-server/actions/workflows/release.yml)
+
 FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for managing FortiGate devices. This project provides programmatic access to FortiGate devices and enables integration with MCP-compatible clients such as Claude Desktop, Claude Code, and Cursor.
 
 ## 🚀 Features

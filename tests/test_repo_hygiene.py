@@ -575,16 +575,26 @@ def test_contributing_md_mentions_trailer_as_policy_not_accident():
     )
 
 
-def test_readme_has_no_badges():
-    """README.md must ship with zero badge markdown. As of this test's
-    authoring, README has zero markdown images of any kind (spot-checked
-    live), so the blanket '![' absence check is used rather than a narrower
-    badge-shaped substring list."""
+def test_readme_badges_reference_real_workflows():
+    """README.md must ship badges referencing only real, on-disk workflow
+    files. As of this test's authoring, all 4 GitHub Actions workflows this
+    phase created (test.yml, lint.yml, security.yml, release.yml) have real
+    hosted-green (or hosted-verified dry-run, for release.yml) proof behind
+    them, so badges are required, not just permitted -- and each one must
+    name-check against a workflow file that actually exists on disk, so a
+    future rename/deletion without a README update fails this test
+    immediately rather than silently going stale."""
     repo_root = _repo_root()
     text = (repo_root / "README.md").read_text()
 
-    assert "![" not in text
-    assert "shields.io" not in text
+    assert "badge.svg" in text
+
+    for filename in _WORKFLOW_FILES:
+        assert filename in text, f"README.md badge markup must reference {filename}"
+        workflow_path = repo_root / ".github" / "workflows" / filename
+        assert workflow_path.exists(), (
+            f"README.md references {filename} but it does not exist on disk"
+        )
 
 
 # --- GitHub Actions workflow hygiene (CI-01..CI-05) ------------------------
