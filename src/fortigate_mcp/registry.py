@@ -496,13 +496,12 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
                 "port": tools.config.server.port,
                 "registered_devices": len(tools.fortigate_manager.devices),
                 "failed_devices": tools.fortigate_manager.failed_devices,
-                "available_tools": [
-                    "Device Management (6 tools)",
-                    "Firewall Policy Management (4 tools)",
-                    "Network Objects Management (4 tools)",
-                    "Routing Management (4 tools)",
-                    "System Tools (2 tools)"
-                ]
+                # Derived from the registry's own `registered` list (fully
+                # populated by the time any tool call executes) -- never a
+                # hand-maintained inventory, which drifted to 20 claimed vs
+                # 30 registered before this was derived.
+                "tool_count": len(registered),
+                "available_tools": sorted(registered),
             }
             return FortiGateFormatters.format_json_response(info, "Server Information")
 
