@@ -26,7 +26,7 @@ import functools
 import json
 import os
 from datetime import datetime
-from typing import Annotated, Any, List, Literal, Optional
+from typing import Annotated, Any, Callable, List, Literal, Optional, cast
 
 from fastmcp.exceptions import ToolError
 from pydantic import Field
@@ -165,7 +165,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             return True
         return os.getenv("FORTIGATE_MCP_ALLOW_WRITES", "0").lower() in ("1", "true", "yes", "on")
 
-    def _gate(fn):
+    def _gate(fn: Callable[..., Any]) -> Callable[..., Any]:
         """Wrap a write/destructive tool closure with the SEC-01
         read-only-by-default gate. Looks up ``RISK_CLASSIFICATION[fn.__name__]``
         -- an uncaught KeyError here is intentional: an unclassified tool
@@ -188,21 +188,21 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
 
         if asyncio.iscoroutinefunction(fn):
             @functools.wraps(fn)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 if not _writes_allowed():
                     raise ToolError(denial_message)
                 return await fn(*args, **kwargs)
             return async_wrapper
 
         @functools.wraps(fn)
-        def sync_wrapper(*args, **kwargs):
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             if not _writes_allowed():
                 raise ToolError(denial_message)
             return fn(*args, **kwargs)
         return sync_wrapper
 
-    def _tool(description):
-        def decorator(fn):
+    def _tool(description: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
             registered.append(fn.__name__)
             # Gate is the INNER wrap, mcp.tool() stays OUTER: FastMCP
             # introspects whatever _gate(fn) returns, and functools.wraps
@@ -210,32 +210,32 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             # for read-classified tools (_gate returns fn unchanged) and
             # gated tools alike -- this is what keeps the golden schema
             # byte-frozen (SEC-01 must never change tools/list surface).
-            return mcp.tool(description=description)(_gate(fn))
+            return cast(Callable[..., Any], mcp.tool(description=description)(_gate(fn)))
         return decorator
 
     # --- (A) 24 unconditionally-registered, schema-identical tools ---------
 
     @_tool(LIST_DEVICES_DESC)
-    def list_devices():
-        return tools.device_tools.list_devices()
+    def list_devices() -> List[Content]:
+        return cast(List[Content], tools.device_tools.list_devices())
 
     @_tool(GET_DEVICE_STATUS_DESC)
     def get_device_status(
         device_id: Annotated[str, Field(description="FortiGate device identifier")]
-    ):
-        return tools.device_tools.get_device_status(device_id)
+    ) -> List[Content]:
+        return cast(List[Content], tools.device_tools.get_device_status(device_id))
 
     @_tool(TEST_DEVICE_CONNECTION_DESC)
     def test_device_connection(
         device_id: Annotated[str, Field(description="FortiGate device identifier")]
-    ):
-        return tools.device_tools.test_device_connection(device_id)
+    ) -> List[Content]:
+        return cast(List[Content], tools.device_tools.test_device_connection(device_id))
 
     @_tool(DISCOVER_VDOMS_DESC)
     def discover_vdoms(
         device_id: Annotated[str, Field(description="FortiGate device identifier")]
-    ):
-        return tools.device_tools.discover_vdoms(device_id)
+    ) -> List[Content]:
+        return cast(List[Content], tools.device_tools.discover_vdoms(device_id))
 
     @_tool(ADD_DEVICE_DESC)
     def add_device(
@@ -248,31 +248,31 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         vdom: Annotated[str, Field(description="Virtual Domain", default="root")] = "root",
         verify_ssl: Annotated[bool, Field(description="Verify SSL", default=False)] = False,
         timeout: Annotated[int, Field(description="Timeout in seconds", default=30)] = 30
-    ):
-        return tools.device_tools.add_device(
+    ) -> List[Content]:
+        return cast(List[Content], tools.device_tools.add_device(
             device_id, host, port, username, password, api_token, vdom, verify_ssl, timeout
-        )
+        ))
 
     @_tool(REMOVE_DEVICE_DESC)
     def remove_device(
         device_id: Annotated[str, Field(description="Device identifier to remove")]
-    ):
-        return tools.device_tools.remove_device(device_id)
+    ) -> List[Content]:
+        return cast(List[Content], tools.device_tools.remove_device(device_id))
 
     @_tool(LIST_FIREWALL_POLICIES_DESC)
     def list_firewall_policies(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.firewall_tools.list_policies(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.firewall_tools.list_policies(device_id, vdom))
 
     @_tool(CREATE_FIREWALL_POLICY_DESC)
     def create_firewall_policy(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         policy_data: Annotated[dict, Field(description="Policy configuration as JSON")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.firewall_tools.create_policy(device_id, policy_data, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.firewall_tools.create_policy(device_id, policy_data, vdom))
 
     @_tool(UPDATE_FIREWALL_POLICY_DESC)
     def update_firewall_policy(
@@ -280,59 +280,59 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         policy_id: Annotated[str, Field(description="Policy ID to update")],
         policy_data: Annotated[dict, Field(description="Updated policy configuration")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.firewall_tools.update_policy(device_id, policy_id, policy_data, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.firewall_tools.update_policy(device_id, policy_id, policy_data, vdom))
 
     @_tool(DELETE_FIREWALL_POLICY_DESC)
     def delete_firewall_policy(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         policy_id: Annotated[str, Field(description="Policy ID to delete")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.firewall_tools.delete_policy(device_id, policy_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.firewall_tools.delete_policy(device_id, policy_id, vdom))
 
     @_tool(LIST_ADDRESS_OBJECTS_DESC)
     def list_address_objects(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.network_tools.list_address_objects(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.network_tools.list_address_objects(device_id, vdom))
 
     @_tool(LIST_SERVICE_OBJECTS_DESC)
     def list_service_objects(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.network_tools.list_service_objects(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.network_tools.list_service_objects(device_id, vdom))
 
     @_tool(LIST_STATIC_ROUTES_DESC)
     def list_static_routes(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.list_static_routes(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.list_static_routes(device_id, vdom))
 
     @_tool(GET_ROUTING_TABLE_DESC)
     def get_routing_table(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.get_routing_table(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.get_routing_table(device_id, vdom))
 
     @_tool(LIST_INTERFACES_DESC)
     def list_interfaces(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.list_interfaces(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.list_interfaces(device_id, vdom))
 
     @_tool(GET_INTERFACE_STATUS_DESC)
     def get_interface_status(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         interface_name: Annotated[str, Field(description="Interface name")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.get_interface_status(device_id, interface_name, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.get_interface_status(device_id, interface_name, vdom))
 
     @_tool(UPDATE_STATIC_ROUTE_DESC)
     def update_static_route(
@@ -340,31 +340,31 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         route_id: Annotated[str, Field(description="Route identifier")],
         route_data: Annotated[dict, Field(description="Route configuration")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.update_static_route(device_id, route_id, route_data, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.update_static_route(device_id, route_id, route_data, vdom))
 
     @_tool(DELETE_STATIC_ROUTE_DESC)
     def delete_static_route(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         route_id: Annotated[str, Field(description="Route identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.delete_static_route(device_id, route_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.delete_static_route(device_id, route_id, vdom))
 
     @_tool(GET_STATIC_ROUTE_DETAIL_DESC)
     def get_static_route_detail(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         route_id: Annotated[str, Field(description="Route identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.routing_tools.get_static_route_detail(device_id, route_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.routing_tools.get_static_route_detail(device_id, route_id, vdom))
 
     @_tool(LIST_VIRTUAL_IPS_DESC)
     def list_virtual_ips(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.virtual_ip_tools.list_virtual_ips(device_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.virtual_ip_tools.list_virtual_ips(device_id, vdom))
 
     @_tool(CREATE_VIRTUAL_IP_DESC)
     def create_virtual_ip(
@@ -378,10 +378,10 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         extport: Annotated[Optional[str], Field(description="External port")] = None,
         mappedport: Annotated[Optional[str], Field(description="Mapped port")] = None,
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.virtual_ip_tools.create_virtual_ip(
+    ) -> List[Content]:
+        return cast(List[Content], tools.virtual_ip_tools.create_virtual_ip(
             device_id, name, extip, mappedip, extintf, portforward, protocol, extport, mappedport, vdom
-        )
+        ))
 
     @_tool(UPDATE_VIRTUAL_IP_DESC)
     def update_virtual_ip(
@@ -389,24 +389,24 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         name: Annotated[str, Field(description="Virtual IP name")],
         vip_data: Annotated[dict, Field(description="Virtual IP configuration")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.virtual_ip_tools.update_virtual_ip(device_id, name, vip_data, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.virtual_ip_tools.update_virtual_ip(device_id, name, vip_data, vdom))
 
     @_tool(GET_VIRTUAL_IP_DETAIL_DESC)
     def get_virtual_ip_detail(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         name: Annotated[str, Field(description="Virtual IP name")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.virtual_ip_tools.get_virtual_ip_detail(device_id, name, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.virtual_ip_tools.get_virtual_ip_detail(device_id, name, vdom))
 
     @_tool(DELETE_VIRTUAL_IP_DESC)
     def delete_virtual_ip(
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         name: Annotated[str, Field(description="Virtual IP name")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return tools.virtual_ip_tools.delete_virtual_ip(device_id, name, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], tools.virtual_ip_tools.delete_virtual_ip(device_id, name, vdom))
 
     # --- (B) get_firewall_policy_detail: unified to ONE async definition ---
     # firewall.py's sync and async policy-detail method bodies are
@@ -418,8 +418,8 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         device_id: Annotated[str, Field(description="FortiGate device identifier")],
         policy_id: Annotated[str, Field(description="Policy ID to get details for")],
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-    ):
-        return await tools.firewall_tools.get_policy_detail_async(device_id, policy_id, vdom)
+    ) -> List[Content]:
+        return cast(List[Content], await tools.firewall_tools.get_policy_detail_async(device_id, policy_id, vdom))
 
     # --- (C) 3 divergent create-tools: transport-marked variants -----------
     # Locked CONS-01 decision: dict payload on stdio vs individual fields on
@@ -431,12 +431,12 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             address_data: Annotated[dict, Field(description="Address object configuration")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-        ):
-            return tools.network_tools.create_address_object_from_payload(device_id, address_data, vdom)
+        ) -> List[Content]:
+            return cast(List[Content], tools.network_tools.create_address_object_from_payload(device_id, address_data, vdom))
     else:  # http
         @_tool("Create address object")
-        def create_address_object(device_id: str, name: str, address_type: str, address: str, vdom: Optional[str] = None):
-            return tools.network_tools.create_address_object(device_id, name, address_type, address, vdom)
+        def create_address_object(device_id: str, name: str, address_type: str, address: str, vdom: Optional[str] = None) -> List[Content]:
+            return cast(List[Content], tools.network_tools.create_address_object(device_id, name, address_type, address, vdom))
 
     if transport == "stdio":
         @_tool(CREATE_SERVICE_OBJECT_DESC)
@@ -444,13 +444,13 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             service_data: Annotated[dict, Field(description="Service object configuration")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-        ):
-            return tools.network_tools.create_service_object_from_payload(device_id, service_data, vdom)
+        ) -> List[Content]:
+            return cast(List[Content], tools.network_tools.create_service_object_from_payload(device_id, service_data, vdom))
     else:  # http
         @_tool("Create service object")
         def create_service_object(device_id: str, name: str, service_type: str, protocol: str,
-                                   port: Optional[str] = None, vdom: Optional[str] = None):
-            return tools.network_tools.create_service_object(device_id, name, service_type, protocol, port, vdom)
+                                   port: Optional[str] = None, vdom: Optional[str] = None) -> List[Content]:
+            return cast(List[Content], tools.network_tools.create_service_object(device_id, name, service_type, protocol, port, vdom))
 
     if transport == "stdio":
         @_tool(CREATE_STATIC_ROUTE_DESC)
@@ -458,18 +458,18 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             device_id: Annotated[str, Field(description="FortiGate device identifier")],
             route_data: Annotated[dict, Field(description="Route configuration")],
             vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
-        ):
-            return tools.routing_tools.create_static_route_from_payload(device_id, route_data, vdom)
+        ) -> List[Content]:
+            return cast(List[Content], tools.routing_tools.create_static_route_from_payload(device_id, route_data, vdom))
     else:  # http
         @_tool("Create static route")
-        def create_static_route(device_id: str, dst: str, gateway: str, device: Optional[str] = None, vdom: Optional[str] = None):
-            return tools.routing_tools.create_static_route(device_id, dst, gateway, device, vdom)
+        def create_static_route(device_id: str, dst: str, gateway: str, device: Optional[str] = None, vdom: Optional[str] = None) -> List[Content]:
+            return cast(List[Content], tools.routing_tools.create_static_route(device_id, dst, gateway, device, vdom))
 
     # --- (D) stdio-only: health_check, get_server_info ----------------------
 
     if transport == "stdio":
         @_tool(HEALTH_CHECK_DESC)
-        async def health_check():
+        async def health_check() -> List[Content]:
             failed_devices = tools.fortigate_manager.failed_devices
             if failed_devices:
                 status = "degraded"
@@ -488,7 +488,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             return FortiGateFormatters.format_health_status(status, details)
 
         @_tool(GET_SERVER_INFO_DESC)
-        async def get_server_info():
+        async def get_server_info() -> List[Content]:
             info = {
                 "name": tools.config.server.name,
                 "version": tools.config.server.version,
@@ -512,7 +512,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
 
     if transport == "http":
         @_tool("Test FortiGate connection")
-        def test_connection():
+        def test_connection() -> List[Content]:
             try:
                 devices = tools.fortigate_manager.list_devices()
                 connection_results = {}
@@ -543,7 +543,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
                 }, "test_connection", logger=getattr(tools, "logger", None))
 
         @_tool("Health check for FortiGate MCP server")
-        def health():
+        def health() -> List[Content]:
             failed_devices = tools.fortigate_manager.failed_devices
             health_info = {
                 "status": "degraded" if failed_devices else "ok",
@@ -571,7 +571,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             return _format_json_response(health_info, "health", logger=getattr(tools, "logger", None))
 
         @_tool("Get schema information for all available tools")
-        def get_schema_info():
+        def get_schema_info() -> List[Content]:
             schema_info = {
                 "server": "FortiGateMCP-HTTP",
                 "version": tools.config.server.version,
