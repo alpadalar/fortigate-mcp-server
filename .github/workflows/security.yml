@@ -31,6 +31,17 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras
 
+      - name: Seed pip into the uv-managed venv
+        # uv-created virtual environments intentionally omit pip (uv replaces
+        # pip for package operations); pypa/gh-action-pip-audit's virtual-environment
+        # mode activates the venv and runs `python -m pip install ...` to install
+        # pip-audit itself, which fails with "No module named pip" unless pip is
+        # seeded first. This mirrors the action's own selftest-virtualenv pattern
+        # (python -m pip install --upgrade pip wheel before invoking the action),
+        # adapted for a uv-managed venv via `uv pip install` instead of a bootstrap
+        # python -m ensurepip/pip call.
+        run: uv pip install --python .venv/bin/python pip
+
       - uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
         with:
           virtual-environment: ".venv"
