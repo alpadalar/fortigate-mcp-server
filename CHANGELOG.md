@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `fastmcp` dependency ceiling raised from `>=2.11,<3` to `>=3.2.0` (resolved 3.4.0),
+  remediating CVE-2026-32871 (GHSA-vv7q-7jx5-f767, `OpenAPIProvider` SSRF/path-traversal).
+  The full local test suite (469 tests) and the byte-frozen golden MCP tool-schema
+  snapshot both pass unchanged on the new version (CI-03)
+
 ## [1.0.0] - 2026-07-17
 
 First public release.
