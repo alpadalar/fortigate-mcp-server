@@ -34,11 +34,11 @@ RUN apt-get update && \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Copy project files needed for installation
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md uv.lock ./
 COPY src/ src/
 
 # Install Python dependencies with uv
-RUN uv pip install --system --no-cache-dir -e .
+RUN uv sync --locked --no-dev --no-editable
 
 # Copy remaining application code
 COPY config/ config/
@@ -59,4 +59,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE ${MCP_SERVER_PORT}
 
 # Default command
-CMD ["python", "-m", "src.fortigate_mcp.server_http", "--host", "0.0.0.0", "--port", "8814", "--path", "/fortigate-mcp", "--config", "/app/config/config.json"]
+CMD ["uv", "run", "python", "-m", "src.fortigate_mcp.server_http", "--host", "0.0.0.0", "--port", "8814", "--path", "/fortigate-mcp", "--config", "/app/config/config.json"]
