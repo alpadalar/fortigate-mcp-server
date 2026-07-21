@@ -93,9 +93,10 @@ class FortiGateTool:
         Args:
             data: Raw data from FortiGate API to format
             resource_type: Type of resource for formatter selection. Valid types:
-                         'devices', 'device_status', 'firewall_policies', 
-                         'address_objects', 'service_objects', 'static_routes',
-                         'interfaces', 'vdoms'
+                         'devices', 'device_status', 'firewall_policies',
+                         'firewall_policy_detail', 'address_objects',
+                         'service_objects', 'static_routes', 'interfaces',
+                         'vdoms', 'virtual_ips', 'virtual_ip_detail'
 
         Returns:
             List of Content objects formatted according to resource type
@@ -139,6 +140,10 @@ class FortiGateTool:
             return FortiGateFormatters.format_interfaces(data)
         elif resource_type == "vdoms":
             return FortiGateFormatters.format_vdoms(data)
+        elif resource_type == "virtual_ips":
+            return FortiGateFormatters.format_virtual_ips(data)
+        elif resource_type == "virtual_ip_detail":
+            return FortiGateFormatters.format_virtual_ip_detail(data)
         else:
             # Fallback to JSON formatting for unknown types
             return FortiGateFormatters.format_json_response(data)

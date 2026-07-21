@@ -85,7 +85,12 @@ class RoutingTools(FortiGateTool):
             
             api_client = self._get_device_api(device_id)
             interface_data = api_client.get_interface_status(interface_name, vdom=vdom)
-            return self._format_response((interface_name, interface_data), "interface_status")
+            # No dedicated interface_status formatter exists; shape the JSON
+            # fallback as an object, not a ["name", {...}] tuple-array.
+            return self._format_response(
+                {"interface": interface_name, "status": interface_data},
+                "interface_status",
+            )
         except Exception as e:
             return self._handle_error("get interface status", device_id, e)
     
