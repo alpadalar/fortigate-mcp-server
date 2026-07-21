@@ -381,25 +381,51 @@ class FortiGateTemplates:
         return "\n".join(lines)
     
     @staticmethod
+    def _render_mappedip(mappedip: Any) -> str:
+        """Render FortiOS's `mappedip` field as a human-readable string.
+
+        FortiOS's cmdb/firewall/vip GET returns `mappedip` as a table type --
+        a list of member objects like [{"range": "192.168.1.100"}] -- even
+        when the VIP was created with a plain-string mappedip. Config echoes
+        may still carry the plain string, so both shapes are handled.
+
+        Args:
+            mappedip: Raw `mappedip` value from the FortiGate API
+
+        Returns:
+            Comma-joined range string(s), or "N/A" when absent/empty
+        """
+        if isinstance(mappedip, list):
+            rendered = ", ".join(
+                m.get("range", str(m)) if isinstance(m, dict) else str(m)
+                for m in mappedip
+            )
+            return rendered or "N/A"
+        if mappedip is None or mappedip == "":
+            return "N/A"
+        return str(mappedip)
+
+    @staticmethod
     def virtual_ips(vips_data: Dict[str, Any]) -> str:
         """Format virtual IPs list.
-        
+
         Args:
             vips_data: Virtual IPs response from FortiGate API
-            
+
         Returns:
             Formatted virtual IPs information
         """
         lines = ["Virtual IPs", ""]
-        
+
         if "results" in vips_data and vips_data["results"]:
             vips = vips_data["results"]
-            
+
             for vip in vips:
+                mapped = FortiGateTemplates._render_mappedip(vip.get("mappedip"))
                 lines.extend([
                     f"Virtual IP: {vip.get('name', 'Unnamed')}",
                     f"  External IP: {vip.get('extip', 'N/A')}",
-                    f"  Mapped IP: {vip.get('mappedip', 'N/A')}",
+                    f"  Mapped IP: {mapped}",
                     f"  External Interface: {vip.get('extintf', 'N/A')}",
                     f"  Port Forwarding: {vip.get('portforward', 'disable')}",
                 ])
@@ -436,11 +462,12 @@ class FortiGateTemplates:
         
         if "results" in vip_data and vip_data["results"]:
             vip = vip_data["results"][0] if isinstance(vip_data["results"], list) else vip_data["results"]
-            
+
+            mapped = FortiGateTemplates._render_mappedip(vip.get("mappedip"))
             lines.extend([
                 f"Name: {vip.get('name', 'N/A')}",
                 f"External IP: {vip.get('extip', 'N/A')}",
-                f"Mapped IP: {vip.get('mappedip', 'N/A')}",
+                f"Mapped IP: {mapped}",
                 f"External Interface: {vip.get('extintf', 'N/A')}",
                 f"Port Forwarding: {vip.get('portforward', 'disable')}",
             ])

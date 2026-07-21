@@ -254,10 +254,144 @@ class TestFortiGateTemplates:
         }
         
         result = FortiGateTemplates.vdoms(data)
-        
+
         assert "Virtual Domains" in result
         assert "root" in result
         assert "enabled" in result.lower()
+
+    def test_virtual_ips_empty(self):
+        """Empty virtual IPs template test"""
+        data = {"results": []}
+        result = FortiGateTemplates.virtual_ips(data)
+
+        assert "Virtual IPs" in result
+        assert "No virtual IPs found" in result
+
+    def test_virtual_ips_renders_list_shaped_mappedip(self):
+        """cmdb/firewall/vip GET returns `mappedip` as a table type --
+        a list of member objects -- even for VIPs created with a plain
+        string. The template must render the range value(s), not the
+        raw Python repr of the list."""
+        data = {
+            "status": "success",
+            "vdom": "root",
+            "path": "firewall",
+            "name": "vip",
+            "results": [
+                {
+                    "name": "web-server-vip",
+                    "uuid": "9c4f22aa-1234-51ec-9f44-005056ab0001",
+                    "comment": "Web server DNAT",
+                    "type": "static-nat",
+                    "extip": "203.0.113.10",
+                    "extaddr": [],
+                    "mappedip": [{"range": "192.168.1.100"}],
+                    "extintf": "wan1",
+                    "portforward": "enable",
+                    "protocol": "tcp",
+                    "extport": "8443",
+                    "mappedport": "443",
+                }
+            ],
+        }
+
+        result = FortiGateTemplates.virtual_ips(data)
+
+        assert "Virtual IP: web-server-vip" in result
+        assert "External IP: 203.0.113.10" in result
+        assert "Mapped IP: 192.168.1.100" in result
+        assert "{'range'" not in result
+        assert "External Interface: wan1" in result
+        assert "Port Forwarding: enable" in result
+        assert "Protocol: tcp" in result
+        assert "External Port: 8443" in result
+        assert "Mapped Port: 443" in result
+        assert "Comment: Web server DNAT" in result
+
+    def test_virtual_ips_renders_string_mappedip(self):
+        """A plain-string mappedip (config echo shape) must render as-is;
+        a missing mappedip must fall back to N/A."""
+        data = {
+            "results": [
+                {
+                    "name": "legacy-vip",
+                    "extip": "203.0.113.20",
+                    "mappedip": "10.0.0.20",
+                    "extintf": "any",
+                    "portforward": "disable",
+                },
+                {
+                    "name": "no-mapped-vip",
+                    "extip": "203.0.113.21",
+                    "extintf": "any",
+                    "portforward": "disable",
+                },
+            ]
+        }
+
+        result = FortiGateTemplates.virtual_ips(data)
+
+        assert "Mapped IP: 10.0.0.20" in result
+        assert "Mapped IP: N/A" in result
+
+    def test_virtual_ip_detail_renders_list_shaped_mappedip(self):
+        """VIP detail (GET by mkey returns a one-element results list)
+        must unwrap the member-list mappedip; multiple members join with
+        a comma."""
+        data = {
+            "status": "success",
+            "vdom": "root",
+            "path": "firewall",
+            "name": "vip",
+            "mkey": "range-vip",
+            "results": [
+                {
+                    "name": "range-vip",
+                    "uuid": "9c4f22aa-1234-51ec-9f44-005056ab0002",
+                    "type": "static-nat",
+                    "extip": "203.0.113.30-203.0.113.31",
+                    "mappedip": [
+                        {"range": "192.168.1.100"},
+                        {"range": "192.168.1.101"},
+                    ],
+                    "extintf": "wan1",
+                    "portforward": "disable",
+                }
+            ],
+        }
+
+        result = FortiGateTemplates.virtual_ip_detail(data)
+
+        assert "Virtual IP Detail" in result
+        assert "Name: range-vip" in result
+        assert "Mapped IP: 192.168.1.100, 192.168.1.101" in result
+        assert "{'range'" not in result
+
+    def test_virtual_ip_detail_renders_string_mappedip(self):
+        """A plain-string mappedip in a dict-shaped results payload must
+        render as-is."""
+        data = {
+            "results": {
+                "name": "legacy-vip",
+                "extip": "203.0.113.20",
+                "mappedip": "10.0.0.20",
+                "extintf": "any",
+                "portforward": "disable",
+            }
+        }
+
+        result = FortiGateTemplates.virtual_ip_detail(data)
+
+        assert "Name: legacy-vip" in result
+        assert "Mapped IP: 10.0.0.20" in result
+
+    def test_virtual_ip_detail_not_found(self):
+        """Empty results must render the not-found branch."""
+        data = {"results": []}
+
+        result = FortiGateTemplates.virtual_ip_detail(data)
+
+        assert "Virtual IP not found" in result
 
 
 class TestFortiGateFormatters:
@@ -367,12 +501,62 @@ class TestFortiGateFormatters:
         }
         
         result = FortiGateFormatters.format_interfaces(data)
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
         assert "Network Interfaces" in result[0].text
-    
+
+    def test_format_virtual_ips(self):
+        """Virtual IPs formatter test with a realistic list-shaped
+        mappedip (cmdb/firewall/vip GET shape)."""
+        data = {
+            "status": "success",
+            "results": [
+                {
+                    "name": "web-server-vip",
+                    "extip": "203.0.113.10",
+                    "mappedip": [{"range": "192.168.1.100"}],
+                    "extintf": "wan1",
+                    "portforward": "disable",
+                }
+            ],
+        }
+
+        result = FortiGateFormatters.format_virtual_ips(data)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert "Virtual IPs" in result[0].text
+        assert "Mapped IP: 192.168.1.100" in result[0].text
+        assert "{'range'" not in result[0].text
+
+    def test_format_virtual_ip_detail(self):
+        """Virtual IP detail formatter test with a realistic list-shaped
+        mappedip (cmdb/firewall/vip GET-by-mkey shape)."""
+        data = {
+            "status": "success",
+            "results": [
+                {
+                    "name": "web-server-vip",
+                    "extip": "203.0.113.10",
+                    "mappedip": [{"range": "192.168.1.100"}],
+                    "extintf": "wan1",
+                    "portforward": "disable",
+                }
+            ],
+        }
+
+        result = FortiGateFormatters.format_virtual_ip_detail(data)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert "Virtual IP Detail" in result[0].text
+        assert "Mapped IP: 192.168.1.100" in result[0].text
+        assert "{'range'" not in result[0].text
+
     def test_format_error(self):
         """Error formatter test"""
         result = FortiGateFormatters.format_error_response(
