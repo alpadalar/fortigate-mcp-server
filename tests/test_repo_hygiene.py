@@ -167,6 +167,18 @@ def test_dockerfile_does_not_copy_pytest_ini():
     assert "pytest.ini" not in text
 
 
+def test_dockerfile_installs_from_lockfile():
+    """Dockerfile must install from uv.lock (`uv sync --locked`), not a
+    fresh unlocked PyPI resolution -- otherwise the shipped image's
+    dependency graph can silently diverge from what CI/tests actually
+    exercised (06-RESEARCH.md Pitfall 3)."""
+    repo_root = _repo_root()
+    text = (repo_root / "Dockerfile").read_text()
+
+    assert "uv sync --locked" in text
+    assert "uv pip install --system --no-cache-dir -e ." not in text
+
+
 def test_readme_no_verify_ssl_false_recommendation():
     """README.md must never recommend disabling TLS certificate verification,
     in its config example block or its Troubleshooting section."""
