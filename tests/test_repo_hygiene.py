@@ -698,6 +698,31 @@ def test_all_workflow_actions_are_sha_pinned():
                 )
 
 
+def test_workflow_docker_run_images_are_digest_pinned():
+    """``run:`` steps that invoke ``docker run`` bypass the ``uses:``
+    SHA-pin audit above, yet pull and execute registry images all the same
+    -- and registry tags are mutable. Require every such step to reference
+    a digest-pinned image (``@sha256:<64-hex>``); the gitleaks scanner in
+    particular gets read access to the full repository history
+    (T-06-05-01 gap closure)."""
+    repo_root = _repo_root()
+    digest_ref = re.compile(r"@sha256:[0-9a-f]{64}\b")
+
+    for filename in _WORKFLOW_FILES:
+        path = repo_root / ".github" / "workflows" / filename
+        data = yaml.safe_load(path.read_text())
+
+        for job_name, job in data["jobs"].items():
+            for step in job.get("steps", []):
+                run = step.get("run")
+                if run is None or "docker run" not in run:
+                    continue
+                assert digest_ref.search(run), (
+                    f"{filename} job {job_name!r} invokes `docker run` "
+                    "without a digest-pinned (@sha256:...) image reference"
+                )
+
+
 def test_release_workflow_never_triggers_on_pull_request():
     """release.yml must never trigger on pull_request -- it is the only
     workflow in this phase that can push to GHCR, and a fork PR must never
