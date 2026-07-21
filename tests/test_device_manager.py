@@ -3,9 +3,8 @@ FortiGate Manager tests
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
 
-from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI, FortiGateAPIError
+from src.fortigate_mcp.core.fortigate import FortiGateManager, FortiGateAPI
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
 
 

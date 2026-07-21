@@ -7,7 +7,6 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 import httpx
-import respx
 
 from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
@@ -588,7 +587,7 @@ class TestFortiGateAPIRespx:
         deliberately embeds 'Bearer test-token-not-real'. Asserting the
         ***REDACTED*** marker's PRESENCE proves scrub_secrets actually ran
         on this exact string, not merely that the fixture was token-free."""
-        with fortigate_router() as router:
+        with fortigate_router():
             with pytest.raises(FortiGateAPIError) as exc_info:
                 self.api.get_system_status()
 

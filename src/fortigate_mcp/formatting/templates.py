@@ -5,8 +5,7 @@ This module provides structured templates for formatting FortiGate API responses
 into human-readable and consistent output formats. Templates are organized by
 resource type and operation.
 """
-from typing import Dict, List, Any, Optional
-import json
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 class FortiGateTemplates:
@@ -695,7 +694,7 @@ class FortiGateTemplates:
             Formatted health status
         """
         lines = [
-            f"FortiGate MCP Server Health",
+            "FortiGate MCP Server Health",
             f"  Status: {status.upper()}",
             f"  Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             ""

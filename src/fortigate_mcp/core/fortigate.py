@@ -8,9 +8,8 @@ This module provides the core FortiGate API integration:
 - Request/response processing
 - Error handling and recovery
 """
-import logging
 import time
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, List
 import httpx
 import json
 from ..config.models import FortiGateDeviceConfig, AuthConfig
@@ -162,7 +161,7 @@ class FortiGateAPI:
                         error_data = response.json()
                         if "error" in error_data:
                             error_msg += f" - {error_data['error']}"
-                    except:
+                    except Exception:
                         error_msg += f" - {response.text}"
 
                     # error_msg is built from an UNTRUSTED response body -- a

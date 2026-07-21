@@ -4,8 +4,7 @@ MCP Tools tests
 
 import logging
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.fortigate_mcp.tools.device import DeviceTools
 from src.fortigate_mcp.tools.firewall import FirewallTools

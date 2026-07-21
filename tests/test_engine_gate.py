@@ -29,7 +29,6 @@ from functools import lru_cache
 from typing import Any, Dict, Tuple
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastmcp import Client
 from fastmcp import FastMCP as PrefectFastMCP
 from mcp.server.fastmcp import FastMCP as SDKFastMCP

@@ -561,7 +561,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
                         api_client = tools.fortigate_manager.get_device(device_id)
                         success = api_client.test_connection()
                         health_info["device_connections"][device_id] = "connected" if success else "disconnected"
-                    except Exception as e:
+                    except Exception:
                         health_info["device_connections"][device_id] = "error"
                         health_info["status"] = "degraded"
             except Exception as e:

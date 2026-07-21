@@ -2,8 +2,6 @@
 Formatting and templates tests
 """
 
-import pytest
-from unittest.mock import MagicMock
 
 from src.fortigate_mcp.formatting.templates import FortiGateTemplates
 from src.fortigate_mcp.formatting.formatters import FortiGateFormatters
