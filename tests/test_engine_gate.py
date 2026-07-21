@@ -88,13 +88,17 @@ def _sdk_stdio_snapshot() -> Dict[str, Dict[str, Any]]:
 
 
 def _prefect_stdio_snapshot() -> Dict[str, Dict[str, Any]]:
-    """(b) stdio registration on fastmcp.FastMCP -- the candidate engine."""
+    """(b) stdio registration on fastmcp.FastMCP -- the candidate engine.
+
+    fastmcp>=3.2.0 removed the dict-returning ``get_tools()`` in favor of
+    the public ``list_tools()`` -> ``list[FunctionTool]``.
+    """
     mcp = PrefectFastMCP("engine-gate-prefect-stdio")
     register_tools(mcp, _fake_tools(), transport="stdio")
 
     async def _get() -> Dict[str, Any]:
-        tools = await mcp.get_tools()
-        return {name: tool.to_mcp_tool() for name, tool in tools.items()}
+        tools = await mcp.list_tools()
+        return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
     return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
@@ -106,8 +110,8 @@ def _prefect_http_snapshot() -> Dict[str, Dict[str, Any]]:
     register_tools(mcp, _fake_tools(), transport="http")
 
     async def _get() -> Dict[str, Any]:
-        tools = await mcp.get_tools()
-        return {name: tool.to_mcp_tool() for name, tool in tools.items()}
+        tools = await mcp.list_tools()
+        return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
     return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}

@@ -17,7 +17,6 @@ from typing import Optional
 # dependency, so a missing package here means a genuinely broken
 # environment -- fail loudly at import time instead.
 from fastmcp import FastMCP
-from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
 
 from .config.loader import load_config
@@ -169,31 +168,37 @@ class FortiGateMCPHTTPServer:
         this -- never construct a second, separate ``http_app()`` anywhere.
 
         Middleware ordering contract (enforced): Trace is OUTERMOST (first
-        in the list), Auth is next, applied only when
+        in ``app.user_middleware``), Auth is next, applied only when
         ``config.auth.require_auth`` is True. Trace stays outermost so the
         trace-header canary still appears on a 401 response, proving the
         middleware stack attached even when Auth denies a request. If CORS
         is ever added, it goes outermost of all (ahead of Trace) so an
         unauthenticated CORS preflight OPTIONS is answered before Auth can
-        401 it. Uses the ``Middleware([...])`` list ONLY -- never FastMCP's
-        own middleware-registration method, which prepends (LIFO order) and
-        would invert this ordering.
+        401 it.
+
+        fastmcp>=3.2.0's ``http_app()`` PREPENDS its own
+        ``RequestContextMiddleware`` ahead of any ``middleware=[...]`` list
+        passed in (the reverse of fastmcp 2.11.3's append behavior), which
+        would silently invert this ordering if we kept building the list
+        up-front. Instead, call ``http_app()`` with no middleware, then
+        layer ours on afterwards via the returned Starlette app's own
+        ``add_middleware()`` -- which inserts at position 0 (LIFO) -- adding
+        Auth first and Trace last so Trace ends up outermost again, ahead of
+        fastmcp's own ``RequestContextMiddleware``.
         """
-        middleware = [Middleware(TraceMiddleware)]
+        app = self.mcp.http_app(path=self.path)
         if self.config.auth.require_auth:
             # AuthConfig.api_tokens are SecretStr -- unwrap once here, at
             # the single point of consumption, so the middleware compares
             # plain token values.
-            middleware.append(
-                Middleware(
-                    AuthMiddleware,
-                    api_tokens=[
-                        token.get_secret_value()
-                        for token in self.config.auth.api_tokens
-                    ],
-                )
+            app.add_middleware(
+                AuthMiddleware,
+                api_tokens=[
+                    token.get_secret_value() for token in self.config.auth.api_tokens
+                ],
             )
-        return self.mcp.http_app(path=self.path, middleware=middleware)
+        app.add_middleware(TraceMiddleware)
+        return app
 
     def run(self) -> None:
         """

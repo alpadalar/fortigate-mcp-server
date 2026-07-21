@@ -73,6 +73,27 @@ def _unwrap(result):
     return result[0] if isinstance(result, tuple) else result
 
 
+def _tool_names(mcp) -> set:
+    """Registered tool names, engine-agnostic.
+
+    ``mcp.server.fastmcp.FastMCP`` (SDK engine) still exposes the private
+    ``_tool_manager._tools`` dict. fastmcp>=3.2.0's ``fastmcp.FastMCP`` (HTTP
+    engine) removed that private path -- its ``list_tools()`` (public,
+    async) is the only remaining introspection surface.
+    """
+    if hasattr(mcp, "_tool_manager"):
+        return set(mcp._tool_manager._tools)
+    return {tool.name for tool in asyncio.run(mcp.list_tools())}
+
+
+def _tool_fn(mcp, name: str):
+    """Raw callable behind a registered tool name, engine-agnostic (see
+    ``_tool_names`` docstring for why this branches by engine)."""
+    if hasattr(mcp, "_tool_manager"):
+        return mcp._tool_manager._tools[name].fn
+    return asyncio.run(mcp.get_tool(name)).fn
+
+
 # --- Group 1: counts and validation -----------------------------------------
 
 
@@ -92,33 +113,39 @@ def test_unknown_transport_rejected():
     mcp = PrefectFastMCP("probe")
     with pytest.raises(ValueError):
         register_tools(mcp, _fake_tools(), transport="grpc")
-    assert len(mcp._tool_manager._tools) == 0
+    assert len(_tool_names(mcp)) == 0
 
 
 def test_transport_exclusive_registration():
     stdio_mcp = SDKFastMCP("probe-stdio")
     register_tools(stdio_mcp, _fake_tools(), transport="stdio")
-    assert "health_check" in stdio_mcp._tool_manager._tools
-    assert "test_connection" not in stdio_mcp._tool_manager._tools
+    assert "health_check" in _tool_names(stdio_mcp)
+    assert "test_connection" not in _tool_names(stdio_mcp)
 
     http_mcp = PrefectFastMCP("probe-http")
     register_tools(http_mcp, _fake_tools(), transport="http")
-    assert "test_connection" in http_mcp._tool_manager._tools
-    assert "health_check" not in http_mcp._tool_manager._tools
+    assert "test_connection" in _tool_names(http_mcp)
+    assert "health_check" not in _tool_names(http_mcp)
 
 
 def test_private_tool_manager_path_exists_on_both_fastmcp_classes():
-    """CI guard: both FastMCP classes still expose _tool_manager._tools.
+    """CI guard: both FastMCP classes still expose SOME tool-introspection
+    path usable by ``_tool_names``/``_tool_fn`` below.
 
-    This private path is used ONLY by the tests below (for .fn access) --
-    registry.py itself no longer depends on it. An SDK rename must fail
-    LOUDLY here instead of scattering AttributeErrors across the dispatch
-    tests further down this file.
+    ``mcp.server.fastmcp.FastMCP`` (SDK engine) keeps the private
+    ``_tool_manager._tools`` path; fastmcp>=3.2.0's ``fastmcp.FastMCP`` (HTTP
+    engine) removed it in favor of the public async ``list_tools()``/
+    ``get_tool()``. registry.py itself depends on neither path. A further
+    SDK rename that breaks BOTH must fail LOUDLY here instead of scattering
+    AttributeErrors across the dispatch tests further down this file.
     """
     for cls in (SDKFastMCP, PrefectFastMCP):
         inst = cls("guard-probe")
-        assert hasattr(inst, "_tool_manager")
-        assert hasattr(inst._tool_manager, "_tools")
+        has_private_path = hasattr(inst, "_tool_manager") and hasattr(
+            inst._tool_manager, "_tools"
+        )
+        has_public_path = hasattr(inst, "list_tools") and hasattr(inst, "get_tool")
+        assert has_private_path or has_public_path
 
 
 # --- Group 2: direct dispatch proofs (.fn(), exact target + arg shape) -----
@@ -129,7 +156,7 @@ def test_stdio_create_address_object_dispatches_to_payload_method():
     fake_tools = _fake_tools()
     register_tools(mcp, fake_tools, transport="stdio")
 
-    fn = mcp._tool_manager._tools["create_address_object"].fn
+    fn = _tool_fn(mcp, "create_address_object")
     fn(device_id="d", address_data={"name": "a"})
 
     fake_tools.network_tools.create_address_object_from_payload.assert_called_once_with(
@@ -142,7 +169,7 @@ def test_http_create_address_object_dispatches_to_individual_field_method():
     fake_tools = _fake_tools()
     register_tools(mcp, fake_tools, transport="http")
 
-    fn = mcp._tool_manager._tools["create_address_object"].fn
+    fn = _tool_fn(mcp, "create_address_object")
     fn(device_id="d", name="a", address_type="ipmask", address="10.0.0.0/24")
 
     fake_tools.network_tools.create_address_object.assert_called_once_with(
@@ -155,7 +182,7 @@ def test_stdio_create_service_object_dispatches_to_payload_method():
     fake_tools = _fake_tools()
     register_tools(mcp, fake_tools, transport="stdio")
 
-    fn = mcp._tool_manager._tools["create_service_object"].fn
+    fn = _tool_fn(mcp, "create_service_object")
     fn(device_id="d", service_data={"name": "s", "protocol": "TCP"})
 
     fake_tools.network_tools.create_service_object_from_payload.assert_called_once_with(
@@ -168,7 +195,7 @@ def test_http_create_service_object_dispatches_to_individual_field_method():
     fake_tools = _fake_tools()
     register_tools(mcp, fake_tools, transport="http")
 
-    fn = mcp._tool_manager._tools["create_service_object"].fn
+    fn = _tool_fn(mcp, "create_service_object")
     fn(device_id="d", name="s", service_type="TCP", protocol="TCP", port="80")
 
     fake_tools.network_tools.create_service_object.assert_called_once_with(
@@ -181,7 +208,7 @@ def test_stdio_create_static_route_dispatches_to_payload_method():
     fake_tools = _fake_tools()
     register_tools(mcp, fake_tools, transport="stdio")
 
-    fn = mcp._tool_manager._tools["create_static_route"].fn
+    fn = _tool_fn(mcp, "create_static_route")
     fn(device_id="d", route_data={"dst": "10.0.0.0/24", "gateway": "10.0.0.1"})
 
     fake_tools.routing_tools.create_static_route_from_payload.assert_called_once_with(
@@ -194,7 +221,7 @@ def test_http_create_static_route_dispatches_to_individual_field_method():
     fake_tools = _fake_tools()
     register_tools(mcp, fake_tools, transport="http")
 
-    fn = mcp._tool_manager._tools["create_static_route"].fn
+    fn = _tool_fn(mcp, "create_static_route")
     fn(device_id="d", dst="10.0.0.0/24", gateway="10.0.0.1")
 
     fake_tools.routing_tools.create_static_route.assert_called_once_with(

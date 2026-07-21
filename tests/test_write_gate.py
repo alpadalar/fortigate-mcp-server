@@ -74,9 +74,12 @@ def test_classification_completeness_matches_registered_tools():
     register_tools(sdk_mcp, _fake_tools(), transport="stdio")
     stdio_names = set(sdk_mcp._tool_manager._tools)
 
+    # fastmcp>=3.2.0 removed the private _tool_manager._tools path the SDK
+    # engine (above) still exposes -- the HTTP engine's only remaining
+    # tool-name introspection surface is the public async list_tools().
     http_mcp = PrefectFastMCP("classification-http")
     register_tools(http_mcp, _fake_tools(), transport="http")
-    http_names = set(http_mcp._tool_manager._tools)
+    http_names = {tool.name for tool in asyncio.run(http_mcp.list_tools())}
 
     union = stdio_names | http_names
 

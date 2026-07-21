@@ -372,13 +372,20 @@ def _build_http_server(require_auth: bool, api_tokens) -> FortiGateMCPHTTPServer
 class TestBuildHttpAppWiring:
     """Structural proofs against server_http.py's build_http_app() itself.
 
-    Note: fastmcp's own ``http_app()`` unconditionally appends
-    ``RequestContextMiddleware`` AFTER whatever list ``build_http_app()``
-    passes it (verified live this session against the installed fastmcp
-    2.11.3) -- it is not something build_http_app() adds itself. The
-    equality assertions below pin the full observed order (our own
-    middleware plus fastmcp's own addition) rather than a bare membership
-    check, so a regression in EITHER our wiring or fastmcp's own append
+    Note: fastmcp's own ``http_app()`` unconditionally adds
+    ``RequestContextMiddleware`` to the returned Starlette app -- it is not
+    something build_http_app() adds itself. fastmcp 2.11.3 appended it AFTER
+    whatever ``middleware=[...]`` list was passed in; fastmcp>=3.2.0
+    PREPENDS it instead (verified live this session against the installed
+    fastmcp 3.4.0), which would silently make it outermost -- ahead of our
+    own Trace/Auth -- if build_http_app() still built its list up-front.
+    build_http_app() compensates by calling ``http_app()`` with no
+    middleware, then layering Auth/Trace on afterwards via the returned
+    app's own ``add_middleware()`` (LIFO, insert-at-0), restoring Trace as
+    outermost regardless of which fastmcp major is installed. The equality
+    assertions below pin the full observed order (our own middleware plus
+    fastmcp's own addition) rather than a bare membership check, so a
+    regression in EITHER our wiring or fastmcp's own middleware-injection
     behavior is caught.
     """
 

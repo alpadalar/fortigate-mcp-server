@@ -26,9 +26,11 @@ reviewed schema change:
 
     UPDATE_SNAPSHOTS=1 uv run pytest tests/test_tool_schema_snapshot.py --no-cov
 
-Goldens provenance: generated against the final pinned dependency set from
-plan 01-02 -- mcp 1.28.1, fastmcp 2.11.3 (both resolved within the
-``mcp>=1.23.0,<2.0`` / ``fastmcp>=2.11,<3`` PyPI bands).
+Goldens provenance: originally generated against the pinned dependency set
+from plan 01-02 (mcp 1.28.1, fastmcp 2.11.3), re-verified byte-identical
+after plan 06-01's CVE-2026-32871 remediation bumped the fastmcp ceiling --
+mcp 1.28.1, fastmcp 3.4.0 (resolved within the ``mcp>=1.23.0,<2.0`` /
+``fastmcp>=3.2.0`` PyPI bands).
 
 Adapted from the working reference implementation at
 ``/media/workspace/NetOpsMCP/tests/test_tool_schema_snapshot.py``. The two
@@ -150,16 +152,34 @@ def _walk_and_normalize(node: Any) -> None:
 
     Walks every nested dict in the structure, not just top-level
     properties. At each schema-object dict: canonicalize anyOf, then strip
-    title/description. "properties"/"$defs"/"definitions" containers are
-    special-cased -- their own keys are names (parameter/model names), so
-    we recurse into their VALUES only, never popping title/description
-    from the container dict itself and never deleting a container key
-    (e.g. a parameter literally named "description" survives as a key).
+    title/description and a spuriously-``False`` ``additionalProperties``.
+    "properties"/"$defs"/"definitions" containers are special-cased -- their
+    own keys are names (parameter/model names), so we recurse into their
+    VALUES only, never popping title/description from the container dict
+    itself and never deleting a container key (e.g. a parameter literally
+    named "description" survives as a key).
+
+    ``additionalProperties: false`` (only that exact value, never ``true``)
+    is stripped alongside title/description because fastmcp>=3.2.0's
+    parameter-schema builder started emitting it at each tool's top-level
+    schema root (absent under fastmcp 2.11.3) -- a schema-generator-version
+    artifact affecting every tool uniformly, not a change to any property's
+    name/type/default/required-ness/enum. ``additionalProperties: true`` is
+    intentionally left untouched: it is emitted identically by both fastmcp
+    versions for genuine ``Dict[str, Any]`` payload parameters
+    (``address_data``/``policy_data``/``service_data``/``route_data``/
+    ``vip_data``) and IS part of the frozen golden bytes today -- stripping
+    it too would silently paper over an actual schema regression instead of
+    only absorbing the version-specific decoration difference (CLAUDE.md:
+    snapshot tests must be environment/dependency-version independent from
+    the start).
     """
     if isinstance(node, dict):
         _canonicalize_anyof(node)
         node.pop("title", None)
         node.pop("description", None)
+        if node.get("additionalProperties") is False:
+            node.pop("additionalProperties", None)
         for key, value in node.items():
             if key in _SCHEMA_CONTAINER_KEYS and isinstance(value, dict):
                 for member_schema in value.values():
@@ -173,34 +193,37 @@ def _walk_and_normalize(node: Any) -> None:
 
 def _normalize_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
     """Contract-only projection: property names/types/defaults/required/enum
-    survive; title and description (schema-root and per-property) do not."""
+    survive; title, description, and a fastmcp>=3.2.0-only spurious
+    ``additionalProperties: false`` (schema-root and per-property) do not."""
     normalized: Dict[str, Any] = json.loads(json.dumps(schema))  # deep copy
     _walk_and_normalize(normalized)
     return normalized
 
 
 def _stdio_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:
-    """Extract {name: {inputSchema}} from the fastmcp 2.x (stdio) server.
+    """Extract {name: {inputSchema}} from the fastmcp 3.x (stdio) server.
 
     Post-CONS-01 consolidation, stdio runs on ``fastmcp.FastMCP`` (same
-    engine as HTTP), which lacks the SDK's tool-listing method -- structurally
-    identical to ``_http_snapshot`` below except for which server it receives.
+    engine as HTTP) -- structurally identical to ``_http_snapshot`` below
+    except for which server it receives. fastmcp>=3.2.0 removed the
+    dict-returning ``get_tools()``/``_tool_manager`` private path in favor
+    of the public ``list_tools()`` -> ``list[FunctionTool]``.
     """
 
     async def _get() -> Dict[str, Any]:
-        tools = await server.mcp.get_tools()  # dict[str, FunctionTool]
-        return {name: tool.to_mcp_tool() for name, tool in tools.items()}
+        tools = await server.mcp.list_tools()  # list[FunctionTool]
+        return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
     return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
 
 
 def _http_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:
-    """Extract {name: {inputSchema}} from the fastmcp 2.x (HTTP) server."""
+    """Extract {name: {inputSchema}} from the fastmcp 3.x (HTTP) server."""
 
     async def _get() -> Dict[str, Any]:
-        tools = await server.mcp.get_tools()  # dict[str, FunctionTool]
-        return {name: tool.to_mcp_tool() for name, tool in tools.items()}
+        tools = await server.mcp.list_tools()  # list[FunctionTool]
+        return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
     return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}

@@ -26,9 +26,9 @@ classifiers = [
 keywords = ["fortigate", "mcp", "fastmcp", "firewall", "management", "automation"]
 requires-python = ">=3.11"
 dependencies = [
-    # mcp floor 1.23.0 fixes CVE-2025-66416 (DNS rebinding, GHSA-9h52-p55h-vw2f); ceiling <2.0 avoids the FastMCP->MCPServer rename landing 2026-07-28; fastmcp stays in the current working 2.x band (installed 2.11.3), 3.x consolidation deferred to Phase 3 (CONS-01)
+    # mcp floor 1.23.0 fixes CVE-2025-66416 (DNS rebinding, GHSA-9h52-p55h-vw2f); ceiling <2.0 avoids the FastMCP->MCPServer rename landing 2026-07-28; fastmcp floor 3.2.0 fixes CVE-2026-32871 (SSRF/path-traversal via OpenAPIProvider, GHSA-vv7q-7jx5-f767) -- this codebase does not use OpenAPIProvider/from_openapi (confirmed by repo-wide grep), but the fastmcp package itself is affected below 3.2.0 regardless of feature usage
     "mcp>=1.23.0,<2.0",
-    "fastmcp>=2.11,<3",
+    "fastmcp>=3.2.0",
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "fastapi>=0.104.0",
