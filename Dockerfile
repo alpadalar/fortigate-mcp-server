@@ -1,5 +1,11 @@
 # FortiGate MCP Server Dockerfile
-FROM python:3.11-slim
+# Base image is version- AND digest-pinned: a floating `python:3.11-slim`
+# tag is the same mutable-reference supply-chain class the workflows
+# eliminate with SHA-pinned `uses:`. Human tag: python:3.11-slim ==
+# 3.11.15-slim-trixie. Digest is the multi-arch OCI index digest, verified
+# live against the registry:
+#   docker buildx imagetools inspect python:3.11-slim
+FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93
 
 # Metadata
 LABEL maintainer="FortiGate MCP Team"

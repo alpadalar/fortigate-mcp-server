@@ -211,6 +211,13 @@ def test_dockerfile_images_are_pinned():
             f"uv toolchain image must be digest-pinned (@sha256:...): {ref}"
         )
 
+    python_refs = [ref for ref in image_refs if ref.startswith("python:")]
+    assert python_refs, "Dockerfile must FROM a python: base image"
+    for ref in python_refs:
+        assert re.search(r"@sha256:[0-9a-f]{64}$", ref), (
+            f"python base image must be digest-pinned (@sha256:...): {ref}"
+        )
+
 
 def test_dockerfile_cmd_does_not_sync_at_runtime():
     """The container CMD must never perform an implicit ``uv sync`` at
