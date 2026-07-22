@@ -6,6 +6,7 @@ the repository root and source tree (stale ``*.backup`` files, and the
 non-pytest ``integration_tests.py`` script that requires a live server).
 """
 
+import argparse
 import json
 import os
 import re
@@ -265,6 +266,22 @@ def test_http_guide_startup_example_does_not_bind_wildcard():
     text = (repo_root / "HTTP_MCP_GUIDE.md").read_text()
 
     assert "--host 0.0.0.0" not in text
+
+
+def test_http_server_command_argparse_host_default_is_loopback():
+    """FortiGateMCPCommand's --host argparse default must resolve to
+    127.0.0.1, not a wildcard bind -- a fail-safe default matters because
+    this class can be invoked directly (bypassing start_http_server.sh's
+    own 127.0.0.1 default) via `python -m src.fortigate_mcp.server_http`."""
+    from src.fortigate_mcp.server_http import FortiGateMCPCommand
+
+    parser = argparse.ArgumentParser()
+    command = FortiGateMCPCommand()
+    command.add_arguments(parser)
+
+    args = parser.parse_args([])
+
+    assert args.host == "127.0.0.1"
 
 
 def test_start_http_server_script_defaults_to_loopback():

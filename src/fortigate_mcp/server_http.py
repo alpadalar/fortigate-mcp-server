@@ -50,9 +50,15 @@ class FortiGateMCPHTTPServer:
       applied; no CORS middleware exists in this codebase)
     """
     
-    def __init__(self, 
+    def __init__(self,
                  config_path: Optional[str] = None,
-                 host: str = "0.0.0.0",
+                 # Fail-safe default: this server is unauthenticated by
+                 # default (AuthConfig.require_auth defaults to False), so
+                 # every Python-level default in this module must resolve to
+                 # loopback -- even when this class or main() is invoked
+                 # directly, bypassing start_http_server.sh's own
+                 # 127.0.0.1 default.
+                 host: str = "127.0.0.1",
                  port: int = 8814,
                  path: str = "/fortigate-mcp"):
         """
@@ -258,8 +264,8 @@ class FortiGateMCPCommand:
         parser.add_argument(
             '--host',
             type=str,
-            default='0.0.0.0',
-            help='Server host (default: 0.0.0.0)'
+            default='127.0.0.1',
+            help='Server host (default: 127.0.0.1 -- bind wider only with auth.require_auth=true)'
         )
         parser.add_argument(
             '--port',
@@ -285,7 +291,10 @@ class FortiGateMCPCommand:
         
         self.server = FortiGateMCPHTTPServer(
             config_path=config_path,
-            host=options.get('host', '0.0.0.0'),
+            # Fail-safe fallback: mirrors the argparse default above so this
+            # class stays loopback-safe even if `handle()` is called
+            # directly with a sparse options dict that omits 'host'.
+            host=options.get('host', '127.0.0.1'),
             port=options.get('port', 8814),
             path=options.get('path', '/fortigate-mcp')
         )
