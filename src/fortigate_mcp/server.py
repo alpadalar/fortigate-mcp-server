@@ -119,7 +119,31 @@ class FortiGateMCPServer:
 
 def server_main() -> None:
     """Entry point for running the stdio FortiGate MCP server."""
-    config_path = os.getenv("FORTIGATE_MCP_CONFIG")
+    import argparse
+
+    from . import __version__
+
+    parser = argparse.ArgumentParser(
+        prog="fortigate-mcp-server",
+        description="FortiGate MCP stdio server.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Configuration file path (overrides FORTIGATE_MCP_CONFIG)",
+    )
+    # argparse handles --help/--version itself and exits 0 before this line
+    # is ever reached -- the config requirement below is only enforced for
+    # an actual server-start invocation.
+    args = parser.parse_args()
+
+    config_path = args.config or os.getenv("FORTIGATE_MCP_CONFIG")
     if not config_path:
         print("FORTIGATE_MCP_CONFIG environment variable must be set", file=sys.stderr)
         sys.exit(1)

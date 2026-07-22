@@ -41,6 +41,60 @@ def test_console_script_registered_correctly():
     )
 
 
+def test_console_script_version_exits_zero_without_config():
+    """`fortigate-mcp-server --version` must exit 0 even when
+    FORTIGATE_MCP_CONFIG is unset -- argparse's --version action must
+    short-circuit before the config-path enforcement runs."""
+    env = {k: v for k, v in os.environ.items() if k != "FORTIGATE_MCP_CONFIG"}
+
+    result = subprocess.run(
+        ["uv", "run", "fortigate-mcp-server", "--version"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "fortigate-mcp-server" in result.stdout
+
+
+def test_console_script_help_exits_zero_without_config():
+    """`fortigate-mcp-server --help` must exit 0 even when
+    FORTIGATE_MCP_CONFIG is unset."""
+    env = {k: v for k, v in os.environ.items() if k != "FORTIGATE_MCP_CONFIG"}
+
+    result = subprocess.run(
+        ["uv", "run", "fortigate-mcp-server", "--help"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "usage" in result.stdout.lower()
+
+
+def test_console_script_missing_config_still_exits_nonzero():
+    """Regression guard: without --version/--help AND without
+    FORTIGATE_MCP_CONFIG (or --config), the entry point must still error
+    out exactly as before -- the argparse addition must not accidentally
+    make the config requirement optional."""
+    env = {k: v for k, v in os.environ.items() if k != "FORTIGATE_MCP_CONFIG"}
+
+    result = subprocess.run(
+        ["uv", "run", "fortigate-mcp-server"],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert result.returncode == 1
+    assert "FORTIGATE_MCP_CONFIG environment variable must be set" in result.stderr
+
+
 def test_console_script_stays_alive(tmp_config_path):
     """The console script starts, holds stdio open, and stays alive.
 
