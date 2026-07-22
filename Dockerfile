@@ -16,7 +16,9 @@ LABEL version="1.0.0"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
-ENV MCP_SERVER_HOST=0.0.0.0
+# MCP_SERVER_PORT feeds EXPOSE and the HEALTHCHECK below. The CMD hardcodes
+# --port 8814 to match, so overriding this env var alone re-points EXPOSE and
+# the healthcheck without moving the actual listener -- keep them in lockstep.
 ENV MCP_SERVER_PORT=8814
 
 # Create app user
