@@ -43,12 +43,15 @@ async def _call_via_client(mcp, tool_name, args):
 # Matrix of (tool_name, tools_attr, method_name, args) covering the 4 new
 # v1.1 visibility tools. "probe" is intentionally NOT a registered device --
 # the underlying Tools-layer method is monkeypatched out entirely, so device
-# validity is irrelevant to these tests.
+# validity is irrelevant to these tests. The final entry repeats list_admins
+# with an explicit vdom so vdom pass-through is pinned at the registry layer
+# (the closures dispatch positionally: method(device_id, vdom)).
 NEW_TOOL_MATRIX = [
     ("list_security_profiles", "security_tools", "list_security_profiles", {"device_id": "probe"}),
     ("list_admins", "admin_tools", "list_admins", {"device_id": "probe"}),
     ("get_sslvpn_settings", "security_tools", "get_sslvpn_settings", {"device_id": "probe"}),
     ("list_local_in_policies", "security_tools", "list_local_in_policies", {"device_id": "probe"}),
+    ("list_admins", "admin_tools", "list_admins", {"device_id": "probe", "vdom": "vd-test"}),
 ]
 
 
@@ -64,7 +67,7 @@ def test_new_tool_dispatches_on_stdio(tmp_config_path, tool_name, tools_attr, me
     result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
 
     assert result.content[0].text == f"SENTINEL-{tool_name}"
-    mock_method.assert_called_once()
+    mock_method.assert_called_once_with(args["device_id"], args.get("vdom"))
 
 
 @pytest.mark.parametrize("tool_name, tools_attr, method_name, args", NEW_TOOL_MATRIX)
@@ -86,10 +89,10 @@ def test_new_tool_never_gated_regardless_of_allow_writes(
     result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
 
     assert result.content[0].text == f"SENTINEL-{tool_name}"
-    mock_method.assert_called_once()
+    mock_method.assert_called_once_with(args["device_id"], args.get("vdom"))
 
 
-@pytest.mark.parametrize("tool_name", [entry[0] for entry in NEW_TOOL_MATRIX])
+@pytest.mark.parametrize("tool_name", list(dict.fromkeys(entry[0] for entry in NEW_TOOL_MATRIX)))
 def test_new_tool_risk_classification_is_read(tool_name):
     """RISK_CLASSIFICATION directly classifies all 4 new tool names as
     'read' -- the single source of truth for the SEC-01 write gate."""
@@ -113,7 +116,7 @@ def test_new_tool_dispatches_on_http(tmp_config_path, tool_name, tools_attr, met
     result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
 
     assert result.content[0].text == f"SENTINEL-{tool_name}"
-    mock_method.assert_called_once()
+    mock_method.assert_called_once_with(args["device_id"], args.get("vdom"))
 
 
 def test_get_schema_info_includes_security_and_admin_tools_schema_info(tmp_config_path):
