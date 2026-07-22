@@ -9,7 +9,7 @@ FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for m
 
 ## 🚀 Features
 
-FortiGate MCP Server exposes 33 unique tools, 61 total tool-surface registrations across stdio (30) and HTTP (31) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
+FortiGate MCP Server exposes 37 unique tools, 69 total tool-surface registrations across stdio (34) and HTTP (35) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
 
 - **Device Management**: Add, remove, and test connections to FortiGate devices
 - **Firewall Management**: List, create, update, and delete firewall rules

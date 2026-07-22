@@ -151,12 +151,12 @@ def test_readme_python_version_matches_pyproject():
 
 def test_readme_tool_count_phrasing():
     """README.md must use the qualified tool-count phrasing from
-    tests/test_tool_schema_snapshot.py's docstring -- a bare '61 tools'
-    claim is misleading (61 is transport registrations, not unique tools)."""
+    tests/test_tool_schema_snapshot.py's docstring -- a bare '69 tools'
+    claim is misleading (69 is transport registrations, not unique tools)."""
     repo_root = _repo_root()
     text = (repo_root / "README.md").read_text()
 
-    assert "33 unique tools" in text
+    assert "37 unique tools" in text
 
 
 def test_dockerfile_does_not_copy_pytest_ini():
