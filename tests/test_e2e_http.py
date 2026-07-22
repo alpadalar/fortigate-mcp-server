@@ -77,7 +77,7 @@ def test_mcp_protocol_session_against_live_server(live_server):
     end-to-end."""
     base_url, _server, _app = live_server
     tools, result = asyncio.run(_mcp_session_probe(base_url))
-    assert len(tools) == 31
+    assert len(tools) == 35
     assert "default" in result.content[0].text
 
 
@@ -132,7 +132,7 @@ def test_mcp_protocol_session_with_bearer_token_against_live_server(
     live server."""
     base_url, _server, _app = live_server_auth_required
     tools, result = asyncio.run(_mcp_session_probe_with_auth(base_url))
-    assert len(tools) == 31
+    assert len(tools) == 35
     assert "default" in result.content[0].text
 
 
