@@ -92,7 +92,7 @@ Then edit `config/config.json`:
 ./start_http_server.sh
 
 # Or manually
-python -m src.fortigate_mcp.server_http \
+uv run python -m src.fortigate_mcp.server_http \
   --host 127.0.0.1 \
   --port 8814 \
   --path /fortigate-mcp \

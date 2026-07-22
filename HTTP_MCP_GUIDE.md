@@ -63,7 +63,7 @@ Ardından `config/config.json` dosyasını düzenleyin:
 ./start_http_server.sh
 
 # Veya manuel olarak
-python -m src.fortigate_mcp.server_http \
+uv run python -m src.fortigate_mcp.server_http \
   --host 127.0.0.1 \
   --port 8814 \
   --path /fortigate-mcp \
