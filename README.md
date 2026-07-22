@@ -16,6 +16,7 @@ FortiGate MCP Server exposes 37 unique tools, 69 total tool-surface registration
 - **Network Management**: Manage address and service objects
 - **Routing Management**: Manage static routes and interfaces
 - **Virtual IP Management**: Manage virtual IPs (VIP/DNAT)
+- **Security Visibility**: Read-only insight into security profiles, admin accounts (secret fields redacted), SSL-VPN settings, and IPv4 local-in policies
 - **HTTP Transport**: MCP protocol over HTTP using FastMCP
 - **Docker Support**: Easy installation and deployment
 - **MCP Client Integration**: Works with Claude Desktop, Claude Code, Cursor, and other MCP-compatible clients
@@ -218,6 +219,13 @@ See `examples/cursor_mcp_config.json` for a working stdio configuration.
 - `get_routing_table` - Get routing table
 - `list_interfaces` - List interfaces
 - `get_interface_status` - Get interface status
+
+### Security & Admin Visibility (read-only)
+
+- `list_security_profiles` - List security profiles (antivirus, IPS, web filter, application control)
+- `list_admins` - List admin accounts (secret fields redacted; `vdom` is expected to be a no-op on this global-scope endpoint)
+- `get_sslvpn_settings` - Get SSL-VPN settings and portal bookmarks (bookmark credentials redacted)
+- `list_local_in_policies` - List IPv4 local-in policies (IPv6 `local-in-policy6` not covered)
 
 ### System Commands
 
