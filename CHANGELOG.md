@@ -37,9 +37,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The full local test suite (469 tests) and the byte-frozen golden MCP tool-schema
   snapshot both pass unchanged on the new version (CI-03)
 
-## [1.0.0] - 2026-07-17
+## [1.0.0] - Pending (not yet tagged)
 
-First public release.
+Prepared for the first public release. This version has been assembled and
+tested on `main` but no `v1.0.0` git tag has been pushed yet, and no image
+has been published to GHCR under this version -- tagging is a separate,
+deliberate operator decision (a `v*` tag triggers the production release
+workflow). The content below reflects what is ready to ship once that tag
+is pushed.
 
 ### Added
 
