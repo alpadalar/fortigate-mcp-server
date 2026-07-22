@@ -92,6 +92,11 @@ RISK_CLASSIFICATION = {
     "test_connection": "read",
     "health": "read",
     "get_schema_info": "read",
+    # v1.1 visibility tools (Phase 10) -- read-only by design (VIS-06)
+    "list_security_profiles": "read",
+    "list_admins": "read",
+    "get_sslvpn_settings": "read",
+    "list_local_in_policies": "read",
     # write -- create_*/update_*/add_device
     "add_device": "write",
     "create_firewall_policy": "write",
@@ -107,11 +112,6 @@ RISK_CLASSIFICATION = {
     "delete_firewall_policy": "destructive",
     "delete_static_route": "destructive",
     "delete_virtual_ip": "destructive",
-    # v1.1 visibility tools (Phase 10)
-    "list_security_profiles": "read",
-    "list_admins": "read",
-    "get_sslvpn_settings": "read",
-    "list_local_in_policies": "read",
 }
 """Canonical per-tool risk classification (SEC-02).
 

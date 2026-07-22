@@ -82,6 +82,10 @@ def test_new_tool_never_gated_regardless_of_allow_writes(
     broken (10-RESEARCH.md Pitfall 3)."""
     monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
     server = FortiGateMCPServer(tmp_config_path)
+    # Guard against fixture drift: this test is only meaningful in
+    # read-only mode -- if the shared config fixture ever flips
+    # allow_writes on, the never-gated proof would become vacuous.
+    assert server.config.server.allow_writes is False
     tools_instance = getattr(server, tools_attr)
     mock_method = MagicMock(return_value=[TextContent(type="text", text=f"SENTINEL-{tool_name}")])
     monkeypatch.setattr(tools_instance, method_name, mock_method)
