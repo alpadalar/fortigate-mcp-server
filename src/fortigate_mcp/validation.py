@@ -268,7 +268,22 @@ _SENSITIVE_KEY_EXACT = frozenset(
         "password",
         "logon-password",
         "sso-password",
+        # FortiOS IPsec phase1/phase2 carry the preshared key in `psksecret`
+        # (and `psksecret-remote` for the peer PSK), NOT a bare `psk` field.
+        # `psk` is kept for defence-in-depth against any legacy/alias shape,
+        # but the two `psksecret*` names are the real secret-bearing wire
+        # fields and MUST be enumerated so a real device response cannot
+        # leak the PSK past this exact-match deny-list.
         "psk",
+        "psksecret",
+        "psksecret-remote",
+        # `private-key` is the only certificate-adjacent key enumerated here:
+        # it carries raw private-key MATERIAL. Certificate keys
+        # (`certificate`, `ca-certificate`, `ssl-certificate`) are
+        # deliberately NOT added -- a certificate is public by construction,
+        # and in FortiOS those keys are overwhelmingly NAME references to a
+        # configured cert object rather than the material itself (a name
+        # reference is not a secret). See 07-REVIEW-FIX.md for the rationale.
         "private-key",
     }
 )

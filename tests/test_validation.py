@@ -368,3 +368,18 @@ class TestRedactSensitiveFields:
 
         assert result["custom-secret"] == "***REDACTED***"
         assert result["child"]["custom-secret"] == "***REDACTED***"
+
+    def test_psksecret_field_redacted(self):
+        """IN-02 hardening: FortiOS IPsec phase1/phase2 preshared-key fields
+        are named `psksecret` / `psksecret-remote` (the bare `psk` enumerated
+        earlier does not match the real wire field). Both carry raw secret
+        MATERIAL and must be redacted by the default deny-list."""
+        fixture = {
+            "psksecret": "fake-preshared-key",
+            "psksecret-remote": "fake-remote-preshared-key",
+        }
+
+        result = redact_sensitive_fields(fixture)
+
+        assert result["psksecret"] == "***REDACTED***"
+        assert result["psksecret-remote"] == "***REDACTED***"
