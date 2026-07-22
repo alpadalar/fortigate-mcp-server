@@ -757,6 +757,238 @@ class FortiGateTemplates:
         return "\n".join(lines)
     
     @staticmethod
+    def security_profiles(data: Dict[str, Any]) -> str:
+        """Format security profile visibility across AV/IPS/web-filter/app-control.
+
+        Args:
+            data: Dict keyed by 4 fixed categories -- "antivirus", "ips",
+                "webfilter", "application_control" -- each value either
+                {"status": "ok", "profiles": [...]} or
+                {"status": "error", "error": "<message>"}. A category key
+                that is missing or falsy means it was never queried.
+
+        Returns:
+            Formatted security profiles information. A per-category
+            authorization/licensing error always renders distinctly from a
+            genuinely empty category -- never collapsed into the same text.
+        """
+        categories = [
+            ("antivirus", "Antivirus Profiles"),
+            ("ips", "IPS Sensors"),
+            ("webfilter", "Web Filter Profiles"),
+            ("application_control", "Application Control Profiles"),
+        ]
+
+        lines = ["Security Profiles", ""]
+
+        for key, title in categories:
+            category = data.get(key)
+
+            if not category:
+                lines.extend([f"{title}: not queried", ""])
+                continue
+
+            if category.get("status") == "error":
+                error_message = category.get("error", "unknown error")
+                lines.extend([f"{title}: query failed - {error_message}", ""])
+                continue
+
+            profiles = category.get("profiles", [])
+            if not profiles:
+                lines.extend([f"{title}: none configured", ""])
+                continue
+
+            lines.append(title)
+            for profile in profiles:
+                name = profile.get("name", "Unnamed")
+                comment = profile.get("comment")
+                lines.append(f"  {name} - {comment}" if comment else f"  {name}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def admin_accounts(data: Dict[str, Any]) -> str:
+        """Format administrator account list (cmdb/system/admin).
+
+        Args:
+            data: Admin accounts response from FortiGate API
+
+        Returns:
+            Formatted administrator account information. Never renders the
+            password/hash field -- Phase 9's Tools layer applies redaction
+            before this template is reachable from any live tool call.
+        """
+        lines = ["Administrator Accounts", ""]
+
+        if "results" in data and data["results"]:
+            admins = data["results"]
+
+            for admin in admins:
+                name = admin.get("name", "Unnamed")
+                accprofile = admin.get("accprofile", "unknown")
+
+                trusted = False
+                for i in range(1, 11):
+                    host = admin.get(f"trusthost{i}")
+                    if host and host != "0.0.0.0 0.0.0.0":
+                        trusted = True
+                        break
+                trusted_text = "Yes" if trusted else "No"
+
+                two_factor = admin.get("two-factor", "disable")
+                two_factor_text = "On" if two_factor != "disable" else "Off"
+
+                vdom_text = FortiGateTemplates._render_profile_ref(admin.get("vdom"))
+
+                lines.extend([
+                    f"Admin: {name}",
+                    f"  Profile: {accprofile}",
+                    f"  Trusted Hosts: {trusted_text}",
+                    f"  Two-Factor: {two_factor_text}",
+                    f"  VDOM: {vdom_text}",
+                    "",
+                ])
+        else:
+            lines.append("No administrator accounts configured")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def sslvpn_settings(data: Dict[str, Any], portals_data: Optional[Dict[str, Any]] = None) -> str:
+        """Format SSL-VPN settings (singleton) plus an optional bookmarks section.
+
+        Args:
+            data: SSL-VPN settings response from FortiGate API
+                (cmdb/vpn.ssl/settings). `results` here is a single JSON
+                object, NOT a list -- mirrors the device_status singleton
+                precedent, never data["results"][0].
+            portals_data: Optional SSL-VPN web portal list response
+                (cmdb/vpn.ssl.web/portal) used to render a "Portal Bookmarks"
+                section. Renders whatever bookmark fields (including
+                logon-password/sso-password) are present, unredacted --
+                Phase 9's Tools layer applies redaction before this template
+                is reachable from a live tool call.
+
+        Returns:
+            Formatted SSL-VPN settings information
+        """
+        lines = ["SSL-VPN Settings", ""]
+
+        if "results" not in data:
+            lines.append("No SSL-VPN settings available")
+            return "\n".join(lines)
+
+        settings = data["results"]
+        if isinstance(settings, list):
+            settings = settings[0] if settings else {}
+
+        if not settings:
+            lines.append("No SSL-VPN settings available")
+            return "\n".join(lines)
+
+        source_interfaces = ", ".join(
+            intf.get("name", "unknown") if isinstance(intf, dict) else str(intf)
+            for intf in settings.get("source-interface", [])
+        )
+        tunnel_pools = ", ".join(
+            pool.get("name", "unknown") if isinstance(pool, dict) else str(pool)
+            for pool in settings.get("tunnel-ip-pools", [])
+        )
+
+        lines.extend([
+            f"  Status: {settings.get('status', 'unknown')}",
+            f"  Port: {settings.get('port', 'N/A')}",
+            f"  Source Interface: {source_interfaces or 'N/A'}",
+            f"  Tunnel IP Pools: {tunnel_pools or 'N/A'}",
+            f"  Default Portal: {settings.get('default-portal', 'N/A')}",
+            f"  SSL Min Proto Version: {settings.get('ssl-min-proto-ver', 'unknown')}",
+            f"  Idle Timeout: {settings.get('idle-timeout', 'N/A')}",
+            f"  Auth Timeout: {settings.get('auth-timeout', 'N/A')}",
+            f"  Login Attempt Limit: {settings.get('login-attempt-limit', 'N/A')}",
+            f"  Server Certificate: {settings.get('servercert', 'N/A')}",
+            "",
+        ])
+
+        if portals_data is not None and portals_data.get("results"):
+            portals = portals_data["results"]
+            lines.append("Portal Bookmarks")
+            for portal in portals:
+                portal_name = portal.get("name", "Unnamed")
+                for group in portal.get("bookmark-group", []):
+                    group_name = group.get("name", "Unnamed")
+                    for bookmark in group.get("bookmarks", []):
+                        bm_name = bookmark.get("name", "Unnamed")
+                        apptype = bookmark.get("apptype", "unknown")
+                        host_or_url = bookmark.get("host") or bookmark.get("url", "N/A")
+                        lines.append(
+                            f"  Portal: {portal_name} / Group: {group_name} / "
+                            f"Bookmark: {bm_name} ({apptype}) -> {host_or_url}"
+                        )
+                        # Rendered exactly as given, unredacted -- Phase 9's
+                        # Tools layer applies redaction before this template
+                        # is reachable from a live tool call.
+                        if bookmark.get("logon-password"):
+                            lines.append(f"    Logon Password: {bookmark['logon-password']}")
+                        if bookmark.get("sso-password"):
+                            lines.append(f"    SSO Password: {bookmark['sso-password']}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def local_in_policies(data: Dict[str, Any]) -> str:
+        """Format local-in policy list (cmdb/firewall/local-in-policy, IPv4 only).
+
+        Args:
+            data: Local-in policies response from FortiGate API
+
+        Returns:
+            Formatted local-in policies information
+        """
+        lines = ["Local-In Policies", ""]
+
+        if "results" in data and data["results"]:
+            policies = data["results"]
+
+            for policy in policies:
+                intf_names = ", ".join(
+                    intf.get("name", "unknown") if isinstance(intf, dict) else str(intf)
+                    for intf in policy.get("intf", [])
+                )
+                srcaddr_names = ", ".join(
+                    addr.get("name", "unknown") if isinstance(addr, dict) else str(addr)
+                    for addr in policy.get("srcaddr", [])
+                )
+                dstaddr_names = ", ".join(
+                    addr.get("name", "unknown") if isinstance(addr, dict) else str(addr)
+                    for addr in policy.get("dstaddr", [])
+                )
+                service_names = ", ".join(
+                    svc.get("name", "unknown") if isinstance(svc, dict) else str(svc)
+                    for svc in policy.get("service", [])
+                )
+
+                lines.extend([
+                    f"Policy {policy.get('policyid', 'N/A')}",
+                    f"  Interface: {intf_names or 'any'}",
+                    f"  Source: {srcaddr_names or 'any'}",
+                    f"  Destination: {dstaddr_names or 'any'}",
+                    f"  Service: {service_names or 'any'}",
+                    f"  Action: {policy.get('action', 'unknown')}",
+                    f"  Status: {policy.get('status', 'unknown')}",
+                ])
+
+                if policy.get("comments"):
+                    lines.append(f"  Comments: {policy['comments']}")
+
+                lines.append("")
+        else:
+            lines.append("No local-in policies configured")
+
+        return "\n".join(lines)
+
+    @staticmethod
     def health_status(status: str, details: Dict[str, Any]) -> str:
         """Format health check status.
         

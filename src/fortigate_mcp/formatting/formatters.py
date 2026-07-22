@@ -217,6 +217,62 @@ class FortiGateFormatters:
         return [Content(type="text", text=formatted_text)]
     
     @staticmethod
+    def format_security_profiles(data: Dict[str, Any]) -> List[Content]:
+        """Format security profiles response.
+
+        Args:
+            data: Per-category security profile status dict (see
+                FortiGateTemplates.security_profiles for the exact shape)
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.security_profiles(data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_admin_accounts(data: Dict[str, Any]) -> List[Content]:
+        """Format administrator accounts response.
+
+        Args:
+            data: Raw admin accounts data from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.admin_accounts(data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_sslvpn_settings(data: Dict[str, Any],
+                             portals_data: Optional[Dict[str, Any]] = None) -> List[Content]:
+        """Format SSL-VPN settings response.
+
+        Args:
+            data: Raw SSL-VPN settings data from FortiGate API (singleton)
+            portals_data: Optional SSL-VPN web portal list data used to
+                render a bookmarks section
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.sslvpn_settings(data, portals_data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
+    def format_local_in_policies(data: Dict[str, Any]) -> List[Content]:
+        """Format local-in policies response.
+
+        Args:
+            data: Raw local-in policies data from FortiGate API
+
+        Returns:
+            List containing formatted Content object
+        """
+        formatted_text = FortiGateTemplates.local_in_policies(data)
+        return [Content(type="text", text=formatted_text)]
+
+    @staticmethod
     def format_json_response(data: Any, title: Optional[str] = None) -> List[Content]:
         """Format JSON response data.
         
