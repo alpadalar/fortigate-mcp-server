@@ -189,6 +189,12 @@ class TestSecurityToolsListSecurityProfilesPartialFailure:
         assert "IPS Sensors: query failed" in text
         assert "IPS Sensors: none configured" not in text
 
+        # The reason is the fixed, status-derived text -- the raw response
+        # body ("Forbidden" here) is untrusted device-controlled text and
+        # must never be echoed verbatim into MCP output.
+        assert "IPS Sensors: query failed - permission denied" in text
+        assert "Forbidden" not in text
+
         # The 3 succeeding categories still render their real data, not
         # "none configured" -- a failure in one category must not swallow
         # the others.

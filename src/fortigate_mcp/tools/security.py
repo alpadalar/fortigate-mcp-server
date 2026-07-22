@@ -5,6 +5,18 @@ from .base import FortiGateTool
 from ..core.fortigate import FortiGateAPIError
 from ..validation import redact_sensitive_fields
 
+# Fixed, status-derived per-category error texts: the raw FortiGateAPIError
+# message can embed untrusted device/middlebox-controlled response-body text
+# (see the threat model in core/fortigate.py _make_request), so it is never
+# rendered verbatim into MCP output -- mirrors the status-code normalization
+# _handle_error applies on the non-category error path.
+_STATUS_TEXT = {
+    401: "authentication failed",
+    403: "permission denied",
+    404: "endpoint not found",
+    500: "device internal error",
+}
+
 
 class SecurityTools(FortiGateTool):
     """Tools for FortiGate security profile, SSL-VPN, and local-in policy visibility (read-only)."""
@@ -42,7 +54,10 @@ class SecurityTools(FortiGateTool):
                         # blocking timeouts; re-raise so the outer handler
                         # renders the standard connection-failure response.
                         raise
-                    categories[key] = {"status": "error", "error": str(e)}
+                    # Render a fixed, status-derived reason -- never the raw
+                    # message, which can echo untrusted response-body text.
+                    reason = _STATUS_TEXT.get(e.status_code, f"HTTP {e.status_code}")
+                    categories[key] = {"status": "error", "error": reason}
                 # Any OTHER exception type is intentionally NOT caught here --
                 # it propagates to the outer try/except -> self._handle_error,
                 # per the locked "no bare-except" decision (VIS-01).
