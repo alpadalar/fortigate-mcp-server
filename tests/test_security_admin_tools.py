@@ -194,3 +194,44 @@ class TestSecurityToolsListSecurityProfilesPartialFailure:
         # the others.
         assert "Antivirus Profiles" in text
         assert "Antivirus Profiles: none configured" not in text
+
+    def test_network_error_escalates_after_single_attempt(self):
+        """A network-level FortiGateAPIError (status_code=None: device
+        unreachable) must NOT be treated as a per-category failure -- that
+        would burn one full connect timeout per category (4 sequential
+        blocking waits). It must re-raise out of the per-category loop
+        after the FIRST attempt so the outer handler renders the standard
+        single error response."""
+        router = respx.mock(
+            base_url=BASE_URL,
+            assert_all_called=False,
+            assert_all_mocked=True,
+        )
+        router.get("/cmdb/antivirus/profile").mock(
+            side_effect=httpx.ConnectError("all connection attempts failed")
+        )
+        # The remaining 3 categories are registered so that reaching them
+        # would NOT raise an unmatched-request error -- proving the loop
+        # stopped because of the re-raise, not because of missing mocks.
+        router.get("/cmdb/ips/sensor").mock(
+            side_effect=httpx.ConnectError("all connection attempts failed")
+        )
+        router.get("/cmdb/webfilter/profile").mock(
+            side_effect=httpx.ConnectError("all connection attempts failed")
+        )
+        router.get("/cmdb/application/list").mock(
+            side_effect=httpx.ConnectError("all connection attempts failed")
+        )
+
+        with router:
+            result = self.security_tools.list_security_profiles(device_id="test_device")
+            # Exactly ONE wire attempt: the loop must not proceed to the
+            # other 3 categories once the device is known unreachable.
+            assert len(router.calls) == 1
+
+        text = result[0].text
+
+        # Rendered as the standard single error response, never as a
+        # 4x "query failed" category listing.
+        assert "Security Profiles" not in text
+        assert "query failed" not in text

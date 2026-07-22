@@ -36,6 +36,12 @@ class SecurityTools(FortiGateTool):
                     raw = redact_sensitive_fields(raw)
                     categories[key] = {"status": "ok", "profiles": raw.get("results", [])}
                 except FortiGateAPIError as e:
+                    if e.status_code is None:
+                        # Network-level failure (no HTTP status): the device
+                        # is unreachable -- don't burn 3 more sequential
+                        # blocking timeouts; re-raise so the outer handler
+                        # renders the standard connection-failure response.
+                        raise
                     categories[key] = {"status": "error", "error": str(e)}
                 # Any OTHER exception type is intentionally NOT caught here --
                 # it propagates to the outer try/except -> self._handle_error,
