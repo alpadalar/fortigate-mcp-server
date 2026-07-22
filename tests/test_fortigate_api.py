@@ -5,6 +5,7 @@ FortiGate API tests
 import json
 
 import pytest
+import respx
 from unittest.mock import patch, MagicMock
 import httpx
 
@@ -36,6 +37,20 @@ ENDPOINT_MATRIX = [
 
 # Injection-shaped corpus: path traversal, CRLF, query/fragment characters, space.
 INJECTION_CORPUS = ["../", "%0d%0a", "?", "#", "bad name", "bad\r\nname"]
+
+# Phase 8 (08-01): the 8 new unparameterized GET methods x their exact
+# expected cmdb endpoint string -- used by the respx wire-level round-trip
+# test below (proves the REAL request path, not just call-args passthrough).
+NEW_GET_ENDPOINTS = [
+    ("get_antivirus_profiles", "cmdb/antivirus/profile"),
+    ("get_ips_sensors", "cmdb/ips/sensor"),
+    ("get_webfilter_profiles", "cmdb/webfilter/profile"),
+    ("get_application_lists", "cmdb/application/list"),
+    ("get_admin_accounts", "cmdb/system/admin"),
+    ("get_sslvpn_settings", "cmdb/vpn.ssl/settings"),
+    ("get_sslvpn_portals", "cmdb/vpn.ssl.web/portal"),
+    ("get_local_in_policies", "cmdb/firewall/local-in-policy"),
+]
 
 
 class TestFortiGateAPI:
@@ -258,6 +273,86 @@ class TestFortiGateAPI:
 
             assert result == {"results": [{"dst": "0.0.0.0/0"}]}
             mock_request.assert_called_once_with("GET", "monitor/router/ipv4", vdom=None)
+
+    def test_get_antivirus_profiles(self):
+        """Antivirus profile listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"name": "default"}]}
+
+            result = self.api.get_antivirus_profiles()
+
+            assert result == {"results": [{"name": "default"}]}
+            mock_request.assert_called_once_with("GET", "cmdb/antivirus/profile", vdom=None)
+
+    def test_get_ips_sensors(self):
+        """IPS sensor listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"name": "default"}]}
+
+            result = self.api.get_ips_sensors()
+
+            assert result == {"results": [{"name": "default"}]}
+            mock_request.assert_called_once_with("GET", "cmdb/ips/sensor", vdom=None)
+
+    def test_get_webfilter_profiles(self):
+        """Web filter profile listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"name": "default"}]}
+
+            result = self.api.get_webfilter_profiles()
+
+            assert result == {"results": [{"name": "default"}]}
+            mock_request.assert_called_once_with("GET", "cmdb/webfilter/profile", vdom=None)
+
+    def test_get_application_lists(self):
+        """Application control profile listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"name": "default"}]}
+
+            result = self.api.get_application_lists()
+
+            assert result == {"results": [{"name": "default"}]}
+            mock_request.assert_called_once_with("GET", "cmdb/application/list", vdom=None)
+
+    def test_get_admin_accounts(self):
+        """Sistem admin hesap listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"name": "admin"}]}
+
+            result = self.api.get_admin_accounts()
+
+            assert result == {"results": [{"name": "admin"}]}
+            mock_request.assert_called_once_with("GET", "cmdb/system/admin", vdom=None)
+
+    def test_get_sslvpn_settings(self):
+        """SSL-VPN settings (singleton) alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": {"status": "enable"}}
+
+            result = self.api.get_sslvpn_settings()
+
+            assert result == {"results": {"status": "enable"}}
+            mock_request.assert_called_once_with("GET", "cmdb/vpn.ssl/settings", vdom=None)
+
+    def test_get_sslvpn_portals(self):
+        """SSL-VPN portal listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"name": "full-access"}]}
+
+            result = self.api.get_sslvpn_portals()
+
+            assert result == {"results": [{"name": "full-access"}]}
+            mock_request.assert_called_once_with("GET", "cmdb/vpn.ssl.web/portal", vdom=None)
+
+    def test_get_local_in_policies(self):
+        """Local-in policy listesi alma testi"""
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"policyid": 1}]}
+
+            result = self.api.get_local_in_policies()
+
+            assert result == {"results": [{"policyid": 1}]}
+            mock_request.assert_called_once_with("GET", "cmdb/firewall/local-in-policy", vdom=None)
 
     def test_get_interface_status_uses_params_and_allows_vlan_names(self):
         """VLAN subinterface names with dots (e.g. port1.100) must pass, and
@@ -852,3 +947,75 @@ class TestNetworkToolsCreateServiceObjectHTTPMapping:
             "protocol": "UDP",
             "udp-portrange": "53",
         }
+
+
+class TestFortiGateAPINewEndpointsRespx:
+    """Phase 8 (08-01): respx wire-level round-trip tests for the 8 new
+    FortiGateAPI GET methods (security profiles / admin / SSL-VPN /
+    local-in-policy). Proves the REAL request path matches the correct
+    endpoint string -- assert_all_mocked=True fails loudly on a wrong path,
+    unlike a patch.object(_make_request) call-args assertion, which would
+    happily pass even with a dropped cmdb/ prefix (see 08-RESEARCH.md
+    Pitfall 2)."""
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10",
+            api_token="test-token-not-real",
+            vdom="root",
+        )
+        self.api = FortiGateAPI("test_device", config)
+
+    @pytest.mark.parametrize("method_name,expected_endpoint", NEW_GET_ENDPOINTS)
+    def test_new_endpoint_round_trip_has_results(
+        self, fake_fortigate_router, method_name, expected_endpoint
+    ):
+        """Uses the ACTIVE conftest fixture (already-entered shared router),
+        proving fortigate_router()'s 8 new registrations are live, not dead
+        code, and that each method's real request path matches."""
+        method = getattr(self.api, method_name)
+        result = method()
+
+        assert "results" in result
+
+    def test_get_sslvpn_settings_results_is_singleton_dict(self, fake_fortigate_router):
+        """Success Criteria 2: proves the singleton (dict, not list) shape
+        end-to-end via a real respx round trip, not just a hand-built
+        fixture assertion."""
+        result = self.api.get_sslvpn_settings()
+
+        assert isinstance(result["results"], dict)
+        assert result["results"]["status"] == "enable"
+
+    def test_get_sslvpn_portals_bookmark_structure_survives_round_trip(
+        self, fake_fortigate_router
+    ):
+        """Success Criteria: proves the nested bookmark-group/bookmarks
+        structure survives the real request/response cycle."""
+        result = self.api.get_sslvpn_portals()
+
+        assert (
+            result["results"][0]["bookmark-group"][0]["bookmarks"][0]["name"]
+            == "internal-rdp"
+        )
+
+    def test_get_local_in_policies_empty_body_fallback_over_the_wire(self):
+        """Dedicated standalone ad-hoc router -- NOT the shared
+        fortigate_router(), whose assert_all_mocked=True already registers
+        the normal fixture-backed route for this same path. Proves
+        _make_request's real json.JSONDecodeError fallback
+        (core/fortigate.py:181-185) fires over the wire for a brand-new
+        endpoint, not merely as a hand-constructed dict."""
+        router = respx.mock(
+            base_url="https://198.51.100.10:443/api/v2",
+            assert_all_called=False,
+            assert_all_mocked=True,
+        )
+        router.get("/cmdb/firewall/local-in-policy").mock(
+            return_value=httpx.Response(200, content=b"")
+        )
+
+        with router:
+            result = self.api.get_local_in_policies()
+
+        assert result == {"status": "success"}
