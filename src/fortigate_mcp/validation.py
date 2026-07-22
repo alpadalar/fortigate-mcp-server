@@ -334,16 +334,36 @@ def redact_sensitive_fields(
         if sensitive_keys is None
         else frozenset(k.lower() for k in sensitive_keys)
     )
+    # Normalize the override exactly once, at entry, then thread the
+    # resulting frozenset through the recursion -- see _redact.
+    return _redact(data, exact_keys)
 
+
+def _redact(data: Any, exact_keys: "frozenset[str]") -> Any:
+    """Recursion worker for `redact_sensitive_fields`.
+
+    Threads the already-normalized `exact_keys` frozenset through every
+    node instead of re-normalizing the caller's `sensitive_keys` iterable
+    at each level. This is load-bearing (WR-01): the public signature
+    accepts any `Iterable[str]`, and a single-use iterable (generator/
+    iterator) is a valid `Iterable`. The previous implementation passed the
+    raw iterable back down recursively, so `frozenset(k.lower() for k in
+    sensitive_keys)` consumed the generator on the top-level call and every
+    nested call then re-ran the comprehension over an *exhausted* iterator
+    -- yielding an empty exact-key set and silently leaking any sensitive
+    field below the top level. Computing the set once and passing the
+    normalized frozenset down makes the override path order-/generator-
+    independent and eliminates the redundant per-node recompute.
+    """
     if isinstance(data, dict):
         return {
             key: (
                 _REDACTED_MARKER
                 if isinstance(key, str) and _is_sensitive_key(key, exact_keys)
-                else redact_sensitive_fields(value, sensitive_keys)
+                else _redact(value, exact_keys)
             )
             for key, value in data.items()
         }
     if isinstance(data, list):
-        return [redact_sensitive_fields(item, sensitive_keys) for item in data]
+        return [_redact(item, exact_keys) for item in data]
     return data

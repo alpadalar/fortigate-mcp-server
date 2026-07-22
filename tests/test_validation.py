@@ -350,3 +350,21 @@ class TestRedactSensitiveFields:
     def test_scalar_passthrough(self):
         assert redact_sensitive_fields("plain string") == "plain string"
         assert redact_sensitive_fields(42) == 42
+
+    def test_single_use_generator_override_redacts_nested_secret(self):
+        """WR-01 regression: `sensitive_keys` accepts any Iterable[str], and a
+        single-use generator is a valid Iterable. The override must be
+        normalized exactly once at entry and threaded through the recursion --
+        otherwise the top-level call exhausts the generator and every nested
+        node re-runs the comprehension over an empty iterator, silently
+        leaking sensitive fields below the top level."""
+        gen = (k for k in ["custom-secret"])
+        fixture = {
+            "custom-secret": "TOP",
+            "child": {"custom-secret": "NESTED"},
+        }
+
+        result = redact_sensitive_fields(fixture, gen)
+
+        assert result["custom-secret"] == "***REDACTED***"
+        assert result["child"]["custom-secret"] == "***REDACTED***"
