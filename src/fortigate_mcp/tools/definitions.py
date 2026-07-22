@@ -181,23 +181,6 @@ Returns:
 - Deletion status confirmation
 """
 
-VALIDATE_FIREWALL_POLICY_DESC = """
-Validate firewall policy configuration before applying.
-
-This tool checks the syntax and validity of a firewall policy configuration
-without actually creating or modifying any policies on the device.
-
-Parameters:
-- device_id: Identifier of the FortiGate device
-- policy_data: Policy configuration to validate
-- vdom: Virtual Domain name (optional, uses device default)
-
-Returns:
-- Validation status (valid/invalid)
-- List of validation errors if any
-- Configuration recommendations
-"""
-
 # Network Objects Tool Descriptions
 LIST_ADDRESS_OBJECTS_DESC = """
 List all address objects configured on a FortiGate device.
@@ -239,38 +222,6 @@ Returns:
 - Object configuration summary
 """
 
-UPDATE_ADDRESS_OBJECT_DESC = """
-Update an existing address object on a FortiGate device.
-
-This tool modifies the configuration of an existing network address object,
-allowing changes to IP addresses, subnets, or other settings.
-
-Parameters:
-- device_id: Identifier of the FortiGate device
-- name: Name of the address object to update
-- address_data: Updated configuration as JSON
-- vdom: Virtual Domain name (optional, uses device default)
-
-Returns:
-- Update status
-- Configuration changes applied
-"""
-
-DELETE_ADDRESS_OBJECT_DESC = """
-Delete an address object from a FortiGate device.
-
-This tool removes an existing network address object from the device
-configuration. Note that objects in use by policies cannot be deleted.
-
-Parameters:
-- device_id: Identifier of the FortiGate device
-- name: Name of the address object to delete
-- vdom: Virtual Domain name (optional, uses device default)
-
-Returns:
-- Deletion status confirmation
-"""
-
 LIST_SERVICE_OBJECTS_DESC = """
 List all service objects configured on a FortiGate device.
 
@@ -308,38 +259,6 @@ Service data should include:
 Returns:
 - Creation status
 - Service configuration summary
-"""
-
-UPDATE_SERVICE_OBJECT_DESC = """
-Update an existing service object on a FortiGate device.
-
-This tool modifies the configuration of an existing network service object,
-allowing changes to protocols, ports, or other settings.
-
-Parameters:
-- device_id: Identifier of the FortiGate device
-- name: Name of the service object to update
-- service_data: Updated configuration as JSON
-- vdom: Virtual Domain name (optional, uses device default)
-
-Returns:
-- Update status
-- Configuration changes applied
-"""
-
-DELETE_SERVICE_OBJECT_DESC = """
-Delete a service object from a FortiGate device.
-
-This tool removes an existing network service object from the device
-configuration. Note that objects in use by policies cannot be deleted.
-
-Parameters:
-- device_id: Identifier of the FortiGate device
-- name: Name of the service object to delete
-- vdom: Virtual Domain name (optional, uses device default)
-
-Returns:
-- Deletion status confirmation
 """
 
 # Virtual IP Tool Descriptions
@@ -539,23 +458,6 @@ Returns:
 - Route sources (static, OSPF, BGP, etc.)
 - Metrics and preferences
 - Interface assignments
-"""
-
-LIST_POLICY_ROUTES_DESC = """
-List all policy-based routes configured on a FortiGate device.
-
-This tool retrieves policy routing rules that direct traffic based
-on source, destination, or other criteria rather than just destination.
-
-Parameters:
-- device_id: Identifier of the FortiGate device
-- vdom: Virtual Domain name (optional, uses device default)
-
-Returns:
-- Policy route rules
-- Match criteria
-- Routing actions
-- Rule priorities
 """
 
 LIST_INTERFACES_DESC = """
