@@ -2,7 +2,7 @@
 
 Both the stdio server (server.py) and the HTTP server (server_http.py)
 register tools from this single module instead of each hand-duplicating a
-~30-tool ``_setup_tools()`` body. 24 of the 33 unique tool names are
+~30-tool ``_setup_tools()`` body. 28 of the 37 unique tool names are
 schema-identical and share ONE tool definition; ``get_firewall_policy_detail``
 is schema-identical but was dispatch-divergent (sync vs async on the same
 class) -- it is unified here to a single async definition, verified safe
@@ -117,9 +117,11 @@ RISK_CLASSIFICATION = {
 
 Single source of truth for BOTH the dispatch-layer read-only gate (SEC-01,
 ``_tool()``'s ``_gate`` helper below) and Phase 5's SECURITY.md tool-risk
-table. Covers all 33 unique tool names registered across transports;
+table. Covers all 37 unique tool names registered across transports;
 completeness is enforced by ``tests/test_write_gate.py``. An unclassified
 name is a registration-time KeyError (see ``_gate``), not a silent gap.
+Phase 11 syncs SECURITY.md's risk table and the golden fixtures to this
+37-name surface.
 """
 
 
