@@ -18,14 +18,16 @@ asserting on source text. Covers:
 """
 
 import asyncio
+import json
 
 import pytest
 from fastmcp import Client
 from mcp.types import TextContent
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.fortigate_mcp.registry import RISK_CLASSIFICATION
 from src.fortigate_mcp.server import FortiGateMCPServer
+from src.fortigate_mcp.server_http import FortiGateMCPHTTPServer
 
 
 async def _call_via_client(mcp, tool_name, args):
@@ -92,3 +94,43 @@ def test_new_tool_risk_classification_is_read(tool_name):
     """RISK_CLASSIFICATION directly classifies all 4 new tool names as
     'read' -- the single source of truth for the SEC-01 write gate."""
     assert RISK_CLASSIFICATION[tool_name] == "read"
+
+
+@pytest.mark.parametrize("tool_name, tools_attr, method_name, args", NEW_TOOL_MATRIX)
+def test_new_tool_dispatches_on_http(tmp_config_path, tool_name, tools_attr, method_name, args, monkeypatch):
+    """Each new tool dispatches to its Tools-layer method through a real
+    HTTP-transport-registered MCP protocol call
+    (fastmcp.Client(http_server.mcp)). The real network probe at
+    construction is patched out (per test_e2e_http.py's established
+    idiom) -- no background-thread test server or wire-level mock router
+    is needed since the Tools-layer method is monkeypatched out entirely."""
+    with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
+        server = FortiGateMCPHTTPServer(config_path=tmp_config_path, host="127.0.0.1", port=0, path="/fortigate-mcp")
+    tools_instance = getattr(server, tools_attr)
+    mock_method = MagicMock(return_value=[TextContent(type="text", text=f"SENTINEL-{tool_name}")])
+    monkeypatch.setattr(tools_instance, method_name, mock_method)
+
+    result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
+
+    assert result.content[0].text == f"SENTINEL-{tool_name}"
+    mock_method.assert_called_once()
+
+
+def test_get_schema_info_includes_security_and_admin_tools_schema_info(tmp_config_path):
+    """get_schema_info's HTTP-only aggregation includes security_tools and
+    admin_tools keys with the exact get_schema_info() sub-dict shape
+    ({'name', 'description', 'operations'}), each with a non-empty
+    operations list -- closes 10-RESEARCH.md Pitfall 4's "unverified by
+    any existing test" gap with more than a vacuous key-presence check."""
+    with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
+        server = FortiGateMCPHTTPServer(config_path=tmp_config_path, host="127.0.0.1", port=0, path="/fortigate-mcp")
+
+    result = asyncio.run(_call_via_client(server.mcp, "get_schema_info", {}))
+
+    schema = json.loads(result.content[0].text)
+    assert "security_tools" in schema["tools"]
+    assert "admin_tools" in schema["tools"]
+    assert schema["tools"]["security_tools"]["name"] == "security_tools"
+    assert schema["tools"]["admin_tools"]["name"] == "admin_tools"
+    assert len(schema["tools"]["security_tools"]["operations"]) >= 3
+    assert len(schema["tools"]["admin_tools"]["operations"]) >= 1
