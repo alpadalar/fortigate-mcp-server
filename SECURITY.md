@@ -25,8 +25,8 @@ We will acknowledge new reports and work with you on remediation and disclosure 
 
 ## What Can This Server Do To Your Firewall
 
-This MCP server exposes **33 unique tools**, registered as **61 total tool-surface
-registrations across the stdio (30 tools) and HTTP (31 tools) transports** (three
+This MCP server exposes **37 unique tools**, registered as **69 total tool-surface
+registrations across the stdio (34 tools) and HTTP (35 tools) transports** (three
 create-tools — `create_address_object`, `create_service_object`, `create_static_route` —
 have transport-specific parameter shapes and are therefore counted once per transport; every
 other tool name is schema-identical across both transports). Each tool operates against
@@ -66,6 +66,10 @@ permissions.
 | `test_connection` | read |
 | `health` | read |
 | `get_schema_info` | read |
+| `list_security_profiles` | read |
+| `list_admins` | read |
+| `get_sslvpn_settings` | read |
+| `list_local_in_policies` | read |
 | `add_device` | write |
 | `create_firewall_policy` | write |
 | `update_firewall_policy` | write |
@@ -80,10 +84,11 @@ permissions.
 | `delete_static_route` | destructive |
 | `delete_virtual_ip` | destructive |
 
-**Read-only tools** (20) only retrieve information — device status, firewall policies,
-address/service objects, routes, interfaces, virtual IPs, and server health/schema data.
-They never modify FortiGate device state and are never subject to the write gate described
-below.
+**Read-only tools** (24) only retrieve information — device status, firewall policies,
+address/service objects, routes, interfaces, virtual IPs, server health/schema data, and the
+v1.1 visibility additions (security profiles, admin accounts, SSL-VPN settings, local-in
+policies). They never modify FortiGate device state and are never subject to the write gate
+described below.
 
 **Write tools** (9) create new objects (policies, address/service objects, routes, virtual
 IPs, or a newly-registered device) or modify existing ones on the target FortiGate device.
@@ -158,3 +163,12 @@ no CORS middleware exists anywhere in this codebase — the setting currently ha
 `add_device` MCP tool exist only in this process's in-memory registry
 (`FortiGateManager.devices`) and are lost on restart; they are never written back to
 `config/config.json`.
+
+**`list_admins` output is reconnaissance-sensitive on unauthenticated HTTP.** Admin account
+names, `accprofile`, and trusted-host scope — even with secret fields (password hash, PSK,
+private keys) redacted — are useful to an attacker profiling this server's operator surface,
+since they reveal who administers the target FortiGate and how broadly each account is
+scoped. This is an accepted-posture advisory, not a defect: redaction of secret-shaped
+fields is already proven (see the read-only gate and TLS controls above). **How to
+mitigate:** set `auth.require_auth=true` (with at least one configured `auth.api_tokens`
+entry) before binding the HTTP transport to any non-loopback interface.
