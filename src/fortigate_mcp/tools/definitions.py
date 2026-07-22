@@ -564,7 +564,9 @@ Returns:
 - Administrator account names and profiles
 - Trusted-host and access restrictions
 - Two-factor authentication status
-- Redacted password/hash and ssh-public-key fields
+
+Password/hash and ssh-public-key fields are redacted upstream and never
+rendered in the output (the display omits them entirely).
 """
 
 GET_SSLVPN_SETTINGS_DESC = """
