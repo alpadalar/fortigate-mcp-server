@@ -241,3 +241,71 @@ class TestSecurityToolsListSecurityProfilesPartialFailure:
         # 4x "query failed" category listing.
         assert "Security Profiles" not in text
         assert "query failed" not in text
+
+
+class TestRedactCallSiteWiring:
+    """Pins the redact-before-format WIRING at each tool-method call site.
+
+    The rendered-output tests above cannot detect deletion of the
+    redact_sensitive_fields call for list_admins / list_security_profiles /
+    list_local_in_policies -- their templates omit (or never receive)
+    secret-shaped fields, so the output looks identical with or without
+    the call. Each call site is therefore spy-pinned here: the spy
+    captures the RAW pre-redaction wire response, and deleting the call
+    site makes `seen` empty and fails the test.
+
+    (get_sslvpn_settings needs no spy -- its rendered output already
+    proves the wiring via the ***REDACTED*** marker assertion.)
+    """
+
+    def setup_method(self):
+        manager = _build_scaffold()
+        self.admin_tools = AdminTools(manager)
+        self.security_tools = SecurityTools(manager)
+
+    @staticmethod
+    def _spy(monkeypatch, module):
+        """Wrap module.redact_sensitive_fields, recording every raw input
+        while preserving the real redaction behavior."""
+        seen = []
+        real = module.redact_sensitive_fields
+        monkeypatch.setattr(
+            module,
+            "redact_sensitive_fields",
+            lambda data: (seen.append(data), real(data))[1],
+        )
+        return seen
+
+    def test_list_admins_redacts_at_call_site(self, fake_fortigate_router, monkeypatch):
+        from src.fortigate_mcp.tools import admin as admin_mod
+
+        seen = self._spy(monkeypatch, admin_mod)
+        self.admin_tools.list_admins(device_id="test_device")
+
+        # The spy received the RAW (pre-redaction) wire response -- proving
+        # both that the call site exists and that it runs on unredacted data.
+        assert seen
+        assert seen[0]["results"][0]["password"] == "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+
+    def test_list_security_profiles_redacts_every_category_at_call_site(
+        self, fake_fortigate_router, monkeypatch
+    ):
+        from src.fortigate_mcp.tools import security as security_mod
+
+        seen = self._spy(monkeypatch, security_mod)
+        self.security_tools.list_security_profiles(device_id="test_device")
+
+        # One redact call per category, each fed the raw wire response.
+        assert len(seen) == 4
+        assert all("results" in raw for raw in seen)
+
+    def test_list_local_in_policies_redacts_at_call_site(
+        self, fake_fortigate_router, monkeypatch
+    ):
+        from src.fortigate_mcp.tools import security as security_mod
+
+        seen = self._spy(monkeypatch, security_mod)
+        self.security_tools.list_local_in_policies(device_id="test_device")
+
+        assert seen
+        assert seen[0]["results"][0]["policyid"] == 1
