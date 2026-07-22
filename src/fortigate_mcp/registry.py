@@ -63,6 +63,10 @@ from .tools.definitions import (
     GET_INTERFACE_STATUS_DESC,
     HEALTH_CHECK_DESC,
     GET_SERVER_INFO_DESC,
+    LIST_SECURITY_PROFILES_DESC,
+    LIST_ADMINS_DESC,
+    GET_SSLVPN_SETTINGS_DESC,
+    LIST_LOCAL_IN_POLICIES_DESC,
 )
 
 
@@ -103,6 +107,11 @@ RISK_CLASSIFICATION = {
     "delete_firewall_policy": "destructive",
     "delete_static_route": "destructive",
     "delete_virtual_ip": "destructive",
+    # v1.1 visibility tools (Phase 10)
+    "list_security_profiles": "read",
+    "list_admins": "read",
+    "get_sslvpn_settings": "read",
+    "list_local_in_policies": "read",
 }
 """Canonical per-tool risk classification (SEC-02).
 
@@ -580,9 +589,44 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
                     "firewall_tools": tools.firewall_tools.get_schema_info(),
                     "network_tools": tools.network_tools.get_schema_info(),
                     "routing_tools": tools.routing_tools.get_schema_info(),
-                    "virtual_ip_tools": tools.virtual_ip_tools.get_schema_info()
+                    "virtual_ip_tools": tools.virtual_ip_tools.get_schema_info(),
+                    "security_tools": tools.security_tools.get_schema_info(),
+                    "admin_tools": tools.admin_tools.get_schema_info()
                 }
             }
             return _format_json_response(schema_info, "get_schema_info", logger=getattr(tools, "logger", None))
+
+    # --- (F) v1.1 read-only visibility tools (Phase 10) ---------------------
+    # Unconditional -- registered for BOTH transports (VIS-06 requires
+    # identical dual-transport registration; do NOT wrap this section in an
+    # `if transport == ...:` guard).
+
+    @_tool(LIST_SECURITY_PROFILES_DESC)
+    def list_security_profiles(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.security_tools.list_security_profiles(device_id, vdom))
+
+    @_tool(LIST_ADMINS_DESC)
+    def list_admins(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.admin_tools.list_admins(device_id, vdom))
+
+    @_tool(GET_SSLVPN_SETTINGS_DESC)
+    def get_sslvpn_settings(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.security_tools.get_sslvpn_settings(device_id, vdom))
+
+    @_tool(LIST_LOCAL_IN_POLICIES_DESC)
+    def list_local_in_policies(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.security_tools.list_local_in_policies(device_id, vdom))
 
     return len(registered)
