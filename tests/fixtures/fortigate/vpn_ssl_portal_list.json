@@ -22,7 +22,8 @@
             {
               "name": "internal-web",
               "apptype": "web",
-              "url": "https://198.51.100.21/"
+              "url": "https://198.51.100.21/",
+              "sso-password": "ENC_FAKE_SSO_PW_NOT_REAL"
             }
           ]
         }
