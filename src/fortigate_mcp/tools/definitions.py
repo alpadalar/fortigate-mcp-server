@@ -545,9 +545,12 @@ Returns:
 LIST_ADMINS_DESC = """
 List FortiGate system administrator accounts (read-only).
 
-Note: cmdb/system/admin is a global-scope (non-VDOM) FortiOS object; the
-vdom parameter has no effect on this endpoint (mirrors the get_vdoms
-precedent for other global objects).
+Note: cmdb/system/admin is documented by FortiOS as a global-scope
+(non-VDOM) object; the vdom parameter is expected to be a no-op here
+(mirrors the get_vdoms precedent for other global objects). Whether every
+FortiOS version silently ignores an explicit vdom query param on this
+endpoint is unverified against a live device -- carried forward as a
+release-checklist verification item.
 
 All secret-shaped fields (password/hash, ssh-public-key entries) are
 replaced with a redaction marker before being returned -- raw credential
@@ -555,7 +558,7 @@ material is never present in the response.
 
 Parameters:
 - device_id: Identifier of the FortiGate device
-- vdom: Virtual Domain name (optional; has no effect on this endpoint)
+- vdom: Virtual Domain name (optional; expected no-op on this global-scope endpoint, unverified live)
 
 Returns:
 - Administrator account names and profiles

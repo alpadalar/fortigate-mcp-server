@@ -421,9 +421,11 @@ class FortiGateAPI:
         `_make_request` unconditionally injects a `vdom` query param on every
         request (mirrors the existing `get_vdoms()` precedent for other
         global objects). Whether FortiOS silently no-ops this param for
-        `system/admin` is unverified against a live device -- carried
-        forward as a Phase 9 execution-time verification item, not a Phase 8
-        blocker.
+        `system/admin` is unverified against a live device -- Phase 9
+        completed without resolving it, so it is carried forward as a
+        release-checklist verification item (before public release: verify
+        on a live multi-VDOM device; if FortiOS rejects the param, suppress
+        the vdom query param for this endpoint here at the API layer).
         """
         return self._make_request("GET", "cmdb/system/admin", vdom=vdom)
 

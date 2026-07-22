@@ -11,9 +11,14 @@ class AdminTools(FortiGateTool):
     def list_admins(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
         """List system administrator accounts with secret fields redacted.
 
-        Note: cmdb/system/admin is a global-scope (non-VDOM) FortiOS
-        object; vdom is accepted for parameter-signature consistency with
-        every other tool method but has no effect on this endpoint.
+        Note: cmdb/system/admin is documented by FortiOS as a global-scope
+        (non-VDOM) object; vdom is accepted for parameter-signature
+        consistency with every other tool method and is expected to be a
+        no-op here. Whether every FortiOS version silently ignores the
+        explicit ``?vdom=`` query param that _make_request always injects
+        is UNVERIFIED against a live device -- carried forward as a
+        release-checklist verification item (see
+        core/fortigate.py get_admin_accounts).
         """
         try:
             self._validate_device_exists(device_id)
