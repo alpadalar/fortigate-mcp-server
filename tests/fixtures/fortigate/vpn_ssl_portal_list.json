@@ -1,0 +1,32 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "full-access",
+      "tunnel-mode": "enable",
+      "web-mode": "enable",
+      "bookmark-group": [
+        {
+          "name": "default-bookmarks",
+          "bookmarks": [
+            {
+              "name": "internal-rdp",
+              "apptype": "rdp",
+              "host": "198.51.100.20",
+              "port": 3389,
+              "logon-user": "svc-rdp",
+              "logon-password": "ENC_FAKE_BOOKMARK_PW_NOT_REAL"
+            },
+            {
+              "name": "internal-web",
+              "apptype": "web",
+              "url": "https://198.51.100.21/"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

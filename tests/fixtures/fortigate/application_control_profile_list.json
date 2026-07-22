@@ -1,0 +1,13 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "default",
+      "comment": "Default app control",
+      "options": ["allow-dns", "allow-icmp"],
+      "entries": [{"id": 1, "category": [{"id": 2}], "action": "block", "log": "enable"}]
+    }
+  ]
+}

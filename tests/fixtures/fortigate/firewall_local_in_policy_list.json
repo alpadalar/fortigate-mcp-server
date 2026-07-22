@@ -1,0 +1,29 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "policyid": 1,
+      "intf": [{"name": "wan1"}],
+      "srcaddr": [{"name": "MGMT-SUBNET"}],
+      "dstaddr": [{"name": "all"}],
+      "action": "accept",
+      "service": [{"name": "HTTPS"}, {"name": "SSH"}],
+      "schedule": "always",
+      "status": "enable",
+      "comments": "Allow mgmt access to GUI/CLI"
+    },
+    {
+      "policyid": 2,
+      "intf": [{"name": "any"}],
+      "srcaddr": [{"name": "all"}],
+      "dstaddr": [{"name": "all"}],
+      "action": "deny",
+      "service": [{"name": "ALL"}],
+      "schedule": "always",
+      "status": "enable",
+      "comments": "Default deny catch-all"
+    }
+  ]
+}

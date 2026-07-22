@@ -1,0 +1,26 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "admin",
+      "accprofile": "super_admin",
+      "vdom": [{"name": "root"}],
+      "trusthost1": "198.51.100.0 255.255.255.0",
+      "trusthost2": "0.0.0.0 0.0.0.0",
+      "two-factor": "email",
+      "two-factor-authentication": "email",
+      "email-to": "admin@example.com",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER",
+      "ssh-public-key1": "ssh-rsa AAAAB3NzaC1yc2EAAA... fake-not-real"
+    },
+    {
+      "name": "readonly_auditor",
+      "accprofile": "prof_readonly",
+      "vdom": [{"name": "root"}],
+      "two-factor": "disable",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER_2"
+    }
+  ]
+}

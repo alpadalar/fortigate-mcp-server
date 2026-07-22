@@ -1,0 +1,13 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "default",
+      "comment": "Default web filter",
+      "options": ["activexfilter", "cookiefilter"],
+      "ftgd-wf": {"options": "rate-image-urls", "filters": [{"category": 26, "action": "block", "log": "enable"}]}
+    }
+  ]
+}

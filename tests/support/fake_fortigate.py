@@ -74,4 +74,31 @@ def fortigate_router(
     router.get("/monitor/system/status").mock(
         return_value=httpx.Response(401, json=load_fixture("error_401.json"))
     )
+    router.get("/cmdb/antivirus/profile").mock(
+        return_value=httpx.Response(200, json=load_fixture("antivirus_profile_list.json"))
+    )
+    router.get("/cmdb/ips/sensor").mock(
+        return_value=httpx.Response(200, json=load_fixture("ips_sensor_list.json"))
+    )
+    router.get("/cmdb/webfilter/profile").mock(
+        return_value=httpx.Response(200, json=load_fixture("webfilter_profile_list.json"))
+    )
+    router.get("/cmdb/application/list").mock(
+        return_value=httpx.Response(200, json=load_fixture("application_control_profile_list.json"))
+    )
+    router.get("/cmdb/system/admin").mock(
+        return_value=httpx.Response(200, json=load_fixture("system_admin_list.json"))
+    )
+    # MUST include the cmdb/ prefix -- this route path is itself part of the
+    # correctness proof: if get_sslvpn_settings ever sends an unprefixed
+    # request, assert_all_mocked=True raises instead of silently matching.
+    router.get("/cmdb/vpn.ssl/settings").mock(
+        return_value=httpx.Response(200, json=load_fixture("vpn_ssl_settings.json"))
+    )
+    router.get("/cmdb/vpn.ssl.web/portal").mock(
+        return_value=httpx.Response(200, json=load_fixture("vpn_ssl_portal_list.json"))
+    )
+    router.get("/cmdb/firewall/local-in-policy").mock(
+        return_value=httpx.Response(200, json=load_fixture("firewall_local_in_policy_list.json"))
+    )
     return router

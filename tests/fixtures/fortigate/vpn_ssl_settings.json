@@ -1,0 +1,19 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": {
+    "status": "enable",
+    "port": 443,
+    "source-interface": [{"name": "wan1"}],
+    "source-address": [{"name": "all"}],
+    "default-portal": "full-access",
+    "tunnel-ip-pools": [{"name": "SSLVPN_TUNNEL_ADDR1"}],
+    "idle-timeout": 300,
+    "auth-timeout": 28800,
+    "login-attempt-limit": 2,
+    "ssl-min-proto-ver": "tls1-2",
+    "banned-cipher": "",
+    "servercert": "Fortinet_Factory"
+  }
+}

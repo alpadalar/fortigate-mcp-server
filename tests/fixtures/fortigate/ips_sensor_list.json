@@ -1,0 +1,15 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "default",
+      "comment": "Default IPS sensor",
+      "block-malicious-url": "disable",
+      "entries": [
+        {"id": 1, "severity": ["medium", "high", "critical"], "action": "default", "status": "enable", "log": "enable"}
+      ]
+    }
+  ]
+}

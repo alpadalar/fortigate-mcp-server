@@ -1,0 +1,15 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "default",
+      "comment": "Default AV profile",
+      "feature-set": "flow",
+      "scan-mode": "default",
+      "http": {"options": "scan"},
+      "ftp": {"options": "scan"}
+    }
+  ]
+}
