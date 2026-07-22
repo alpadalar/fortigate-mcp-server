@@ -116,6 +116,91 @@ class TestFortiGateTemplates:
 
         assert "Schedule: workhours" in result
 
+    def test_firewall_policy_detail_renders_utm_profile_names_and_status(self):
+        """VIS-02: UTM profile bindings render by NAME, utm-status renders
+        prominently, and logtraffic="utm" no longer collapses to "No"."""
+        policy_data = {
+            "results": {
+                "policyid": 35,
+                "name": "test-policy",
+                "action": "accept",
+                "status": "enable",
+                "utm-status": "enable",
+                "av-profile": "default",
+                "ips-sensor": "protect_high_availability",
+                "webfilter-profile": "monitor-all",
+                "application-list": "block-social",
+                "ssl-ssh-profile": "certificate-inspection",
+                "logtraffic": "utm",
+            }
+        }
+
+        result = FortiGateTemplates.firewall_policy_detail(policy_data, "test_device")
+
+        assert "Antivirus: default" in result
+        assert "IPS: protect_high_availability" in result
+        assert "Web Filter: monitor-all" in result
+        assert "Application Control: block-social" in result
+        assert "SSL/SSH Inspection: certificate-inspection" in result
+        assert "UTM Inspection" in result
+        assert "ENABLED" in result
+        assert "Log Traffic: utm" in result
+        assert "Log Traffic: No" not in result
+
+    def test_firewall_policy_detail_utm_disabled_with_bound_profile_is_unambiguous(self):
+        """A bound-but-inactive profile (utm-status=disable) must not be
+        misread as active inspection: both the profile name AND the
+        DISABLED state must render."""
+        policy_data = {
+            "results": {
+                "policyid": 36,
+                "name": "leftover-binding",
+                "action": "accept",
+                "utm-status": "disable",
+                "av-profile": "default",
+            }
+        }
+
+        result = FortiGateTemplates.firewall_policy_detail(policy_data, "test_device")
+
+        assert "Antivirus: default" in result
+        assert "DISABLED" in result
+
+    def test_firewall_policy_detail_logtraffic_utm_not_rendered_as_no(self):
+        """Dedicated regression test for the exact logtraffic="utm" bug,
+        independently -k logtraffic-selectable."""
+        policy_data = {
+            "results": {
+                "policyid": 38,
+                "name": "logtraffic-only",
+                "action": "accept",
+                "logtraffic": "utm",
+            }
+        }
+
+        result = FortiGateTemplates.firewall_policy_detail(policy_data, "test_device")
+
+        assert "Log Traffic: utm" in result
+        assert "Log Traffic: No" not in result
+
+    def test_firewall_policy_detail_profile_group_type_documented_not_silent(self):
+        """VIS-F4 deferred-gap: profile-type=group must document the group
+        binding, not silently render as 'no protection'."""
+        policy_data = {
+            "results": {
+                "policyid": 37,
+                "name": "grouped",
+                "action": "accept",
+                "utm-status": "enable",
+                "profile-type": "group",
+                "profile-group": "standard-utm-group",
+            }
+        }
+
+        result = FortiGateTemplates.firewall_policy_detail(policy_data, "test_device")
+
+        assert "standard-utm-group" in result
+
     def test_address_objects_empty(self):
         """Empty address objects template test"""
         data = {"results": []}

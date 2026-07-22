@@ -145,7 +145,37 @@ class FortiGateTemplates:
         return "\n".join(lines)
     
     @staticmethod
-    def firewall_policy_detail(policy_data: Dict[str, Any], device_id: str, 
+    def _render_profile_ref(value: Any) -> str:
+        """Render a FortiOS UTM profile-binding field as a human-readable name.
+
+        These fields (av-profile, ips-sensor, webfilter-profile,
+        application-list, ssl-ssh-profile) are ordinarily a plain reference
+        string when profile-type is "single" and unset/empty when the
+        policy uses profile-type "group" (VIS-F4, deferred -- group
+        resolution is a future milestone) or has no binding at all. Handles
+        the plain-string shape defensively against a dict/list-of-dict
+        shape too, mirroring `_render_mappedip`'s precedent for FortiOS
+        fields whose exact wire-shape has not been device-verified.
+
+        Args:
+            value: Raw profile-binding field value from the FortiGate API
+
+        Returns:
+            The bound profile's name, or "None" when absent/unresolved
+        """
+        if not value:
+            return "None"
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            return str(value.get("name", "None"))
+        if isinstance(value, list) and value:
+            first = value[0]
+            return str(first.get("name", "None")) if isinstance(first, dict) else str(first)
+        return "None"
+
+    @staticmethod
+    def firewall_policy_detail(policy_data: Dict[str, Any], device_id: str,
                               address_objects: Optional[Dict[str, Any]] = None,
                               service_objects: Optional[Dict[str, Any]] = None) -> str:
         """Format detailed firewall policy information.
@@ -300,7 +330,7 @@ class FortiGateTemplates:
         lines.extend([
             "Action and Security",
             f"  Action: {action.upper()}",
-            f"  Log Traffic: {'Yes' if policy.get('logtraffic') == 'all' else 'No'}",
+            f"  Log Traffic: {policy.get('logtraffic', 'disable')}",
             f"  NAT: {'Yes' if policy.get('nat') == 'enable' else 'No'}",
         ])
         
@@ -326,17 +356,28 @@ class FortiGateTemplates:
         lines.append("")
         
         # Technical Details
+        utm_status = policy.get('utm-status', 'unknown')
+        utm_state_label = {"enable": "ENABLED", "disable": "DISABLED"}.get(utm_status, utm_status)
         lines.extend([
             "Technical Details",
             f"  Sequence Number: {policy.get('seq-num', 'N/A')}",
             f"  Internet Service: {'Yes' if policy.get('internet-service') == 'enable' else 'No'}",
-            f"  Application Control: {'Yes' if policy.get('application-list') else 'No'}",
-            f"  Antivirus: {'Yes' if policy.get('av-profile') else 'No'}",
-            f"  Web Filter: {'Yes' if policy.get('webfilter-profile') else 'No'}",
-            f"  IPS: {'Yes' if policy.get('ips-sensor') else 'No'}",
-            ""
+            f"  UTM Inspection (utm-status): {utm_state_label}",
+            f"  Application Control: {FortiGateTemplates._render_profile_ref(policy.get('application-list'))}",
+            f"  Antivirus: {FortiGateTemplates._render_profile_ref(policy.get('av-profile'))}",
+            f"  Web Filter: {FortiGateTemplates._render_profile_ref(policy.get('webfilter-profile'))}",
+            f"  IPS: {FortiGateTemplates._render_profile_ref(policy.get('ips-sensor'))}",
+            f"  SSL/SSH Inspection: {FortiGateTemplates._render_profile_ref(policy.get('ssl-ssh-profile'))}",
         ])
-        
+
+        if policy.get('profile-type') == 'group':
+            lines.append(
+                f"  Profile Group: {policy.get('profile-group', 'unknown')} "
+                "(group-managed -- per-profile detail not resolved this milestone, see VIS-F4)"
+            )
+
+        lines.append("")
+
         return "\n".join(lines)
     
     @staticmethod
