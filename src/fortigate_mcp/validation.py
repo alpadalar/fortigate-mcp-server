@@ -33,7 +33,7 @@ Error contract:
 
 import ipaddress
 import re
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 # RFC-1123-style hostname: dot-separated labels, each 1-63 chars of
 # [A-Za-z0-9-], no leading/trailing hyphen per label, 253-char overall cap.
@@ -252,3 +252,98 @@ def scrub_secrets(text: str, secrets: Iterable[Optional[str]]) -> str:
         text = text.replace(secret, "***REDACTED***")
 
     return _BEARER_RE.sub("Bearer ***REDACTED***", text)
+
+
+# Reuse scrub_secrets' existing sentinel string (also used by
+# core/logging.py's TokenRedactionFilter) -- one grep-able sentinel across
+# the whole codebase, not a second differently-formatted marker.
+_REDACTED_MARKER = "***REDACTED***"
+
+# Pure deny-list, case-insensitive exact-match key names (operator-accepted
+# fail-open risk -- see REQUIREMENTS.md "Notes / Accepted Risks"). This is
+# the deliberate, twice-presented decision: fields not enumerated here pass
+# through unredacted by design. Do not silently switch to an allow-list.
+_SENSITIVE_KEY_EXACT = frozenset(
+    {
+        "password",
+        "logon-password",
+        "sso-password",
+        "psk",
+        "private-key",
+    }
+)
+
+# FortiOS numbers admin SSH-key fields (ssh-public-key1, ssh-public-key2,
+# ...) -- prefix-match avoids needing to know the count in advance.
+_SENSITIVE_KEY_PREFIXES = ("ssh-public-key",)
+
+
+def _is_sensitive_key(key: str, sensitive_keys: "frozenset[str]") -> bool:
+    """Case-insensitively check whether `key` is a known secret-shaped field.
+
+    Args:
+        key: the raw dict key to check.
+        sensitive_keys: the exact-match set to check against (either the
+            module default or a caller-supplied override).
+
+    Returns:
+        True if `key` (lowercased) is in `sensitive_keys`, or starts with
+        any of `_SENSITIVE_KEY_PREFIXES` -- the prefix check always applies
+        regardless of the exact-match override, since it is a structural
+        FortiOS naming convention, not a caller-configurable set.
+    """
+    lowered = key.lower()
+    if lowered in sensitive_keys:
+        return True
+    return any(lowered.startswith(prefix) for prefix in _SENSITIVE_KEY_PREFIXES)
+
+
+def redact_sensitive_fields(
+    data: Any, sensitive_keys: Optional[Iterable[str]] = None
+) -> Any:
+    """Recursively mask values under known secret-shaped key names.
+
+    Unlike `scrub_secrets` (value-based -- needs the secret pre-registered
+    before it can be found), this is KEY-name-based: it masks whatever
+    value is present under a known-sensitive field name, regardless of the
+    value's own shape or content. This is a deliberate, operator-accepted
+    DENY-LIST (not allow-list) -- see REQUIREMENTS.md "Notes / Accepted
+    Risks": any field name not enumerated in `_SENSITIVE_KEY_EXACT`/
+    `_SENSITIVE_KEY_PREFIXES` passes through unredacted (fail-open). Callers
+    wiring this into a specific tool are responsible for extending the
+    deny-list constant if that endpoint's real response shape surfaces an
+    unanticipated secret-shaped field.
+
+    Args:
+        data: arbitrary JSON-shaped data (dict, list, or scalar) -- e.g. a
+            FortiGate cmdb GET response.
+        sensitive_keys: optional override for the exact-match key set. When
+            None (default), `_SENSITIVE_KEY_EXACT` is used. When provided,
+            every entry is lowercased before use. The `ssh-public-key`
+            prefix match always applies regardless of this override -- it
+            is a structural FortiOS naming convention, not a
+            caller-configurable set.
+
+    Returns:
+        A new structure with sensitive values replaced by
+        "***REDACTED***". Never raises and never mutates its input --
+        dicts and lists are rebuilt, never modified in place.
+    """
+    exact_keys = (
+        _SENSITIVE_KEY_EXACT
+        if sensitive_keys is None
+        else frozenset(k.lower() for k in sensitive_keys)
+    )
+
+    if isinstance(data, dict):
+        return {
+            key: (
+                _REDACTED_MARKER
+                if isinstance(key, str) and _is_sensitive_key(key, exact_keys)
+                else redact_sensitive_fields(value, sensitive_keys)
+            )
+            for key, value in data.items()
+        }
+    if isinstance(data, list):
+        return [redact_sensitive_fields(item, sensitive_keys) for item in data]
+    return data

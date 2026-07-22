@@ -9,6 +9,7 @@ values, scoped IPv6, and embedded :port.
 import pytest
 
 from src.fortigate_mcp.validation import (
+    redact_sensitive_fields,
     scrub_secrets,
     validate_host,
     validate_interface_name,
@@ -277,3 +278,75 @@ class TestScrubSecrets:
             )
             assert "abcdef" not in result
             assert "abc" not in result
+
+
+class TestRedactSensitiveFields:
+    """redact_sensitive_fields: key-name-based redaction primitive
+    (VIS-06 foundation, built and unit-tested in isolation this phase)."""
+
+    def test_masks_known_sensitive_keys_case_insensitively(self):
+        fixture = {
+            "PASSWORD": "hash-not-real-abc123",
+            "psk": "fake-preshared-key",
+            "private-key": "-----BEGIN FAKE KEY-----",
+            "logon-password": "fake-secret-1",
+            "sso-password": "fake-secret-2",
+            "ssh-public-key1": "ssh-rsa AAAAB3fake",
+        }
+
+        result = redact_sensitive_fields(fixture)
+
+        assert result["PASSWORD"] == "***REDACTED***"
+        assert result["psk"] == "***REDACTED***"
+        assert result["private-key"] == "***REDACTED***"
+        assert result["logon-password"] == "***REDACTED***"
+        assert result["sso-password"] == "***REDACTED***"
+        assert result["ssh-public-key1"] == "***REDACTED***"
+
+    def test_non_sensitive_siblings_pass_through_unchanged(self):
+        fixture = {
+            "name": "admin",
+            "accprofile": "super_admin",
+            "password": "hash-not-real-abc123",
+        }
+
+        result = redact_sensitive_fields(fixture)
+
+        assert result["name"] == "admin"
+        assert result["accprofile"] == "super_admin"
+        assert result["password"] == "***REDACTED***"
+
+    def test_nested_dict_and_list_recursion(self):
+        fixture = {
+            "name": "admin",
+            "bookmarks": [
+                {
+                    "name": "rdp1",
+                    "logon-password": "fake-secret-1",
+                    "sso-password": "fake-secret-2",
+                },
+            ],
+        }
+
+        result = redact_sensitive_fields(fixture)
+
+        assert result["bookmarks"][0]["logon-password"] == "***REDACTED***"
+        assert result["bookmarks"][0]["sso-password"] == "***REDACTED***"
+        assert result["bookmarks"][0]["name"] == "rdp1"
+
+    def test_input_not_mutated(self):
+        fixture = {"password": "hash-not-real-abc123", "name": "admin"}
+
+        redact_sensitive_fields(fixture)
+
+        assert fixture["password"] == "hash-not-real-abc123"
+        assert fixture["name"] == "admin"
+
+    def test_none_and_empty_inputs_safe(self):
+        assert redact_sensitive_fields(None) is None
+        assert redact_sensitive_fields({}) == {}
+        assert redact_sensitive_fields([]) == []
+
+    def test_scalar_passthrough(self):
+        assert redact_sensitive_fields("plain string") == "plain string"
+        assert redact_sensitive_fields(42) == 42
