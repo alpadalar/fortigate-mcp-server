@@ -585,6 +585,145 @@ class TestFortiGateTemplates:
 
         assert "No administrator accounts configured" in result
 
+    def test_sslvpn_settings_singleton_dict_shape(self):
+        """`results` is a single dict, NOT a list -- the template must read
+        it as a dict (device_status precedent), never list-index it."""
+        data = {
+            "http_method": "GET",
+            "status": "success",
+            "vdom": "root",
+            "results": {
+                "status": "enable",
+                "port": 443,
+                "source-interface": [{"name": "wan1"}],
+                "tunnel-ip-pools": [{"name": "SSLVPN_TUNNEL_ADDR1"}],
+                "default-portal": "full-access",
+                "ssl-min-proto-ver": "tls1-2",
+                "idle-timeout": 300,
+                "auth-timeout": 28800,
+                "login-attempt-limit": 2,
+                "servercert": "Fortinet_Factory",
+            },
+        }
+
+        result = FortiGateTemplates.sslvpn_settings(data)
+
+        assert "SSL-VPN" in result
+        assert "enable" in result
+        assert "wan1" in result
+        assert "full-access" in result
+
+    def test_sslvpn_settings_empty_body_fallback(self):
+        """{"status": "success"} (no results key) renders "No SSL-VPN
+        settings available", never KeyError."""
+        data = {"status": "success"}
+
+        result = FortiGateTemplates.sslvpn_settings(data)
+
+        assert "No SSL-VPN settings available" in result
+
+    def test_sslvpn_settings_with_portals_renders_bookmarks(self):
+        """settings dict + portals_data with a bookmark-group/bookmarks
+        structure renders the bookmark name/apptype/host. No assertion made
+        on the password field's presence/absence."""
+        settings_data = {
+            "results": {
+                "status": "enable",
+                "port": 443,
+            },
+        }
+        portals_data = {
+            "results": [
+                {
+                    "name": "full-access",
+                    "bookmark-group": [
+                        {
+                            "name": "default-bookmarks",
+                            "bookmarks": [
+                                {
+                                    "name": "internal-rdp",
+                                    "apptype": "rdp",
+                                    "host": "198.51.100.20",
+                                    "logon-password": "ENC_FAKE_BOOKMARK_PW_NOT_REAL",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+
+        result = FortiGateTemplates.sslvpn_settings(settings_data, portals_data)
+
+        assert "internal-rdp" in result
+        assert "rdp" in result
+        assert "198.51.100.20" in result
+
+    def test_sslvpn_settings_without_portals_omits_bookmarks(self):
+        """portals_data omitted (default None) must not crash and must not
+        render a Portal Bookmarks section."""
+        settings_data = {
+            "results": {
+                "status": "enable",
+                "port": 443,
+            },
+        }
+
+        result = FortiGateTemplates.sslvpn_settings(settings_data)
+
+        assert "Portal Bookmarks" not in result
+
+    def test_local_in_policies_with_data(self):
+        """A 2-rule fixture; policyid, interface name, action all render."""
+        data = {
+            "results": [
+                {
+                    "policyid": 1,
+                    "intf": [{"name": "wan1"}],
+                    "srcaddr": [{"name": "MGMT-SUBNET"}],
+                    "dstaddr": [{"name": "all"}],
+                    "action": "accept",
+                    "service": [{"name": "HTTPS"}, {"name": "SSH"}],
+                    "status": "enable",
+                    "comments": "Allow mgmt access to GUI/CLI",
+                },
+                {
+                    "policyid": 2,
+                    "intf": [{"name": "any"}],
+                    "srcaddr": [{"name": "all"}],
+                    "dstaddr": [{"name": "all"}],
+                    "action": "deny",
+                    "service": [{"name": "ALL"}],
+                    "status": "enable",
+                },
+            ]
+        }
+
+        result = FortiGateTemplates.local_in_policies(data)
+
+        assert "Policy 1" in result
+        assert "wan1" in result
+        assert "accept" in result
+        assert "Policy 2" in result
+        assert "deny" in result
+
+    def test_local_in_policies_empty(self):
+        """{"results": []} renders 'No local-in policies configured'."""
+        data = {"results": []}
+
+        result = FortiGateTemplates.local_in_policies(data)
+
+        assert "No local-in policies configured" in result
+
+    def test_local_in_policies_empty_body_fallback(self):
+        """{"status": "success"} (no results key) renders the same fallback
+        text, never KeyError."""
+        data = {"status": "success"}
+
+        result = FortiGateTemplates.local_in_policies(data)
+
+        assert "No local-in policies configured" in result
+
 
 class TestFortiGateFormatters:
     """FortiGate Formatters test class"""
@@ -779,13 +918,78 @@ class TestFortiGateFormatters:
     def test_format_operation_result_failure(self):
         """Failure operation result formatter test"""
         result = FortiGateFormatters.format_operation_result(
-            "test_operation", "test_device", False, 
+            "test_operation", "test_device", False,
             error="Operation failed"
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
         assert "test_operation" in result[0].text
         assert "test_device" in result[0].text
         assert "Operation failed" in result[0].text
+
+    def test_format_security_profiles(self):
+        """Security profiles formatter test"""
+        data = {
+            "antivirus": {"status": "ok", "profiles": [{"name": "av-default"}]},
+        }
+
+        result = FortiGateFormatters.format_security_profiles(data)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert "Security Profiles" in result[0].text
+
+    def test_format_admin_accounts(self):
+        """Admin accounts formatter test"""
+        data = {
+            "results": [
+                {
+                    "name": "admin",
+                    "accprofile": "super_admin",
+                }
+            ]
+        }
+
+        result = FortiGateFormatters.format_admin_accounts(data)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert "Administrator Accounts" in result[0].text
+
+    def test_format_sslvpn_settings(self):
+        """SSL-VPN settings formatter test"""
+        data = {
+            "results": {
+                "status": "enable",
+                "port": 443,
+            }
+        }
+
+        result = FortiGateFormatters.format_sslvpn_settings(data)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert "SSL-VPN Settings" in result[0].text
+
+    def test_format_local_in_policies(self):
+        """Local-in policies formatter test"""
+        data = {
+            "results": [
+                {
+                    "policyid": 1,
+                    "action": "accept",
+                }
+            ]
+        }
+
+        result = FortiGateFormatters.format_local_in_policies(data)
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert "Local-In Policies" in result[0].text
