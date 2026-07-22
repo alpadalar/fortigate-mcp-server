@@ -14,12 +14,17 @@ VIS-04/VIS-05's actual observable behaviors:
 - VIS-05: SecurityTools.list_local_in_policies renders the fixture's IPv4
   policies correctly.
 """
+import httpx
+import respx
+
 from src.fortigate_mcp.config.models import AuthConfig, FortiGateDeviceConfig
 from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateManager
 from src.fortigate_mcp.tools.admin import AdminTools
 from src.fortigate_mcp.tools.security import SecurityTools
 from src.fortigate_mcp.validation import redact_sensitive_fields
 from tests.support.fake_fortigate import load_fixture
+
+BASE_URL = "https://198.51.100.10:443/api/v2"
 
 
 def _build_scaffold():
@@ -116,3 +121,76 @@ class TestSecurityToolsGetSslvpnSettings:
         assert "ENC_FAKE_BOOKMARK_PW_NOT_REAL" not in text
         assert "ENC_FAKE_SSO_PW_NOT_REAL" not in text
         assert "***REDACTED***" in text
+
+    def test_portal_fetch_failure_degrades_gracefully(self):
+        """VIS-04: a portal GET failure must not raise -- settings still
+        render, and the "Portal Bookmarks" section is simply absent."""
+        router = respx.mock(
+            base_url=BASE_URL,
+            assert_all_called=False,
+            assert_all_mocked=True,
+        )
+        router.get("/cmdb/vpn.ssl/settings").mock(
+            return_value=httpx.Response(200, json=load_fixture("vpn_ssl_settings.json"))
+        )
+        router.get("/cmdb/vpn.ssl.web/portal").mock(
+            return_value=httpx.Response(
+                403, json={"http_method": "GET", "status": "error", "http_status": 403, "error": "Forbidden"}
+            )
+        )
+
+        with router:
+            result = self.security_tools.get_sslvpn_settings(device_id="test_device")
+
+        text = result[0].text
+
+        assert "Status: enable" in text
+        assert "Portal Bookmarks" not in text
+
+
+class TestSecurityToolsListSecurityProfilesPartialFailure:
+    """VIS-01: proves the per-category error-vs-empty distinction at the
+    wire level -- a 403 on one category must never collapse into the same
+    render as a genuinely empty category, and must not prevent the other
+    3 categories from rendering their real data."""
+
+    def setup_method(self):
+        manager = _build_scaffold()
+        self.security_tools = SecurityTools(manager)
+
+    def test_ips_403_other_categories_still_render(self):
+        router = respx.mock(
+            base_url=BASE_URL,
+            assert_all_called=False,
+            assert_all_mocked=True,
+        )
+        router.get("/cmdb/antivirus/profile").mock(
+            return_value=httpx.Response(200, json=load_fixture("antivirus_profile_list.json"))
+        )
+        router.get("/cmdb/ips/sensor").mock(
+            return_value=httpx.Response(
+                403, json={"http_method": "GET", "status": "error", "http_status": 403, "error": "Forbidden"}
+            )
+        )
+        router.get("/cmdb/webfilter/profile").mock(
+            return_value=httpx.Response(200, json=load_fixture("webfilter_profile_list.json"))
+        )
+        router.get("/cmdb/application/list").mock(
+            return_value=httpx.Response(200, json=load_fixture("application_control_profile_list.json"))
+        )
+
+        with router:
+            result = self.security_tools.list_security_profiles(device_id="test_device")
+
+        text = result[0].text
+
+        # The failed category renders as "query failed", never collapsed
+        # into the "none configured" empty-category rendering (VIS-01).
+        assert "IPS Sensors: query failed" in text
+        assert "IPS Sensors: none configured" not in text
+
+        # The 3 succeeding categories still render their real data, not
+        # "none configured" -- a failure in one category must not swallow
+        # the others.
+        assert "Antivirus Profiles" in text
+        assert "Antivirus Profiles: none configured" not in text
