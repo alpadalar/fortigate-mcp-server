@@ -9,7 +9,7 @@ tests with distinct remedies:
     output, on the CURRENT engine for each transport, must equal the frozen
     golden contract. FAILURE HERE MEANS registry.py IS WRONG -- fix it,
     never fall back on this cause, never record a decision.
-  - ``test_full_30_tool_schema_diff_across_engines``: only meaningful once
+  - ``test_full_34_tool_schema_diff_across_engines``: only meaningful once
     the two tests above are green. FAILURE HERE means the two candidate
     engines genuinely disagree on schema shape -- the fallback trigger.
 
@@ -41,8 +41,8 @@ from tests.test_tool_schema_snapshot import HTTP_GOLDEN, STDIO_GOLDEN, _normaliz
 # Computed from the committed fixtures during Phase 3 Plan 03 planning --
 # if either assertion below fails at creation time, the goldens changed
 # since planning and the phase premise (byte-frozen contract) is broken.
-STDIO_GOLDEN_SHA256 = "ca5ddfcce490c5155ffe3a406c6b8d5a17c62d4cd9652967f0bd7bf0e4ec88e4"
-HTTP_GOLDEN_SHA256 = "a51d632aa943e28d0b1ae4d48dff4ef17aa4756df25eacf62e0df95041853994"
+STDIO_GOLDEN_SHA256 = "ca55217711920ecd08c33c663adb0b8057b7562e46078e92e6b975e9551c63dd"
+HTTP_GOLDEN_SHA256 = "cab6e521f0fd73a358e86ddc36bed70722a99d5a50de0efc8315b4519c7c1163"
 
 
 def _fake_tools():
@@ -152,12 +152,12 @@ def test_registry_http_output_matches_frozen_golden() -> None:
     assert prefect_http == _load_golden(HTTP_GOLDEN)
 
 
-def test_full_30_tool_schema_diff_across_engines() -> None:
+def test_full_34_tool_schema_diff_across_engines() -> None:
     """FAILURE (with the two registry-vs-golden tests green) = engines genuinely
     disagree -> dual-engine fallback; this test then gets xfail(strict=True)
     with the divergence as reason."""
     sdk_stdio, prefect_stdio, _ = _snapshots()
-    assert len(sdk_stdio) == 30
+    assert len(sdk_stdio) == 34
     assert set(sdk_stdio) == set(prefect_stdio)
     assert sdk_stdio == prefect_stdio
 
@@ -175,7 +175,7 @@ def test_real_stdio_server_serves_full_mcp_session(tmp_config_path) -> None:
         server = FortiGateMCPServer(tmp_config_path)
         async with Client(server.mcp) as client:
             tools = await client.list_tools()
-            assert len(tools) == 30
+            assert len(tools) == 34
             assert {t.name for t in tools} == set(json.loads(STDIO_GOLDEN.read_text()).keys())
 
             result = await client.call_tool("list_devices", {})
