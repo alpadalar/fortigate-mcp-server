@@ -16,19 +16,37 @@ class NetworkTools(FortiGateTool):
         except Exception as e:
             return self._handle_error("list address objects", device_id, e)
     
-    def create_address_object(self, device_id: str, name: str, address_type: str, address: str, 
+    def create_address_object(self, device_id: str, name: str, address_type: str, address: str,
                              vdom: Optional[str] = None) -> List[Content]:
         """Create address object."""
         try:
             self._validate_device_exists(device_id)
             self._validate_required_params(name=name, address_type=address_type, address=address)
-            
-            address_data = {
+
+            address_data: Dict[str, Any] = {
                 "name": name,
                 "type": address_type,
-                "subnet": address
             }
-            
+            # Map the single 'address' field to the FortiGate cmdb key the
+            # given address_type actually expects -- previously every type
+            # was force-fit into 'subnet', silently corrupting fqdn/iprange
+            # objects (the 'address' value landed in the wrong key).
+            if address_type in ("ipmask", "subnet"):
+                address_data["subnet"] = address
+            elif address_type == "fqdn":
+                address_data["fqdn"] = address
+            elif address_type == "iprange":
+                if "-" in address:
+                    start_ip, end_ip = address.split("-", 1)
+                    address_data["start-ip"] = start_ip.strip()
+                    address_data["end-ip"] = end_ip.strip()
+                else:
+                    address_data["start-ip"] = address
+            else:
+                # Best-effort fallback for any other/unknown type, preserving
+                # prior behavior.
+                address_data["subnet"] = address
+
             api_client = self._get_device_api(device_id)
             api_client.create_address_object(address_data, vdom=vdom)
             return self._format_operation_result("create address object", device_id, True, f"Address object '{name}' created successfully")

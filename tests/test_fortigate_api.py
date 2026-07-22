@@ -12,6 +12,7 @@ from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateAPIError, Fo
 from src.fortigate_mcp.config.models import FortiGateDeviceConfig, AuthConfig
 from src.fortigate_mcp.config.loader import create_example_config
 from src.fortigate_mcp.tools.firewall import FirewallTools
+from src.fortigate_mcp.tools.network import NetworkTools
 from tests.support.fake_fortigate import fortigate_router
 
 
@@ -717,3 +718,82 @@ class TestAddDeviceSSRFPolicy:
         )
 
         assert f"dev-{host}" in self.manager.devices
+
+
+class TestNetworkToolsCreateAddressObjectHTTPMapping:
+    """Codex Medium regression: NetworkTools.create_address_object (the
+    individual-field variant used by the HTTP transport) must map
+    address_type to the FortiGate cmdb key it actually expects, not force
+    every type into 'subnet' regardless of type -- exercised at the wire
+    via respx, with zero code changes to core/fortigate.py (CONS-03 style)."""
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10",
+            api_token="test-token-not-real",
+            vdom="root",
+        )
+        api = FortiGateAPI("test_device", config)
+        auth_config = AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+        manager = FortiGateManager({}, auth_config)
+        manager.devices["test_device"] = api
+        self.network_tools = NetworkTools(manager)
+
+    def test_fqdn_address_type_sends_fqdn_key(self):
+        with fortigate_router() as router:
+            self.network_tools.create_address_object(
+                device_id="test_device",
+                name="addr-fqdn",
+                address_type="fqdn",
+                address="example.com",
+            )
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {"name": "addr-fqdn", "type": "fqdn", "fqdn": "example.com"}
+
+    def test_iprange_address_type_splits_start_and_end_ip(self):
+        with fortigate_router() as router:
+            self.network_tools.create_address_object(
+                device_id="test_device",
+                name="addr-range",
+                address_type="iprange",
+                address="192.0.2.10-192.0.2.20",
+            )
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {
+            "name": "addr-range",
+            "type": "iprange",
+            "start-ip": "192.0.2.10",
+            "end-ip": "192.0.2.20",
+        }
+
+    def test_iprange_address_type_without_hyphen_falls_back_to_start_ip(self):
+        with fortigate_router() as router:
+            self.network_tools.create_address_object(
+                device_id="test_device",
+                name="addr-range-single",
+                address_type="iprange",
+                address="192.0.2.10",
+            )
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {
+            "name": "addr-range-single",
+            "type": "iprange",
+            "start-ip": "192.0.2.10",
+        }
+
+    def test_ipmask_address_type_still_uses_subnet(self):
+        """Regression guard: the pre-existing ipmask/subnet behavior must
+        stay unchanged by the fqdn/iprange fix."""
+        with fortigate_router() as router:
+            self.network_tools.create_address_object(
+                device_id="test_device",
+                name="addr-mask",
+                address_type="ipmask",
+                address="192.0.2.0/24",
+            )
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {"name": "addr-mask", "type": "ipmask", "subnet": "192.0.2.0/24"}
