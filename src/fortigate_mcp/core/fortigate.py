@@ -396,6 +396,62 @@ class FortiGateAPI:
         endpoint = self._validated_endpoint("cmdb/firewall/vip", vip_name, "vip_name")
         return self._make_request("GET", endpoint, vdom=vdom)
 
+    # Security profile endpoints
+    def get_antivirus_profiles(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get antivirus profiles."""
+        return self._make_request("GET", "cmdb/antivirus/profile", vdom=vdom)
+
+    def get_ips_sensors(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get IPS sensors."""
+        return self._make_request("GET", "cmdb/ips/sensor", vdom=vdom)
+
+    def get_webfilter_profiles(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get web filter profiles."""
+        return self._make_request("GET", "cmdb/webfilter/profile", vdom=vdom)
+
+    def get_application_lists(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get application control profiles."""
+        return self._make_request("GET", "cmdb/application/list", vdom=vdom)
+
+    # System admin endpoints
+    def get_admin_accounts(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get system administrator accounts.
+
+        Note: `system/admin` is a global-scope (non-VDOM) FortiOS object, but
+        `_make_request` unconditionally injects a `vdom` query param on every
+        request (mirrors the existing `get_vdoms()` precedent for other
+        global objects). Whether FortiOS silently no-ops this param for
+        `system/admin` is unverified against a live device -- carried
+        forward as a Phase 9 execution-time verification item, not a Phase 8
+        blocker.
+        """
+        return self._make_request("GET", "cmdb/system/admin", vdom=vdom)
+
+    # SSL-VPN endpoints
+    def get_sslvpn_settings(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get SSL-VPN settings.
+
+        SINGLETON endpoint: the response's "results" value is a single dict
+        object, never a list -- callers must not list-index it.
+        """
+        return self._make_request("GET", "cmdb/vpn.ssl/settings", vdom=vdom)
+
+    def get_sslvpn_portals(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get SSL-VPN web portals.
+
+        The response's "results" value is a list of portal objects, each
+        potentially carrying a nested bookmark-group/bookmarks structure.
+        """
+        return self._make_request("GET", "cmdb/vpn.ssl.web/portal", vdom=vdom)
+
+    # Local-in policy endpoints
+    def get_local_in_policies(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get IPv4 local-in policies (device-destined traffic rules).
+
+        IPv4 only -- IPv6 local-in-policy6 is deferred per VIS-F3.
+        """
+        return self._make_request("GET", "cmdb/firewall/local-in-policy", vdom=vdom)
+
 
 class FortiGateManager:
     """Manager for multiple FortiGate devices.
