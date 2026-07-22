@@ -127,6 +127,16 @@ registered secret value out of rendered log messages and exception tracebacks be
 reach any console or file handler — the type alone does not guarantee redaction; the filter
 is what actually enforces it at the point log records are written.
 
+**API-response secret-field redaction.** Secret-shaped fields in FortiGate API responses —
+password hashes, PSKs (`psksecret`/`psksecret-remote`), private keys, numbered
+`ssh-public-key*` entries, and SSL-VPN bookmark credentials (`logon-password`,
+`sso-password`) — are replaced with a redaction marker by `redact_sensitive_fields`
+(`src/fortigate_mcp/validation.py`), a key-name deny-list applied at the Tools layer to
+`list_admins` and `get_sslvpn_settings` output before any response text is formatted, and
+proven non-vacuously in `tests/test_security_admin_tools.py`. The deny-list is fail-open by
+accepted design: only enumerated field names are redacted, so a future FortiOS field with an
+unrecognized name would pass through unredacted until the deny-list is extended.
+
 **Network exposure guidance.** Unauthenticated HTTP is this server's default mode
 (`auth.require_auth=false`). In that mode, bind the HTTP transport to `127.0.0.1` (loopback)
 only — never expose an unauthenticated server on `0.0.0.0` or any routable interface.
@@ -168,7 +178,11 @@ no CORS middleware exists anywhere in this codebase — the setting currently ha
 names, `accprofile`, and trusted-host scope — even with secret fields (password hash, PSK,
 private keys) redacted — are useful to an attacker profiling this server's operator surface,
 since they reveal who administers the target FortiGate and how broadly each account is
-scoped. This is an accepted-posture advisory, not a defect: redaction of secret-shaped
-fields is already proven (see the read-only gate and TLS controls above). **How to
+scoped. This is an accepted-posture advisory, not a defect: secret-shaped fields
+(password hashes, PSKs, private keys, SSH public keys) are stripped from `list_admins` and
+`get_sslvpn_settings` responses by the Tools layer's `redact_sensitive_fields` before any
+output is formatted (see "API-response secret-field redaction" under Implemented Security
+Controls above; `src/fortigate_mcp/validation.py`, proven in
+`tests/test_security_admin_tools.py`). **How to
 mitigate:** set `auth.require_auth=true` (with at least one configured `auth.api_tokens`
 entry) before binding the HTTP transport to any non-loopback interface.
