@@ -96,7 +96,9 @@ class FortiGateTool:
                          'devices', 'device_status', 'firewall_policies',
                          'firewall_policy_detail', 'address_objects',
                          'service_objects', 'static_routes', 'interfaces',
-                         'vdoms', 'virtual_ips', 'virtual_ip_detail'
+                         'vdoms', 'virtual_ips', 'virtual_ip_detail',
+                         'security_profiles', 'admin_accounts',
+                         'sslvpn_settings', 'local_in_policies'
 
         Returns:
             List of Content objects formatted according to resource type
@@ -144,6 +146,15 @@ class FortiGateTool:
             return FortiGateFormatters.format_virtual_ips(data)
         elif resource_type == "virtual_ip_detail":
             return FortiGateFormatters.format_virtual_ip_detail(data)
+        elif resource_type == "security_profiles":
+            return FortiGateFormatters.format_security_profiles(data)
+        elif resource_type == "admin_accounts":
+            return FortiGateFormatters.format_admin_accounts(data)
+        elif resource_type == "sslvpn_settings":
+            portals_data = kwargs.get("portals_data")
+            return FortiGateFormatters.format_sslvpn_settings(data, portals_data)
+        elif resource_type == "local_in_policies":
+            return FortiGateFormatters.format_local_in_policies(data)
         else:
             # Fallback to JSON formatting for unknown types
             return FortiGateFormatters.format_json_response(data)

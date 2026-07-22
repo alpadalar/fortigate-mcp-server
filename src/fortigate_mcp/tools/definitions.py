@@ -519,3 +519,86 @@ Returns:
 - Runtime statistics
 - API endpoints
 """
+
+# Security & Admin Visibility Tool Descriptions (v1.1, read-only)
+LIST_SECURITY_PROFILES_DESC = """
+List security profile visibility across antivirus, IPS, web-filter, and
+application-control categories on a FortiGate device (read-only).
+
+Each of the 4 categories is queried and reported independently. An
+authorization or licensing failure on one category is reported as a
+distinct "query failed" status for that category only -- it is never
+collapsed into the same rendering as a genuinely empty category, so an
+auditor can always tell "not configured" apart from "could not query".
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Antivirus profile summaries (or a "query failed" status)
+- IPS sensor summaries (or a "query failed" status)
+- Web-filter profile summaries (or a "query failed" status)
+- Application-control profile summaries (or a "query failed" status)
+"""
+
+LIST_ADMINS_DESC = """
+List FortiGate system administrator accounts (read-only).
+
+Note: cmdb/system/admin is a global-scope (non-VDOM) FortiOS object; the
+vdom parameter has no effect on this endpoint (mirrors the get_vdoms
+precedent for other global objects).
+
+All secret-shaped fields (password/hash, ssh-public-key entries) are
+replaced with a redaction marker before being returned -- raw credential
+material is never present in the response.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional; has no effect on this endpoint)
+
+Returns:
+- Administrator account names and profiles
+- Trusted-host and access restrictions
+- Two-factor authentication status
+- Redacted password/hash and ssh-public-key fields
+"""
+
+GET_SSLVPN_SETTINGS_DESC = """
+Get SSL-VPN settings and portal bookmarks from a FortiGate device (read-only).
+
+This tool retrieves the SSL-VPN gateway settings (source interface,
+tunnel/port range, TLS/cipher configuration) together with the
+configured web portal bookmarks. If the portal bookmark query fails,
+the settings are still returned (a partial, degraded result) rather
+than failing the whole call.
+
+Bookmark credential fields (logon-password, sso-password) are replaced
+with a redaction marker before being returned.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- SSL-VPN settings (source interface, tunnel/port range, cipher/TLS)
+- Portal bookmark groups (if the portal query succeeded)
+- Redacted bookmark credential fields
+"""
+
+LIST_LOCAL_IN_POLICIES_DESC = """
+List IPv4 local-in policies (device-destined traffic rules) on a
+FortiGate device (read-only).
+
+IPv4 only -- IPv6 local-in-policy6 is not covered by this tool
+(deferred to a future milestone).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Local-in policy entries (device-destined traffic rules)
+- Source/destination interface and address scoping
+- Action (accept/deny) and logging status
+"""
