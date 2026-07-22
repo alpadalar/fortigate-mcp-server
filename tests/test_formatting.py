@@ -478,6 +478,113 @@ class TestFortiGateTemplates:
 
         assert "Virtual IP not found" in result
 
+    def test_security_profiles_all_ok_renders_all_categories(self):
+        """All 4 categories status ok with profiles renders each title
+        and each profile name."""
+        data = {
+            "antivirus": {"status": "ok", "profiles": [{"name": "av-default", "comment": "AV default"}]},
+            "ips": {"status": "ok", "profiles": [{"name": "ips-default"}]},
+            "webfilter": {"status": "ok", "profiles": [{"name": "wf-default"}]},
+            "application_control": {"status": "ok", "profiles": [{"name": "app-default"}]},
+        }
+
+        result = FortiGateTemplates.security_profiles(data)
+
+        assert "Antivirus Profiles" in result
+        assert "av-default" in result
+        assert "IPS Sensors" in result
+        assert "ips-default" in result
+        assert "Web Filter Profiles" in result
+        assert "wf-default" in result
+        assert "Application Control Profiles" in result
+        assert "app-default" in result
+
+    def test_security_profiles_error_vs_empty_distinction(self):
+        """A per-category authorization/licensing error must never render
+        identically to a genuinely empty category."""
+        data = {
+            "antivirus": {"status": "ok", "profiles": [{"name": "av-default"}]},
+            "ips": {"status": "error", "error": "403 Forbidden (feature not licensed)"},
+            "webfilter": {"status": "ok", "profiles": []},
+            "application_control": {"status": "ok", "profiles": [{"name": "app-default"}]},
+        }
+
+        result = FortiGateTemplates.security_profiles(data)
+
+        assert "query failed" in result
+        assert "403" in result
+        assert "Web Filter Profiles: none configured" in result
+
+        ips_line = next(line for line in result.splitlines() if line.startswith("IPS Sensors"))
+        assert "none configured" not in ips_line
+
+    def test_security_profiles_category_not_queried(self):
+        """A category key entirely absent renders 'not queried', no
+        KeyError/AttributeError."""
+        data = {
+            "antivirus": {"status": "ok", "profiles": [{"name": "av-default"}]},
+        }
+
+        result = FortiGateTemplates.security_profiles(data)
+
+        assert "IPS Sensors: not queried" in result
+        assert "Web Filter Profiles: not queried" in result
+        assert "Application Control Profiles: not queried" in result
+
+    def test_admin_accounts_with_data(self):
+        """Two-admin fixture, one admin's vdom as list-of-dict, the other
+        as a bare string; name/accprofile/two-factor/trusted-host all render
+        correctly. No assertion on the password field (Phase 9's concern)."""
+        data = {
+            "results": [
+                {
+                    "name": "admin",
+                    "accprofile": "super_admin",
+                    "vdom": [{"name": "root"}],
+                    "trusthost1": "198.51.100.0 255.255.255.0",
+                    "trusthost2": "0.0.0.0 0.0.0.0",
+                    "two-factor": "email",
+                    "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER",
+                },
+                {
+                    "name": "readonly_auditor",
+                    "accprofile": "prof_readonly",
+                    "vdom": "root",
+                    "two-factor": "disable",
+                    "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER_2",
+                },
+            ]
+        }
+
+        result = FortiGateTemplates.admin_accounts(data)
+
+        assert "admin" in result
+        assert "super_admin" in result
+        assert "Two-Factor: On" in result
+        assert "Trusted Hosts: Yes" in result
+        assert "readonly_auditor" in result
+        assert "prof_readonly" in result
+        assert "Two-Factor: Off" in result
+        assert "Trusted Hosts: No" in result
+        assert "VDOM: root" in result
+
+    def test_admin_accounts_empty(self):
+        """{"results": []} renders 'No administrator accounts configured'."""
+        data = {"results": []}
+
+        result = FortiGateTemplates.admin_accounts(data)
+
+        assert "No administrator accounts configured" in result
+
+    def test_admin_accounts_empty_body_fallback(self):
+        """{"status": "success"} (no results key) renders the same fallback
+        text, never KeyError."""
+        data = {"status": "success"}
+
+        result = FortiGateTemplates.admin_accounts(data)
+
+        assert "No administrator accounts configured" in result
+
 
 class TestFortiGateFormatters:
     """FortiGate Formatters test class"""
