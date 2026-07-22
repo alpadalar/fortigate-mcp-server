@@ -30,7 +30,10 @@ Goldens provenance: originally generated against the pinned dependency set
 from plan 01-02 (mcp 1.28.1, fastmcp 2.11.3), re-verified byte-identical
 after plan 06-01's CVE-2026-32871 remediation bumped the fastmcp ceiling --
 mcp 1.28.1, fastmcp 3.4.0 (resolved within the ``mcp>=1.23.0,<2.0`` /
-``fastmcp>=3.2.0`` PyPI bands).
+``fastmcp>=3.2.0`` PyPI bands). Deliberately regenerated in Phase 11 (plan
+11-01) to the v1.1 surface (34 stdio / 35 HTTP / 37 unique) after a
+mechanical additive-only diff proof (removed/changed both empty; evidence
+in the phase's planning records).
 
 Adapted from the working reference implementation at
 ``/media/workspace/NetOpsMCP/tests/test_tool_schema_snapshot.py``. The two

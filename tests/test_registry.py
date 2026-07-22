@@ -30,6 +30,8 @@ def _fake_tools():
         network_tools=MagicMock(),
         routing_tools=MagicMock(),
         virtual_ip_tools=MagicMock(),
+        security_tools=MagicMock(),
+        admin_tools=MagicMock(),
         fortigate_manager=MagicMock(devices={}, failed_devices={}),
         # allow_writes=True: this file's tests exist to prove dispatch
         # wiring, not gating semantics -- gating is owned exclusively by

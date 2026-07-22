@@ -38,9 +38,11 @@ from src.fortigate_mcp.registry import register_tools
 from src.fortigate_mcp.server import FortiGateMCPServer
 from tests.test_tool_schema_snapshot import HTTP_GOLDEN, STDIO_GOLDEN, _normalize_schema
 
-# Computed from the committed fixtures during Phase 3 Plan 03 planning --
-# if either assertion below fails at creation time, the goldens changed
-# since planning and the phase premise (byte-frozen contract) is broken.
+# Computed from the committed fixtures (originally Phase 3 Plan 03; resynced
+# in Phase 11 when the goldens were deliberately regenerated to the 34/35
+# v1.1 surface) -- if either assertion below fails at creation time, the
+# goldens changed outside a sanctioned regeneration and the byte-frozen
+# contract is broken.
 STDIO_GOLDEN_SHA256 = "ca55217711920ecd08c33c663adb0b8057b7562e46078e92e6b975e9551c63dd"
 HTTP_GOLDEN_SHA256 = "cab6e521f0fd73a358e86ddc36bed70722a99d5a50de0efc8315b4519c7c1163"
 
@@ -54,6 +56,8 @@ def _fake_tools():
         network_tools=MagicMock(),
         routing_tools=MagicMock(),
         virtual_ip_tools=MagicMock(),
+        security_tools=MagicMock(),
+        admin_tools=MagicMock(),
         fortigate_manager=MagicMock(devices={}, failed_devices={}),
         # allow_writes=True: this file proves engine/schema equivalence, not
         # gating semantics (owned by tests/test_write_gate.py).
