@@ -68,6 +68,9 @@ def fortigate_router(
     router.post("/cmdb/firewall/address").mock(
         return_value=httpx.Response(200, json=load_fixture("address_object_create.json"))
     )
+    router.post("/cmdb/firewall.service/custom").mock(
+        return_value=httpx.Response(200, json=load_fixture("service_object_create.json"))
+    )
     router.get("/monitor/system/status").mock(
         return_value=httpx.Response(401, json=load_fixture("error_401.json"))
     )

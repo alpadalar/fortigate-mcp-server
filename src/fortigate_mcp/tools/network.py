@@ -105,22 +105,36 @@ class NetworkTools(FortiGateTool):
         except Exception as e:
             return self._handle_error("list service objects", device_id, e)
     
-    def create_service_object(self, device_id: str, name: str, service_type: str, protocol: str, 
+    def create_service_object(self, device_id: str, name: str, service_type: str, protocol: str,
                              port: Optional[str] = None, vdom: Optional[str] = None) -> List[Content]:
         """Create service object."""
         try:
             self._validate_device_exists(device_id)
             self._validate_required_params(name=name, service_type=service_type, protocol=protocol)
-            
-            service_data = {
+
+            service_data: Dict[str, Any] = {
                 "name": name,
                 "type": service_type,
                 "protocol": protocol
             }
-            
+
             if port:
-                service_data["port"] = port
-            
+                # FortiGate's cmdb/firewall.service/custom expects a
+                # protocol-specific portrange field, not a generic 'port'
+                # key -- map by protocol so the value actually lands where
+                # FortiGate will read it.
+                protocol_upper = protocol.upper()
+                if protocol_upper == "TCP":
+                    service_data["tcp-portrange"] = port
+                elif protocol_upper == "UDP":
+                    service_data["udp-portrange"] = port
+                elif protocol_upper == "SCTP":
+                    service_data["sctp-portrange"] = port
+                else:
+                    # Fallback for protocols with no known portrange key
+                    # (e.g. combined "TCP/UDP/SCTP" or ICMP).
+                    service_data["port"] = port
+
             api_client = self._get_device_api(device_id)
             api_client.create_service_object(service_data, vdom=vdom)
             return self._format_operation_result("create service object", device_id, True, f"Service object '{name}' created successfully")

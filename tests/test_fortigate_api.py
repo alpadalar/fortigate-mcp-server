@@ -797,3 +797,58 @@ class TestNetworkToolsCreateAddressObjectHTTPMapping:
             sent_body = json.loads(router.calls.last.request.content)
 
         assert sent_body == {"name": "addr-mask", "type": "ipmask", "subnet": "192.0.2.0/24"}
+
+
+class TestNetworkToolsCreateServiceObjectHTTPMapping:
+    """Codex Medium regression: NetworkTools.create_service_object (the
+    individual-field variant used by the HTTP transport) must map the
+    protocol to its portrange-specific cmdb key, not a generic 'port' key
+    FortiGate's cmdb/firewall.service/custom endpoint does not read."""
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10",
+            api_token="test-token-not-real",
+            vdom="root",
+        )
+        api = FortiGateAPI("test_device", config)
+        auth_config = AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+        manager = FortiGateManager({}, auth_config)
+        manager.devices["test_device"] = api
+        self.network_tools = NetworkTools(manager)
+
+    def test_tcp_protocol_sends_tcp_portrange(self):
+        with fortigate_router() as router:
+            self.network_tools.create_service_object(
+                device_id="test_device",
+                name="svc-tcp",
+                service_type="TCP/UDP/SCTP",
+                protocol="TCP",
+                port="8080",
+            )
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {
+            "name": "svc-tcp",
+            "type": "TCP/UDP/SCTP",
+            "protocol": "TCP",
+            "tcp-portrange": "8080",
+        }
+
+    def test_udp_protocol_sends_udp_portrange(self):
+        with fortigate_router() as router:
+            self.network_tools.create_service_object(
+                device_id="test_device",
+                name="svc-udp",
+                service_type="TCP/UDP/SCTP",
+                protocol="UDP",
+                port="53",
+            )
+            sent_body = json.loads(router.calls.last.request.content)
+
+        assert sent_body == {
+            "name": "svc-udp",
+            "type": "TCP/UDP/SCTP",
+            "protocol": "UDP",
+            "udp-portrange": "53",
+        }
