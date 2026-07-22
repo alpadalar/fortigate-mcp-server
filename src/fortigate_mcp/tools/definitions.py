@@ -8,18 +8,14 @@ for tool registration and help documentation.
 
 # Device Management Tool Descriptions
 LIST_DEVICES_DESC = """
-List all registered FortiGate devices with their configuration details.
+List the identifiers of all registered FortiGate devices.
 
-This tool displays information about all FortiGate devices that are currently
-registered with the MCP server, including connection details, authentication
-methods, and status information.
+This tool returns the device IDs of every FortiGate currently registered with
+the MCP server. Use get_device_status with a specific device ID to retrieve
+that device's system, connection, and configuration details.
 
 Returns:
-- Device ID and name
-- Host address and port
-- VDOM configuration
-- Authentication method
-- SSL verification status
+- The registered device IDs
 """
 
 GET_DEVICE_STATUS_DESC = """
