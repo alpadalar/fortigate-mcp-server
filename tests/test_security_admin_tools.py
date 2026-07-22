@@ -309,3 +309,71 @@ class TestRedactCallSiteWiring:
 
         assert seen
         assert seen[0]["results"][0]["policyid"] == 1
+
+    def test_get_sslvpn_settings_redacts_before_formatting(
+        self, fake_fortigate_router, monkeypatch
+    ):
+        """VIS-06 criterion 3: proves redact_sensitive_fields runs BEFORE the
+        formatter for get_sslvpn_settings, not merely that both are called.
+        Up to 2 redact calls happen (settings + portals) before the single
+        format call."""
+        from src.fortigate_mcp.tools import security as security_mod
+        from src.fortigate_mcp.formatting.formatters import FortiGateFormatters
+
+        call_order: list = []
+        real_redact = security_mod.redact_sensitive_fields
+        real_format = FortiGateFormatters.format_sslvpn_settings
+
+        def spy_redact(data):
+            call_order.append("redact")
+            return real_redact(data)
+
+        def spy_format(data, portals_data=None):
+            call_order.append("format")
+            return real_format(data, portals_data)
+
+        monkeypatch.setattr(security_mod, "redact_sensitive_fields", spy_redact)
+        monkeypatch.setattr(
+            FortiGateFormatters, "format_sslvpn_settings", staticmethod(spy_format)
+        )
+
+        self.security_tools.get_sslvpn_settings(device_id="test_device")
+
+        # Happy path (fake_fortigate_router mocks both settings and portals
+        # with 200s): exactly 2 redact calls (settings + portals), then 1
+        # format call. Pinning the count (not just presence) means deleting
+        # EITHER redact call site is caught -- not just both at once.
+        assert call_order.count("redact") == 2
+        assert call_order.count("format") == 1
+        format_index = call_order.index("format")
+        redact_indexes = [i for i, event in enumerate(call_order) if event == "redact"]
+        assert all(idx < format_index for idx in redact_indexes)
+
+    def test_list_admins_redacts_before_formatting(
+        self, fake_fortigate_router, monkeypatch
+    ):
+        """VIS-06 criterion 3: proves redact_sensitive_fields runs BEFORE the
+        formatter for list_admins (exactly one redact, one format call)."""
+        from src.fortigate_mcp.tools import admin as admin_mod
+        from src.fortigate_mcp.formatting.formatters import FortiGateFormatters
+
+        call_order: list = []
+        real_redact = admin_mod.redact_sensitive_fields
+        real_format = FortiGateFormatters.format_admin_accounts
+
+        def spy_redact(data):
+            call_order.append("redact")
+            return real_redact(data)
+
+        def spy_format(data):
+            call_order.append("format")
+            return real_format(data)
+
+        monkeypatch.setattr(admin_mod, "redact_sensitive_fields", spy_redact)
+        monkeypatch.setattr(
+            FortiGateFormatters, "format_admin_accounts", staticmethod(spy_format)
+        )
+
+        self.admin_tools.list_admins(device_id="test_device")
+
+        assert call_order == ["redact", "format"]
