@@ -105,6 +105,17 @@ class NetworkTools(FortiGateTool):
         except Exception as e:
             return self._handle_error("list service objects", device_id, e)
     
+    def list_dhcp_leases(self, device_id: str, ipv6: bool = False,
+                         vdom: Optional[str] = None) -> List[Content]:
+        """List DHCP leases from a FortiGate device."""
+        try:
+            self._validate_device_exists(device_id)
+            api_client = self._get_device_api(device_id)
+            leases_data = api_client.get_dhcp_leases(ipv6, vdom=vdom)
+            return self._format_response(leases_data, "dhcp_leases")
+        except Exception as e:
+            return self._handle_error("list DHCP leases", device_id, e)
+
     def create_service_object(self, device_id: str, name: str, service_type: str, protocol: str,
                              port: Optional[str] = None, vdom: Optional[str] = None) -> List[Content]:
         """Create service object."""
@@ -175,6 +186,15 @@ class NetworkTools(FortiGateTool):
                     "description": "List service objects",
                     "parameters": [
                         {"name": "device_id", "type": "string", "required": True},
+                        {"name": "vdom", "type": "string", "required": False}
+                    ]
+                },
+                {
+                    "name": "list_dhcp_leases",
+                    "description": "List DHCP leases",
+                    "parameters": [
+                        {"name": "device_id", "type": "string", "required": True},
+                        {"name": "ipv6", "type": "boolean", "required": False},
                         {"name": "vdom", "type": "string", "required": False}
                     ]
                 },

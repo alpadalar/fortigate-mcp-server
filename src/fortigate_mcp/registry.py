@@ -2,7 +2,7 @@
 
 Both the stdio server (server.py) and the HTTP server (server_http.py)
 register tools from this single module instead of each hand-duplicating a
-~30-tool ``_setup_tools()`` body. 24 of the 33 unique tool names are
+~30-tool ``_setup_tools()`` body. 25 of the 34 unique tool names are
 schema-identical and share ONE tool definition; ``get_firewall_policy_detail``
 is schema-identical but was dispatch-divergent (sync vs async on the same
 class) -- it is unified here to a single async definition, verified safe
@@ -63,6 +63,7 @@ from .tools.definitions import (
     GET_INTERFACE_STATUS_DESC,
     HEALTH_CHECK_DESC,
     GET_SERVER_INFO_DESC,
+    LIST_DHCP_LEASES_DESC,
 )
 
 
@@ -80,6 +81,7 @@ RISK_CLASSIFICATION = {
     "get_routing_table": "read",
     "list_interfaces": "read",
     "get_interface_status": "read",
+    "list_dhcp_leases": "read",
     "get_static_route_detail": "read",
     "list_virtual_ips": "read",
     "get_virtual_ip_detail": "read",
@@ -108,7 +110,7 @@ RISK_CLASSIFICATION = {
 
 Single source of truth for BOTH the dispatch-layer read-only gate (SEC-01,
 ``_tool()``'s ``_gate`` helper below) and Phase 5's SECURITY.md tool-risk
-table. Covers all 33 unique tool names registered across transports;
+table. Covers all 34 unique tool names registered across transports;
 completeness is enforced by ``tests/test_write_gate.py``. An unclassified
 name is a registration-time KeyError (see ``_gate``), not a silent gap.
 """
@@ -304,6 +306,14 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
     ) -> List[Content]:
         return cast(List[Content], tools.network_tools.list_service_objects(device_id, vdom))
+
+    @_tool(LIST_DHCP_LEASES_DESC)
+    def list_dhcp_leases(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        ipv6: Annotated[bool, Field(description="Request IPv6 leases", default=False)] = False,
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.network_tools.list_dhcp_leases(device_id, ipv6, vdom))
 
     @_tool(LIST_STATIC_ROUTES_DESC)
     def list_static_routes(

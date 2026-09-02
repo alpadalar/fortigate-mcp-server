@@ -263,6 +263,12 @@ class FortiGateAPI:
         """Get system interface information."""
         return self._make_request("GET", "monitor/system/interface", vdom=vdom)
     
+    def get_dhcp_leases(self, ipv6: bool = False, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DHCP leases from the FortiGate monitor endpoint."""
+        return self._make_request(
+            "GET", "monitor/system/dhcp", params={"ipv6": ipv6}, vdom=vdom
+        )
+
     def get_vdoms(self) -> Dict[str, Any]:
         """Get list of Virtual Domains."""
         return self._make_request("GET", "cmdb/system/vdom")

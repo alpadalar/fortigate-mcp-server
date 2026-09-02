@@ -519,3 +519,16 @@ Returns:
 - Runtime statistics
 - API endpoints
 """
+
+LIST_DHCP_LEASES_DESC = """
+List DHCP leases from a FortiGate device.
+
+This tool queries the FortiGate monitor/system/dhcp endpoint and returns
+current lease records, including IP address, MAC address, hostname, lease
+status, expiration time, and interface.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- ipv6: Whether to list IPv6 leases (default: false)
+- vdom: Virtual Domain name (optional, uses device default)
+"""
