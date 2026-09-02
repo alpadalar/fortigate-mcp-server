@@ -41,7 +41,7 @@ def test_stdio_server_constructs_successfully(tmp_config_path):
 
     assert server is not None
     tools = asyncio.run(_list_via_client(server))
-    assert len(tools) == 30
+    assert len(tools) == 31
 
 
 # Matrix of (tool_name, tools_attr, method_name, args) covering every one of the

@@ -69,7 +69,7 @@ def _fake_tools():
 
 def test_classification_completeness_matches_registered_tools():
     """set(RISK_CLASSIFICATION) equals the union of tool names registered by
-    register_tools() for both transports -- exactly 33 unique names."""
+    register_tools() for both transports -- exactly 34 unique names."""
     sdk_mcp = SDKFastMCP("classification-stdio")
     register_tools(sdk_mcp, _fake_tools(), transport="stdio")
     stdio_names = set(sdk_mcp._tool_manager._tools)
@@ -84,7 +84,7 @@ def test_classification_completeness_matches_registered_tools():
     union = stdio_names | http_names
 
     assert union == set(RISK_CLASSIFICATION)
-    assert len(RISK_CLASSIFICATION) == 33
+    assert len(RISK_CLASSIFICATION) == 34
     assert len(RISK_CLASSIFICATION) == len(set(RISK_CLASSIFICATION))  # no duplicate keys
 
 

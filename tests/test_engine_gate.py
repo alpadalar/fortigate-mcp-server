@@ -41,8 +41,8 @@ from tests.test_tool_schema_snapshot import HTTP_GOLDEN, STDIO_GOLDEN, _normaliz
 # Computed from the committed fixtures during Phase 3 Plan 03 planning --
 # if either assertion below fails at creation time, the goldens changed
 # since planning and the phase premise (byte-frozen contract) is broken.
-STDIO_GOLDEN_SHA256 = "ca5ddfcce490c5155ffe3a406c6b8d5a17c62d4cd9652967f0bd7bf0e4ec88e4"
-HTTP_GOLDEN_SHA256 = "a51d632aa943e28d0b1ae4d48dff4ef17aa4756df25eacf62e0df95041853994"
+STDIO_GOLDEN_SHA256 = "73cfdc3b215336be2634dc8c6d9aaf6803ad6946be4830bcb19ad5572dfdf099"
+HTTP_GOLDEN_SHA256 = "f726c988c0d446d0b00590c08d79064757088744b7e076f201a52f1e78b827a4"
 
 
 def _fake_tools():
@@ -157,7 +157,7 @@ def test_full_30_tool_schema_diff_across_engines() -> None:
     disagree -> dual-engine fallback; this test then gets xfail(strict=True)
     with the divergence as reason."""
     sdk_stdio, prefect_stdio, _ = _snapshots()
-    assert len(sdk_stdio) == 30
+    assert len(sdk_stdio) == 31
     assert set(sdk_stdio) == set(prefect_stdio)
     assert sdk_stdio == prefect_stdio
 
@@ -175,7 +175,7 @@ def test_real_stdio_server_serves_full_mcp_session(tmp_config_path) -> None:
         server = FortiGateMCPServer(tmp_config_path)
         async with Client(server.mcp) as client:
             tools = await client.list_tools()
-            assert len(tools) == 30
+            assert len(tools) == 31
             assert {t.name for t in tools} == set(json.loads(STDIO_GOLDEN.read_text()).keys())
 
             result = await client.call_tool("list_devices", {})

@@ -156,7 +156,7 @@ def test_readme_tool_count_phrasing():
     repo_root = _repo_root()
     text = (repo_root / "README.md").read_text()
 
-    assert "33 unique tools" in text
+    assert "34 unique tools" in text
 
 
 def test_dockerfile_does_not_copy_pytest_ini():
