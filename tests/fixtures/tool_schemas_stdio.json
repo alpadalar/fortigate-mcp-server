@@ -539,6 +539,34 @@
       "type": "object"
     }
   },
+  "list_dhcp_leases": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "ipv6": {
+          "default": false,
+          "type": "boolean"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "list_firewall_policies": {
     "inputSchema": {
       "properties": {

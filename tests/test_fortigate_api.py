@@ -189,6 +189,27 @@ class TestFortiGateAPI:
             assert result == {"hostname": "FortiGate", "version": "v7.0.0"}
             mock_request.assert_called_once_with("GET", "monitor/system/status", vdom=None)
 
+    def test_get_dhcp_leases_defaults_to_ipv4(self):
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": [{"ip": "10.100.100.2", "type": "ipv4"}]}
+
+            result = self.api.get_dhcp_leases()
+
+            assert result == {"results": [{"ip": "10.100.100.2", "type": "ipv4"}]}
+            mock_request.assert_called_once_with(
+                "GET", "monitor/system/dhcp", params={"ipv6": False}, vdom=None
+            )
+
+    def test_get_dhcp_leases_can_request_ipv6(self):
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": []}
+
+            self.api.get_dhcp_leases(ipv6=True)
+
+            mock_request.assert_called_once_with(
+                "GET", "monitor/system/dhcp", params={"ipv6": True}, vdom=None
+            )
+
     def test_get_vdoms(self):
         """VDOM listesi alma testi"""
         with patch.object(self.api, '_make_request') as mock_request:

@@ -362,6 +362,20 @@ class TestNetworkTools:
         assert "Service Objects" in result[0].text
         assert "HTTP" in result[0].text
         mock_api.get_service_objects.assert_called_once()
+
+    def test_list_dhcp_leases_success(self):
+        mock_api = MagicMock(spec=FortiGateAPI)
+        mock_api.device_id = "test_device"
+        mock_api.get_dhcp_leases.return_value = {
+            "results": [{"ip": "10.100.100.2", "mac": "20:cc:27:2e:1a:f5", "status": "leased"}]
+        }
+        self.fortigate_manager.devices["test_device"] = mock_api
+
+        result = self.network_tools.list_dhcp_leases("test_device")
+
+        assert "10.100.100.2" in result[0].text
+        assert "20:cc:27:2e:1a:f5" in result[0].text
+        mock_api.get_dhcp_leases.assert_called_once_with(False, vdom=None)
     
     def test_create_service_object_success(self):
         """Başarılı service object oluşturma testi"""
