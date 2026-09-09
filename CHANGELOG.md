@@ -21,6 +21,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `release.yml`) run, with a hygiene test guarding that every badge references a workflow
   file that actually exists on disk (CI-06)
 
+### Fixed
+
+- `get_routing_table` reported a routing table in which no destination was
+  identifiable: the template read `dst`, which is the `cmdb/router/static` spelling,
+  while `monitor/router/ipv4` names the destination prefix `ip_mask`. Every row
+  therefore rendered as `Route: N/A`. The same template also had a `status` branch
+  that could never fire, as no route entry carries a `status` key (`status` exists
+  only on the response envelope, which this template never sees); it now renders
+  `origin` instead — the only field separating a DHCP-learned default route from an
+  operator-configured one, since both report `type: static` — plus `metric`. Verified
+  live against FortiOS v7.6.7, and a regression test asserts a payload carrying only
+  the legacy `dst` key still renders `Route: N/A` so a revert cannot look correct
+- `get_interface_status` never actually filtered by interface name. It sent the
+  filter as `interface=<name>`, but `monitor/system/interface` reads
+  `interface_name`; FortiOS silently ignores unknown query parameters and answers
+  200 with the FULL interface set, so every call returned all physical ports on the
+  device while appearing to succeed. The endpoint also omits VLAN and aggregate
+  interfaces unless `include_vlan`/`include_aggregate` are set, so the corrected
+  filter alone would have returned an empty result for exactly the interface types
+  that most need naming. Both are now sent. Verified live against FortiOS v7.6.7:
+  `interface=VLAN_20` returned 12 physical ports, `interface_name=VLAN_20` returned
+  an empty result set, and `interface_name=VLAN_20&include_vlan=true` returned
+  exactly `VLAN_20`. A regression test asserts the legacy parameter name is no
+  longer sent, because the failure mode is invisible at the HTTP layer (200 either way)
+
 ### Changed
 
 - `ruff` added as a pinned lint dependency and calibrated clean against its built-in

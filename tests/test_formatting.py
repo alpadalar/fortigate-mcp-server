@@ -394,9 +394,85 @@ class TestFortiGateTemplates:
         assert "Virtual IP not found" in result
 
 
+class TestRoutingTableTemplate:
+    """routing_table template -- monitor/router/ipv4 field names.
+
+    Fixtures use the keys FortiOS v7.6.7 actually returns (ip_mask,
+    gateway, interface, distance, metric, priority, type, origin), verified
+    against a live device. The destination is ``ip_mask``; ``dst`` is the
+    cmdb/router/static spelling and does not appear in this response.
+    """
+
+    def test_routing_table_empty(self):
+        result = FortiGateTemplates.routing_table({"results": []})
+
+        assert "Routing Table" in result
+        assert "No routes found" in result
+
+    def test_destination_prefix_is_read_from_ip_mask(self):
+        """Regression guard: reading ``dst`` rendered every row as
+        "Route: N/A", so the tool reported a routing table with no
+        identifiable destinations."""
+        data = {
+            "results": [
+                {
+                    "ip_mask": "0.0.0.0/0",
+                    "gateway": "203.0.113.254",
+                    "interface": "wan1",
+                    "distance": 5,
+                    "metric": 0,
+                    "priority": 1,
+                    "type": "static",
+                    "origin": "dhcp",
+                }
+            ]
+        }
+
+        result = FortiGateTemplates.routing_table(data)
+
+        assert "Route: 0.0.0.0/0" in result
+        assert "Route: N/A" not in result
+        assert "Gateway: 203.0.113.254" in result
+        assert "Interface: wan1" in result
+        assert "Distance: 5" in result
+        assert "Metric: 0" in result
+        assert "Priority: 1" in result
+        assert "Type: static" in result
+
+    def test_origin_distinguishes_dhcp_learned_from_configured_route(self):
+        """Both report type "static"; only ``origin`` separates them."""
+        data = {
+            "results": [
+                {"ip_mask": "0.0.0.0/0", "type": "static", "origin": "dhcp"},
+                {"ip_mask": "10.0.0.0/8", "type": "static"},
+            ]
+        }
+
+        result = FortiGateTemplates.routing_table(data)
+
+        assert "Origin: dhcp" in result
+        assert result.count("Origin:") == 1
+
+    def test_connected_route_renders_without_optional_fields(self):
+        data = {"results": [{"ip_mask": "10.10.20.0/24", "interface": "VLAN_20",
+                             "gateway": "0.0.0.0", "type": "connect"}]}
+
+        result = FortiGateTemplates.routing_table(data)
+
+        assert "Route: 10.10.20.0/24" in result
+        assert "Type: connect" in result
+
+    def test_legacy_dst_key_is_not_silently_accepted(self):
+        """A payload carrying only the old ``dst`` key must NOT render as a
+        resolved destination -- otherwise a future regression to the wrong
+        field name would look correct in tests."""
+        result = FortiGateTemplates.routing_table({"results": [{"dst": "0.0.0.0/0"}]})
+
+        assert "Route: N/A" in result
+
 class TestFortiGateFormatters:
     """FortiGate Formatters test class"""
-    
+
     def test_format_firewall_policies(self):
         """Firewall policies formatter test"""
         data = {
@@ -587,10 +663,10 @@ class TestFortiGateFormatters:
     def test_format_operation_result_failure(self):
         """Failure operation result formatter test"""
         result = FortiGateFormatters.format_operation_result(
-            "test_operation", "test_device", False, 
+            "test_operation", "test_device", False,
             error="Operation failed"
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
