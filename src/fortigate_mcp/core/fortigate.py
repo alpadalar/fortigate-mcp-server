@@ -278,10 +278,34 @@ class FortiGateAPI:
         # "port1.100" are valid) -- NOT validate_object_name. Sent via
         # httpx params= (not a raw query string) so it is auto-encoded too.
         safe_name = validate_interface_name(interface_name)
+        # monitor/system/interface's filter parameter is `interface_name`, NOT
+        # `interface`. FortiOS silently IGNORES unknown query parameters and
+        # answers 200 with the full interface set, so the previous
+        # `{"interface": ...}` spelling looked like it worked while actually
+        # returning every physical port on the device -- the caller's
+        # requested name was never applied. Verified live against FortiOS
+        # v7.6.7: `interface=VLAN_20` -> 12 physical ports;
+        # `interface_name=VLAN_20` -> results {}.
+        #
+        # include_vlan/include_aggregate are required for the filter to be
+        # able to MATCH anything beyond a physical port: this endpoint omits
+        # VLAN and aggregate interfaces by default, so
+        # `interface_name=VLAN_20` alone answers 200 with an EMPTY results
+        # object. Both flags are sent unconditionally -- a caller asking for
+        # a specific interface by name always wants that interface resolved,
+        # whatever its type. Verified live: `interface_name=VLAN_20` +
+        # `include_vlan=true` -> results {"VLAN_20": {...}}.
         return self._make_request(
-            "GET", "monitor/system/interface", params={"interface": safe_name}, vdom=vdom
+            "GET",
+            "monitor/system/interface",
+            params={
+                "interface_name": safe_name,
+                "include_vlan": "true",
+                "include_aggregate": "true",
+            },
+            vdom=vdom,
         )
-    
+
     # Firewall policy endpoints
     def get_firewall_policies(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get firewall policies."""

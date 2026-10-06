@@ -588,20 +588,39 @@ class FortiGateTemplates:
             routes = routing_data["results"]
             
             for route in routes:
+                # monitor/router/ipv4 names the destination prefix `ip_mask`
+                # (e.g. "0.0.0.0/0"), NOT `dst` -- that is the cmdb/router/static
+                # spelling. Reading `dst` here rendered EVERY row as
+                # "Route: N/A", so the tool reported a routing table in which
+                # no destination was identifiable. Verified live against
+                # FortiOS v7.6.7, where the union of keys over all route
+                # entries is: distance, gateway, interface, ip_mask,
+                # ip_version, is_tunnel_route, metric, non_rc_gateway,
+                # origin, priority, tunnel_parent, type, vrf.
                 lines.extend([
-                    f"Route: {route.get('dst', 'N/A')}",
+                    f"Route: {route.get('ip_mask', 'N/A')}",
                     f"  Gateway: {route.get('gateway', 'N/A')}",
                     f"  Interface: {route.get('interface', 'N/A')}",
                     f"  Distance: {route.get('distance', 'N/A')}",
+                    f"  Metric: {route.get('metric', 'N/A')}",
                     f"  Priority: {route.get('priority', 'N/A')}",
                 ])
-                
-                if route.get("status"):
-                    lines.append(f"  Status: {route['status']}")
-                
+
                 if route.get("type"):
                     lines.append(f"  Type: {route['type']}")
-                
+
+                # `origin` is the only field that separates a DHCP-learned
+                # default route from an operator-configured one -- this
+                # endpoint reports both as type "static". Rendered in place of
+                # a former `status` branch, which could never fire: no route
+                # ENTRY carries a `status` key. (`status` does exist one level
+                # up, on the response envelope -- `{"status": "success",
+                # "results": [...]}` -- which this function is handed as
+                # `routing_data`. But the removed branch read `route[...]`,
+                # not `routing_data[...]`, so it never saw that key.)
+                if route.get("origin"):
+                    lines.append(f"  Origin: {route['origin']}")
+
                 lines.append("")
         else:
             lines.append("No routes found")

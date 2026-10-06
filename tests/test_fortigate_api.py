@@ -265,13 +265,18 @@ class TestFortiGateAPI:
             mock_request.assert_called_once_with("GET", "cmdb/router/static", vdom=None)
 
     def test_get_routing_table(self):
-        """Routing table alma testi"""
+        """Routing table alma testi.
+
+        The fixture uses ``ip_mask``, which is what monitor/router/ipv4
+        actually returns for the destination prefix (``dst`` is the
+        cmdb/router/static spelling).
+        """
         with patch.object(self.api, '_make_request') as mock_request:
-            mock_request.return_value = {"results": [{"dst": "0.0.0.0/0"}]}
+            mock_request.return_value = {"results": [{"ip_mask": "0.0.0.0/0"}]}
 
             result = self.api.get_routing_table()
 
-            assert result == {"results": [{"dst": "0.0.0.0/0"}]}
+            assert result == {"results": [{"ip_mask": "0.0.0.0/0"}]}
             mock_request.assert_called_once_with("GET", "monitor/router/ipv4", vdom=None)
 
     def test_get_antivirus_profiles(self):
@@ -357,7 +362,16 @@ class TestFortiGateAPI:
     def test_get_interface_status_uses_params_and_allows_vlan_names(self):
         """VLAN subinterface names with dots (e.g. port1.100) must pass, and
         the value must reach FortiGate via httpx params= (not a raw query
-        string)."""
+        string).
+
+        The filter key must be ``interface_name``: FortiOS silently IGNORES
+        unknown query parameters and answers 200 with the FULL interface set,
+        so the earlier ``interface`` spelling returned every physical port
+        instead of the requested one. ``include_vlan``/``include_aggregate``
+        must accompany it -- this endpoint omits VLAN and aggregate
+        interfaces by default, so the filter would match nothing for exactly
+        the interface types that need naming to be resolved.
+        """
         with patch.object(self.api, '_make_request') as mock_request:
             mock_request.return_value = {"status": "up"}
 
@@ -365,8 +379,31 @@ class TestFortiGateAPI:
 
             assert result == {"status": "up"}
             mock_request.assert_called_once_with(
-                "GET", "monitor/system/interface", params={"interface": "port1.100"}, vdom=None
+                "GET",
+                "monitor/system/interface",
+                params={
+                    "interface_name": "port1.100",
+                    "include_vlan": "true",
+                    "include_aggregate": "true",
+                },
+                vdom=None,
             )
+
+    def test_get_interface_status_does_not_send_legacy_interface_param(self):
+        """Regression guard for the silently-ignored parameter name.
+
+        Asserted as its own test because the failure mode is invisible at the
+        HTTP layer -- FortiOS returns 200 either way -- so only the sent
+        parameter name distinguishes a working filter from a broken one.
+        """
+        with patch.object(self.api, '_make_request') as mock_request:
+            mock_request.return_value = {"results": {}}
+
+            self.api.get_interface_status("VLAN_20")
+
+            sent_params = mock_request.call_args.kwargs["params"]
+            assert "interface" not in sent_params
+            assert sent_params["interface_name"] == "VLAN_20"
 
     def test_get_interface_status_rejects_injection(self):
         """Injection-shaped interface names raise before any request."""
