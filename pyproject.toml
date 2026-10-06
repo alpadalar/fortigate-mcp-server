@@ -45,7 +45,6 @@ dev = [
     "flake8>=6.0.0",
     "mypy>=1.0.0",
     "bandit>=1.7.0",
-    "safety>=2.0.0",
     "respx>=0.23.1",
 ]
 test = [
@@ -64,7 +63,6 @@ lint = [
 ]
 security = [
     "bandit>=1.7.0",
-    "safety>=2.0.0",
 ]
 
 [project.urls]

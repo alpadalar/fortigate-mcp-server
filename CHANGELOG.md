@@ -61,6 +61,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   remediating CVE-2026-32871 (GHSA-vv7q-7jx5-f767, `OpenAPIProvider` SSRF/path-traversal).
   The full local test suite (469 tests) and the byte-frozen golden MCP tool-schema
   snapshot both pass unchanged on the new version (CI-03)
+- Locked dependencies refreshed for advisories published after v1.1: `anyio` 4.15.1
+  (CVE-2026-63374, PYSEC-2026-4024/4025), `cryptography` 50.0.2 (CVE-2026-69247),
+  `pyjwt` 2.15.1 (CVE-2026-102266/102267/102271/102272/102273) and `urllib3` 2.8.0.
+  The unused `safety` dev/security extra was dropped, which also removes its `nltk`
+  dependency (PYSEC-2026-3740); `pip-audit` in the security workflow covers dependency
+  scanning. Base image digest bumped to `python:3.11.17-slim-trixie` for the Debian
+  `util-linux`, `openssl`, `sqlite`, `pcre2` and `gzip` fixes. Full suite (584 passed),
+  `pip-audit` and a Trivy CRITICAL/HIGH image scan are clean
 
 ## [1.0.0] - Pending (not yet tagged)
 

@@ -2,10 +2,10 @@
 # Base image is version- AND digest-pinned: a floating `python:3.11-slim`
 # tag is the same mutable-reference supply-chain class the workflows
 # eliminate with SHA-pinned `uses:`. Human tag: python:3.11-slim ==
-# 3.11.15-slim-trixie. Digest is the multi-arch OCI index digest, verified
+# 3.11.17-slim-trixie. Digest is the multi-arch OCI index digest, verified
 # live against the registry:
 #   docker buildx imagetools inspect python:3.11-slim
-FROM python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93
+FROM python:3.11-slim@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce
 
 # Metadata
 LABEL maintainer="FortiGate MCP Team"
