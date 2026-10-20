@@ -9,7 +9,7 @@ FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for m
 
 ## 🚀 Features
 
-FortiGate MCP Server exposes 37 unique tools, 69 total tool-surface registrations across stdio (34) and HTTP (35) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
+FortiGate MCP Server exposes 47 unique tools, 89 total tool-surface registrations across stdio (44) and HTTP (45) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
 
 - **Device Management**: Add, remove, and test connections to FortiGate devices
 - **Firewall Management**: List, create, update, and delete firewall rules
@@ -17,6 +17,8 @@ FortiGate MCP Server exposes 37 unique tools, 69 total tool-surface registration
 - **Routing Management**: Manage static routes and interfaces
 - **Virtual IP Management**: Manage virtual IPs (VIP/DNAT)
 - **Security Visibility**: Read-only insight into security profiles, admin accounts (secret fields redacted), SSL-VPN settings, and IPv4 local-in policies
+- **Config-Object Visibility**: Read-only address groups, service groups, schedules (recurring, one-time, groups), IP pools, and central SNAT maps
+- **Monitor Visibility**: Read-only system resources, license status, HA status (standalone reported as such), ARP table, and DHCP leases
 - **HTTP Transport**: MCP protocol over HTTP using FastMCP
 - **Docker Support**: Easy installation and deployment
 - **MCP Client Integration**: Works with Claude Desktop, Claude Code, Cursor, and other MCP-compatible clients
@@ -226,6 +228,21 @@ See `examples/cursor_mcp_config.json` for a working stdio configuration.
 - `list_admins` - List admin accounts (secret fields redacted; `vdom` is expected to be a no-op on this global-scope endpoint)
 - `get_sslvpn_settings` - Get SSL-VPN settings and portal bookmarks (bookmark credentials redacted)
 - `list_local_in_policies` - List IPv4 local-in policies (IPv6 `local-in-policy6` not covered)
+
+### Config-Object & Monitor Visibility (read-only)
+
+All take `device_id` and an optional `vdom`. A FortiOS 404 is reported as "not supported on this FortiOS version".
+
+- `list_address_groups` - List address groups
+- `list_service_groups` - List service groups
+- `list_schedules` - List recurring, one-time and group schedules
+- `list_ip_pools` - List IP pools
+- `list_central_snat_maps` - List central SNAT maps
+- `get_system_resources` - Latest CPU/memory/session usage values
+- `get_license_status` - Get license and subscription status
+- `get_ha_status` - Get HA peer status (empty result means standalone)
+- `get_arp_table` - Get ARP table (`interface` filter, `limit` default 100, max 500)
+- `list_dhcp_leases` - List DHCP leases (`interface` filter, `limit` default 100, max 500)
 
 ### System Commands
 
