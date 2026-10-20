@@ -323,3 +323,56 @@ def test_tool_through_registered_mcp_session(tmp_config_path):
         _serve(router)
         result = asyncio.run(call())
     assert "Policy 5" in result.content[0].text and "shadowed=2" in result.content[0].text
+
+
+class TestReviewRegressions:
+    """17-REVIEW fixes: false shadow/any_any claims and capped output."""
+
+    def test_application_match_never_shadows(self):
+        earlier = pol(1, application=[{"name": "HTTP"}])
+        later = pol(2)
+        assert ids(run([earlier, later]), "shadowed") == []
+
+    def test_url_category_and_srcaddr6_not_duplicates(self):
+        a = pol(1, **{"url-category": [{"id": 5}]})
+        b = pol(2)
+        assert ids(run([a, b]), "duplicate") == []
+
+    def test_negated_later_policy_not_shadowed_by_name_subset(self):
+        earlier = pol(1, src=["a", "b"])
+        later = pol(2, src="a", **{"srcaddr-negate": "enable"})
+        assert ids(run([earlier, later]), "shadowed") == []
+
+    def test_negated_later_policy_shadowed_by_match_all(self):
+        earlier = pol(1, src="all")
+        later = pol(2, src="a", **{"srcaddr-negate": "enable"})
+        assert ids(run([earlier, later]), "shadowed") == [2]
+
+    def test_negated_all_all_not_any_any(self):
+        p = pol(1, **{"srcaddr-negate": "enable"})
+        assert ids(run([p]), "any_any") == []
+
+
+def test_policy_hygiene_template_caps_findings():
+    from src.fortigate_mcp.formatting.templates import FortiGateTemplates
+
+    data = {
+        "summary": {"disabled": 150},
+        "findings": {"disabled": [{"policyid": i} for i in range(150)]},
+    }
+    text = FortiGateTemplates.policy_hygiene(data)
+    assert "Policy 99" in text and "Policy 100" not in text
+    assert "50 more not shown" in text
+
+
+def test_group_template_caps_entries_and_members():
+    from src.fortigate_mcp.formatting.templates import FortiGateTemplates
+
+    data = {"results": [
+        {"name": f"g{i}", "member": [{"name": f"m{j}"} for j in range(300)] if i == 0 else []}
+        for i in range(600)
+    ]}
+    text = FortiGateTemplates.address_groups(data)
+    assert "Showing 500 of 600 groups" in text
+    assert "g499" in text and "g500" not in text
+    assert "(100 more)" in text

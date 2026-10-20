@@ -44,6 +44,21 @@ _EXTRA_MATCH_KEYS = (
     "internet-service-src",
     "internet-service-name",
     "internet-service-src-name",
+    "internet-service-custom",
+    "internet-service-custom-group",
+    "internet-service-group",
+    "internet-service-src-custom",
+    "internet-service-src-custom-group",
+    "internet-service-src-group",
+    # NGFW-mode / IPv6 / ZTNA match conditions: an earlier policy carrying any
+    # of these matches only a subset of traffic and must never shadow.
+    "application",
+    "app-category",
+    "url-category",
+    "srcaddr6",
+    "dstaddr6",
+    "ztna-ems-tag",
+    "ztna-geo-tag",
 )
 _FINDING_KEYS = ("shadowed", "duplicate", "any_any", "permissive_any", "disabled")
 
@@ -124,6 +139,7 @@ class _Policy:
     service: FrozenSet[str]
     schedule: str
     complex_match: bool
+    negated: FrozenSet[str]
     raw_key: str
 
 
@@ -161,6 +177,7 @@ def _normalize(
     complex_match = any(_enabled(raw.get(k)) for k in _NEGATE_KEYS) or any(
         bool(_names(raw.get(k))) or _enabled(raw.get(k)) for k in _EXTRA_MATCH_KEYS
     )
+    negated = frozenset(k for k in _NEGATE_KEYS if _enabled(raw.get(k)))
     raw_key = repr(
         (
             sorted(srcintf), sorted(dstintf), sorted(src), sorted(dst),
@@ -172,7 +189,7 @@ def _normalize(
     )
     return _Policy(
         pid, enabled, action, srcintf, dstintf, src, dst, service, schedule,
-        complex_match, raw_key,
+        complex_match, negated, raw_key,
     )
 
 
@@ -183,6 +200,15 @@ def _covers(big: FrozenSet[str], small: FrozenSet[str], universe: Set[str]) -> b
     if big & universe:
         return True
     return small <= big
+
+
+def _covers_field(
+    big: FrozenSet[str], small: FrozenSet[str], universe: Set[str], small_negated: bool
+) -> bool:
+    """`_covers`, but a negated `small` is only covered by a match-all `big`."""
+    if small_negated:
+        return bool(big & universe)
+    return _covers(big, small, universe)
 
 
 def _is_all_addr(s: FrozenSet[str]) -> bool:
@@ -234,7 +260,11 @@ def analyze_policy_hygiene(
             findings["disabled"].append({"policyid": pol.pid})
             continue
 
-        if pol.action == "accept" and _is_all_service(pol.service):
+        if (
+            pol.action == "accept"
+            and _is_all_service(pol.service)
+            and not pol.negated
+        ):
             src_all, dst_all = _is_all_addr(pol.src), _is_all_addr(pol.dst)
             if src_all and dst_all:
                 findings["any_any"].append({"policyid": pol.pid})
@@ -255,12 +285,17 @@ def analyze_policy_hygiene(
                 continue
             if earlier.schedule != "always" and earlier.schedule != pol.schedule:
                 continue
+            # A negated field on the LATER policy inverts its match set, so a
+            # name-subset test is meaningless; only an earlier "match all"
+            # value provably covers it.
             if (
                 _covers(earlier.srcintf, pol.srcintf, _ALL_INTF)
                 and _covers(earlier.dstintf, pol.dstintf, _ALL_INTF)
-                and _covers(earlier.src, pol.src, {"all"})
-                and _covers(earlier.dst, pol.dst, {"all"})
-                and _covers(earlier.service, pol.service, _ALL_SERVICE)
+                and _covers_field(earlier.src, pol.src, {"all"}, "srcaddr-negate" in pol.negated)
+                and _covers_field(earlier.dst, pol.dst, {"all"}, "dstaddr-negate" in pol.negated)
+                and _covers_field(
+                    earlier.service, pol.service, _ALL_SERVICE, "service-negate" in pol.negated
+                )
             ):
                 findings["shadowed"].append(
                     {
