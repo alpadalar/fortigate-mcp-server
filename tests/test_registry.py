@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastmcp import Client
 from fastmcp import FastMCP as PrefectFastMCP
-from mcp.types import TextContent
+from mcp_types import TextContent
 
 from src.fortigate_mcp.registry import register_tools
 

@@ -1,6 +1,6 @@
 """Security profile, SSL-VPN, and local-in policy visibility tools for FortiGate MCP."""
 from typing import Any, Dict, List, Optional
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 from .base import FortiGateTool
 from ..core.fortigate import FortiGateAPIError
 from ..validation import redact_sensitive_fields

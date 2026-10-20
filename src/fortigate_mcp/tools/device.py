@@ -8,7 +8,7 @@ This module provides MCP tools for managing FortiGate devices:
 - VDOM discovery
 """
 from typing import Dict, Any, List, Optional
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 from .base import FortiGateTool
 from ..core.logging import register_secrets
 from ..validation import validate_object_name

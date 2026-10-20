@@ -1,6 +1,6 @@
 """System administrator account visibility tools for FortiGate MCP."""
 from typing import Any, Dict, List, Optional
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 from .base import FortiGateTool
 from ..validation import redact_sensitive_fields
 

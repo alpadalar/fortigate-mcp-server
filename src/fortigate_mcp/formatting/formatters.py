@@ -7,7 +7,7 @@ and user-friendly formatted output.
 """
 import json
 from typing import Any, Dict, List, Optional
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 from .templates import FortiGateTemplates
 
 class FortiGateFormatters:

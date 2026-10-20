@@ -1,6 +1,6 @@
 """Virtual IP management tools for FortiGate MCP."""
 from typing import Dict, Any, List, Optional
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 from .base import FortiGateTool
 
 class VirtualIPTools(FortiGateTool):

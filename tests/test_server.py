@@ -10,7 +10,7 @@ import asyncio
 
 import pytest
 from fastmcp import Client
-from mcp.types import TextContent
+from mcp_types import TextContent
 from unittest.mock import MagicMock
 
 from src.fortigate_mcp.core.fortigate import FortiGateAPI

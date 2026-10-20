@@ -33,7 +33,8 @@ mcp 1.28.1, fastmcp 3.4.0 (resolved within the ``mcp>=1.23.0,<2.0`` /
 ``fastmcp>=3.2.0`` PyPI bands). Deliberately regenerated in Phase 11 (plan
 11-01) to the v1.1 surface (34 stdio / 35 HTTP / 37 unique) after a
 mechanical additive-only diff proof (removed/changed both empty; evidence
-in the phase's planning records).
+in the phase's planning records). Re-verified byte-identical in Phase 13
+on fastmcp 4.1.2 (mcp-types 2.3, ``fastmcp>=4.1.2,<5``).
 
 Adapted from the working reference implementation at
 ``/media/workspace/NetOpsMCP/tests/test_tool_schema_snapshot.py``. The two
@@ -218,7 +219,7 @@ def _stdio_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:
         return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
-    return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
+    return {name: {"inputSchema": _normalize_schema(t.input_schema)} for name, t in mcp_tools.items()}
 
 
 def _http_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:
@@ -229,7 +230,7 @@ def _http_snapshot(server: Any) -> Dict[str, Dict[str, Any]]:
         return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
-    return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
+    return {name: {"inputSchema": _normalize_schema(t.input_schema)} for name, t in mcp_tools.items()}
 
 
 @lru_cache(maxsize=1)

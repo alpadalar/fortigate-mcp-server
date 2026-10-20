@@ -31,7 +31,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastmcp import Client
 from fastmcp import FastMCP as PrefectFastMCP
-from mcp.types import TextContent
+from mcp_types import TextContent
 
 from src.fortigate_mcp.registry import register_tools
 from src.fortigate_mcp.server import FortiGateMCPServer
@@ -95,7 +95,7 @@ def _prefect_stdio_snapshot() -> Dict[str, Dict[str, Any]]:
         return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
-    return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
+    return {name: {"inputSchema": _normalize_schema(t.input_schema)} for name, t in mcp_tools.items()}
 
 
 def _prefect_http_snapshot() -> Dict[str, Dict[str, Any]]:
@@ -108,7 +108,7 @@ def _prefect_http_snapshot() -> Dict[str, Dict[str, Any]]:
         return {tool.name: tool.to_mcp_tool() for tool in tools}
 
     mcp_tools = asyncio.run(_get())
-    return {name: {"inputSchema": _normalize_schema(t.inputSchema)} for name, t in mcp_tools.items()}
+    return {name: {"inputSchema": _normalize_schema(t.input_schema)} for name, t in mcp_tools.items()}
 
 
 @lru_cache(maxsize=1)

@@ -29,7 +29,7 @@ from typing import Annotated, Any, Callable, List, Literal, Optional, cast
 
 from fastmcp.exceptions import ToolError
 from pydantic import Field
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 
 from .formatting import FortiGateFormatters
 from .tools.definitions import (

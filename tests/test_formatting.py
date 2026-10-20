@@ -5,7 +5,7 @@ Formatting and templates tests
 
 from src.fortigate_mcp.formatting.templates import FortiGateTemplates
 from src.fortigate_mcp.formatting.formatters import FortiGateFormatters
-from mcp.types import TextContent
+from mcp_types import TextContent
 
 
 class TestFortiGateTemplates:

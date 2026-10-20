@@ -13,7 +13,7 @@ consistent behavior and error handling across the MCP server.
 import re
 import time
 from typing import Any, Awaitable, Callable, List, Optional, cast
-from mcp.types import TextContent as Content
+from mcp_types import TextContent as Content
 from ..core.fortigate import FortiGateAPI, FortiGateAPIError, FortiGateManager
 from ..core.logging import get_logger, log_tool_call
 from ..formatting import FortiGateFormatters
