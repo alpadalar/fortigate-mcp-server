@@ -3,6 +3,8 @@ Formatting and templates tests
 """
 
 
+import pytest
+
 from src.fortigate_mcp.formatting.templates import FortiGateTemplates
 from src.fortigate_mcp.formatting.formatters import FortiGateFormatters
 from mcp_types import TextContent
@@ -1069,3 +1071,166 @@ class TestFortiGateFormatters:
         assert len(result) == 1
         assert isinstance(result[0], TextContent)
         assert "Local-In Policies" in result[0].text
+
+
+class TestPhase15ConfigObjectTemplates:
+    """Phase 15 config-object templates: groups, schedules, pools, central SNAT."""
+
+    def test_address_groups(self):
+        data = {"results": [{"name": "grp", "member": [{"name": "a"}, {"name": "b"}],
+                             "comment": "c"}]}
+        out = FortiGateTemplates.address_groups(data)
+        assert "grp (2 members)" in out and "a, b" in out and "Comment: c" in out
+
+    @pytest.mark.parametrize("data", [{}, {"results": []}, {"results": None},
+                                      {"results": "x"}, None])
+    def test_groups_empty_or_malformed(self, data):
+        assert "No address groups configured" in FortiGateTemplates.address_groups(data)
+        assert "No service groups configured" in FortiGateTemplates.service_groups(data)
+
+    def test_service_groups_members_and_malformed_member(self):
+        data = {"results": [{"name": "sg", "member": ["HTTP", {"name": "DNS"}]},
+                            {"name": "bad", "member": "notalist"}]}
+        out = FortiGateTemplates.service_groups(data)
+        assert "sg (2 members)" in out and "HTTP, DNS" in out
+        assert "bad (0 members)" in out
+
+    def test_schedules_all_categories(self):
+        data = {
+            "recurring": {"status": "ok", "schedules": [
+                {"name": "wk", "day": "monday tuesday", "start": "08:00", "end": "17:00"}]},
+            "onetime": {"status": "ok", "schedules": [
+                {"name": "once", "start": "a", "end": "b", "expiration-days": 3}]},
+            "group": {"status": "ok", "schedules": [
+                {"name": "sg", "member": [{"name": "wk"}]}]},
+        }
+        out = FortiGateTemplates.schedules(data)
+        assert "wk: day monday tuesday, start 08:00, end 17:00" in out
+        assert "once: start a, end b, expiration-days 3" in out
+        assert "sg: members wk" in out
+
+    def test_schedules_error_distinct_from_empty(self):
+        data = {"recurring": {"status": "error", "error": "denied"},
+                "onetime": {"status": "ok", "schedules": []}}
+        out = FortiGateTemplates.schedules(data)
+        assert "Recurring Schedules: query failed - denied" in out
+        assert "One-Time Schedules: none configured" in out
+        assert "Schedule Groups: not queried" in out
+
+    def test_schedules_malformed(self):
+        assert "Schedules" in FortiGateTemplates.schedules(None)  # type: ignore[arg-type]
+        out = FortiGateTemplates.schedules({"recurring": {"status": "ok", "schedules": [1]}})
+        assert "none configured" in out
+
+    def test_ip_pools(self):
+        data = {"results": [{"name": "p", "type": "overload", "startip": "1.1.1.1",
+                             "endip": "1.1.1.9", "source-startip": "10.0.0.1",
+                             "source-endip": "10.0.0.9", "comments": "hi"}]}
+        out = FortiGateTemplates.ip_pools(data)
+        assert "1.1.1.1 - 1.1.1.9" in out and "Source range: 10.0.0.1" in out
+        assert "Comments: hi" in out
+        assert "No IP pools configured" in FortiGateTemplates.ip_pools({})
+
+    def test_central_snat_maps(self):
+        data = {"results": [{"policyid": 1, "status": "enable",
+                             "srcintf": [{"name": "port1"}], "dstintf": ["port2"],
+                             "orig-addr": [{"name": "all"}], "dst-addr": [{"name": "all"}],
+                             "nat-ippool": [{"name": "p"}], "protocol": 0, "comments": "x"}]}
+        out = FortiGateTemplates.central_snat_maps(data)
+        assert "Entry 1" in out and "port1 -> port2" in out and "NAT IP pool: p" in out
+        assert "No central SNAT map entries configured" in FortiGateTemplates.central_snat_maps(
+            {"results": []})
+
+    def test_formatter_wrappers(self):
+        for name in ("address_groups", "service_groups", "schedules", "ip_pools",
+                     "central_snat_maps"):
+            res = getattr(FortiGateFormatters, f"format_{name}")({})
+            assert isinstance(res[0], TextContent)
+
+
+class TestPhase15MonitorTemplates:
+    """Phase 15 monitor templates: resources, license, HA, ARP, DHCP."""
+
+    def test_system_resources_latest_only(self):
+        data = {"results": {
+            "cpu": [{"interval": "10-min", "current": 99}, {"interval": "1-min", "current": 12,
+                    "historical": [1, 2, 3]}],
+            "mem": [{"interval": "1-min", "current": 40}],
+        }}
+        out = FortiGateTemplates.system_resources(data)
+        assert "cpu: 12 (1-min)" in out and "mem: 40 (1-min)" in out
+        assert "99" not in out and "historical" not in out and "[1" not in out
+
+    def test_system_resources_list_shape_and_unknown(self):
+        data = {"results": [{"name": "session", "current": 5}, {"resource": "foo", "current": 1}]}
+        out = FortiGateTemplates.system_resources(data)
+        assert "session: 5" in out and "foo: 1" in out
+
+    @pytest.mark.parametrize("data", [{}, {"results": {}}, {"results": []}, None])
+    def test_system_resources_empty(self, data):
+        assert "No resource data" in FortiGateTemplates.system_resources(data)
+
+    def test_system_resources_odd_values(self):
+        out = FortiGateTemplates.system_resources({"results": {"x": [], "y": 7, "z": None}})
+        assert "x: no data" in out and "y: 7" in out and "z: no data" in out
+
+    def test_license_status_dict_and_list(self):
+        data = {"results": {"forticare": {"status": "licensed", "expires": "2027-01-01"}}}
+        out = FortiGateTemplates.license_status(data)
+        assert "forticare: status licensed, expires 2027-01-01" in out
+        out2 = FortiGateTemplates.license_status(
+            {"results": [{"name": "av", "status": "expired", "expiry": 5}]})
+        assert "av: status expired, expires 5" in out2
+
+    def test_license_status_fallback_scalars_only(self):
+        out = FortiGateTemplates.license_status(
+            {"results": {"x": {"a": 1, "nested": {"k": "v"}}, "y": "str"}})
+        assert "x: a: 1" in out and "nested" not in out and "y: str" in out
+        assert "No license data" in FortiGateTemplates.license_status({})
+
+    @pytest.mark.parametrize("data", [{"results": None}, {"results": []}, {"results": {}}, {}])
+    def test_ha_standalone(self, data):
+        out = FortiGateTemplates.ha_status(data)
+        assert "Mode: standalone (no HA peers configured)" in out
+        assert "error" not in out.lower()
+
+    def test_ha_peers(self):
+        data = {"results": [{"hostname": "fw2", "serial_no": "FGT123", "priority": 100,
+                             "role": "secondary"}]}
+        out = FortiGateTemplates.ha_status(data)
+        assert "Mode: HA" in out and "fw2" in out and "FGT123" in out and "secondary" in out
+
+    def test_arp_privacy_and_cap(self):
+        data = {"results": [{"ip": "10.0.0.1", "mac": "aa:bb", "interface": "port1", "age": 3}],
+                "total": 50, "limit": 1}
+        out = FortiGateTemplates.arp_table(data)
+        assert "treat as sensitive" in out
+        assert "Showing 1 of 50 entries (limit 1)" in out
+        assert "10.0.0.1  aa:bb  port1  age 3" in out
+
+    def test_arp_not_capped_no_line(self):
+        data = {"results": [{"ip": "10.0.0.1"}], "total": 1, "limit": 20}
+        assert "Showing" not in FortiGateTemplates.arp_table(data)
+
+    def test_arp_empty(self):
+        assert "No ARP entries" in FortiGateTemplates.arp_table({})
+        assert "on interface port9" in FortiGateTemplates.arp_table(
+            {"results": [], "interface": "port9"})
+
+    def test_dhcp(self):
+        data = {"results": [{"ip": "10.0.0.5", "mac": "cc:dd", "hostname": "pc",
+                             "interface": "lan", "expire_time": 99}],
+                "total": 3, "limit": 1, "interface": "lan"}
+        out = FortiGateTemplates.dhcp_leases(data)
+        assert "treat as sensitive" in out and "Showing 1 of 3 entries (limit 1)" in out
+        assert "10.0.0.5  cc:dd  pc  lan  99" in out
+
+    def test_dhcp_empty_and_malformed(self):
+        assert "No DHCP leases" in FortiGateTemplates.dhcp_leases({"results": "x"})
+        assert "on interface lan" in FortiGateTemplates.dhcp_leases({"interface": "lan"})
+
+    def test_formatter_wrappers(self):
+        for name in ("system_resources", "license_status", "ha_status", "arp_table",
+                     "dhcp_leases"):
+            res = getattr(FortiGateFormatters, f"format_{name}")({})
+            assert isinstance(res[0], TextContent)

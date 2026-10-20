@@ -273,6 +273,56 @@ class FortiGateFormatters:
         return [Content(type="text", text=formatted_text)]
 
     @staticmethod
+    def format_address_groups(data: Dict[str, Any]) -> List[Content]:
+        """Format address groups response."""
+        return [Content(type="text", text=FortiGateTemplates.address_groups(data))]
+
+    @staticmethod
+    def format_service_groups(data: Dict[str, Any]) -> List[Content]:
+        """Format service groups response."""
+        return [Content(type="text", text=FortiGateTemplates.service_groups(data))]
+
+    @staticmethod
+    def format_schedules(data: Dict[str, Any]) -> List[Content]:
+        """Format schedules response."""
+        return [Content(type="text", text=FortiGateTemplates.schedules(data))]
+
+    @staticmethod
+    def format_ip_pools(data: Dict[str, Any]) -> List[Content]:
+        """Format ip pools response."""
+        return [Content(type="text", text=FortiGateTemplates.ip_pools(data))]
+
+    @staticmethod
+    def format_central_snat_maps(data: Dict[str, Any]) -> List[Content]:
+        """Format central snat maps response."""
+        return [Content(type="text", text=FortiGateTemplates.central_snat_maps(data))]
+
+    @staticmethod
+    def format_system_resources(data: Dict[str, Any]) -> List[Content]:
+        """Format system resources response."""
+        return [Content(type="text", text=FortiGateTemplates.system_resources(data))]
+
+    @staticmethod
+    def format_license_status(data: Dict[str, Any]) -> List[Content]:
+        """Format license status response."""
+        return [Content(type="text", text=FortiGateTemplates.license_status(data))]
+
+    @staticmethod
+    def format_ha_status(data: Dict[str, Any]) -> List[Content]:
+        """Format ha status response."""
+        return [Content(type="text", text=FortiGateTemplates.ha_status(data))]
+
+    @staticmethod
+    def format_arp_table(data: Dict[str, Any]) -> List[Content]:
+        """Format arp table response."""
+        return [Content(type="text", text=FortiGateTemplates.arp_table(data))]
+
+    @staticmethod
+    def format_dhcp_leases(data: Dict[str, Any]) -> List[Content]:
+        """Format dhcp leases response."""
+        return [Content(type="text", text=FortiGateTemplates.dhcp_leases(data))]
+
+    @staticmethod
     def format_json_response(data: Any, title: Optional[str] = None) -> List[Content]:
         """Format JSON response data.
         

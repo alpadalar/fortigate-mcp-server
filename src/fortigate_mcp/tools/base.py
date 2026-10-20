@@ -98,7 +98,11 @@ class FortiGateTool:
                          'service_objects', 'static_routes', 'interfaces',
                          'vdoms', 'virtual_ips', 'virtual_ip_detail',
                          'security_profiles', 'admin_accounts',
-                         'sslvpn_settings', 'local_in_policies'
+                         'sslvpn_settings', 'local_in_policies',
+                         'address_groups', 'service_groups', 'schedules',
+                         'ip_pools', 'central_snat_maps', 'system_resources',
+                         'license_status', 'ha_status', 'arp_table',
+                         'dhcp_leases'
 
         Returns:
             List of Content objects formatted according to resource type
@@ -155,6 +159,26 @@ class FortiGateTool:
             return FortiGateFormatters.format_sslvpn_settings(data, portals_data)
         elif resource_type == "local_in_policies":
             return FortiGateFormatters.format_local_in_policies(data)
+        elif resource_type == "address_groups":
+            return FortiGateFormatters.format_address_groups(data)
+        elif resource_type == "service_groups":
+            return FortiGateFormatters.format_service_groups(data)
+        elif resource_type == "schedules":
+            return FortiGateFormatters.format_schedules(data)
+        elif resource_type == "ip_pools":
+            return FortiGateFormatters.format_ip_pools(data)
+        elif resource_type == "central_snat_maps":
+            return FortiGateFormatters.format_central_snat_maps(data)
+        elif resource_type == "system_resources":
+            return FortiGateFormatters.format_system_resources(data)
+        elif resource_type == "license_status":
+            return FortiGateFormatters.format_license_status(data)
+        elif resource_type == "ha_status":
+            return FortiGateFormatters.format_ha_status(data)
+        elif resource_type == "arp_table":
+            return FortiGateFormatters.format_arp_table(data)
+        elif resource_type == "dhcp_leases":
+            return FortiGateFormatters.format_dhcp_leases(data)
         else:
             # Fallback to JSON formatting for unknown types
             return FortiGateFormatters.format_json_response(data)
@@ -206,6 +230,27 @@ class FortiGateTool:
             error_msg = "Connection failed. Check device network settings."
         
         return FortiGateFormatters.format_error_response(operation, device_id, error_msg)
+
+    def _handle_visibility_error(
+        self, operation: str, device_id: str, error: Exception
+    ) -> List[Content]:
+        """Error handler for Phase 15 visibility tools.
+
+        HTTP 404 means the endpoint does not exist on this FortiOS version and
+        renders a fixed message (raw exception text is never echoed). Every
+        other error is delegated unchanged to `_handle_error`.
+        """
+        if isinstance(error, FortiGateAPIError) and error.status_code == 404:
+            self.logger.error(
+                f"Failed to {operation} on device {self._safe_id(device_id)}: "
+                f"endpoint returned 404"
+            )
+            return FortiGateFormatters.format_error_response(
+                operation,
+                device_id,
+                "Endpoint not supported on this FortiOS version (HTTP 404).",
+            )
+        return self._handle_error(operation, device_id, error)
 
     async def _execute_with_logging(self, operation: str, device_id: str,
                                    func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any) -> List[Content]:

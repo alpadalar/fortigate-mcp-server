@@ -5,7 +5,7 @@ This module provides structured templates for formatting FortiGate API responses
 into human-readable and consistent output formats. Templates are organized by
 resource type and operation.
 """
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 class FortiGateTemplates:
@@ -1006,6 +1006,334 @@ class FortiGateTemplates:
             lines.append("No local-in policies configured")
 
         return "\n".join(lines)
+
+    # ------------------------------------------------------------------
+    # Phase 15: config-object and monitor visibility templates
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _member_names(members: Any) -> str:
+        """Render a FortiOS member list ({"name": x} dicts or plain strings)."""
+        if isinstance(members, (str, dict)):
+            members = [members]
+        if not isinstance(members, (list, tuple)):
+            return ""
+        names = []
+        for member in members:
+            if isinstance(member, dict):
+                names.append(str(member.get("name", "unknown")))
+            else:
+                names.append(str(member))
+        return ", ".join(names)
+
+    @staticmethod
+    def _results_list(data: Any) -> List[Any]:
+        """Return data["results"] as a list of dict entries; [] when malformed."""
+        results = data.get("results") if isinstance(data, dict) else None
+        if isinstance(results, dict):
+            results = [results]
+        if not isinstance(results, list):
+            return []
+        return [r for r in results if isinstance(r, dict)]
+
+    @staticmethod
+    def _group_listing(title: str, empty_text: str, data: Any) -> str:
+        lines = [title, ""]
+        groups = FortiGateTemplates._results_list(data)
+        if not groups:
+            lines.append(empty_text)
+            return "\n".join(lines)
+        for group in groups:
+            members = group.get("member")
+            count = len(members) if isinstance(members, list) else 0
+            lines.append(f"{group.get('name', 'Unnamed')} ({count} members)")
+            names = FortiGateTemplates._member_names(members)
+            if names:
+                lines.append(f"  Members: {names}")
+            if group.get("comment"):
+                lines.append(f"  Comment: {group['comment']}")
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def address_groups(data: Dict[str, Any]) -> str:
+        """Format address groups (cmdb/firewall/addrgrp)."""
+        return FortiGateTemplates._group_listing(
+            "Address Groups", "No address groups configured", data
+        )
+
+    @staticmethod
+    def service_groups(data: Dict[str, Any]) -> str:
+        """Format service groups (cmdb/firewall.service/group)."""
+        return FortiGateTemplates._group_listing(
+            "Service Groups", "No service groups configured", data
+        )
+
+    @staticmethod
+    def schedules(data: Dict[str, Any]) -> str:
+        """Format schedules from recurring/onetime/group categories.
+
+        Args:
+            data: Dict keyed "recurring", "onetime", "group"; each value
+                {"status": "ok", "schedules": [...]} or
+                {"status": "error", "error": "<text>"}.
+        """
+        categories = [
+            ("recurring", "Recurring Schedules"),
+            ("onetime", "One-Time Schedules"),
+            ("group", "Schedule Groups"),
+        ]
+        lines = ["Schedules", ""]
+        for key, title in categories:
+            category = data.get(key) if isinstance(data, dict) else None
+            if not isinstance(category, dict) or not category:
+                lines.extend([f"{title}: not queried", ""])
+                continue
+            if category.get("status") == "error":
+                lines.extend(
+                    [f"{title}: query failed - {category.get('error', 'unknown error')}", ""]
+                )
+                continue
+            items = [s for s in (category.get("schedules") or []) if isinstance(s, dict)]
+            if not items:
+                lines.extend([f"{title}: none configured", ""])
+                continue
+            lines.append(title)
+            for item in items:
+                name = item.get("name", "Unnamed")
+                if key == "recurring":
+                    lines.append(
+                        f"  {name}: day {item.get('day') or 'N/A'}, "
+                        f"start {item.get('start', 'N/A')}, end {item.get('end', 'N/A')}"
+                    )
+                elif key == "onetime":
+                    line = (
+                        f"  {name}: start {item.get('start', 'N/A')}, "
+                        f"end {item.get('end', 'N/A')}"
+                    )
+                    if "expiration-days" in item:
+                        line += f", expiration-days {item['expiration-days']}"
+                    lines.append(line)
+                else:
+                    lines.append(
+                        f"  {name}: members {FortiGateTemplates._member_names(item.get('member')) or 'none'}"
+                    )
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def ip_pools(data: Dict[str, Any]) -> str:
+        """Format IP pools (cmdb/firewall/ippool)."""
+        lines = ["IP Pools", ""]
+        pools = FortiGateTemplates._results_list(data)
+        if not pools:
+            lines.append("No IP pools configured")
+            return "\n".join(lines)
+        for pool in pools:
+            lines.extend([
+                f"{pool.get('name', 'Unnamed')}",
+                f"  Type: {pool.get('type', 'unknown')}",
+                f"  Range: {pool.get('startip', 'N/A')} - {pool.get('endip', 'N/A')}",
+            ])
+            if pool.get("source-startip") or pool.get("source-endip"):
+                lines.append(
+                    f"  Source range: {pool.get('source-startip', 'N/A')} - "
+                    f"{pool.get('source-endip', 'N/A')}"
+                )
+            if pool.get("comments"):
+                lines.append(f"  Comments: {pool['comments']}")
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def central_snat_maps(data: Dict[str, Any]) -> str:
+        """Format central SNAT map entries (cmdb/firewall/central-snat-map)."""
+        lines = ["Central SNAT Maps", ""]
+        entries = FortiGateTemplates._results_list(data)
+        if not entries:
+            lines.append("No central SNAT map entries configured")
+            return "\n".join(lines)
+        names = FortiGateTemplates._member_names
+        for entry in entries:
+            lines.extend([
+                f"Entry {entry.get('policyid', 'N/A')}",
+                f"  Status: {entry.get('status', 'unknown')}",
+                f"  Interfaces: {names(entry.get('srcintf')) or 'any'} -> "
+                f"{names(entry.get('dstintf')) or 'any'}",
+                f"  Original address: {names(entry.get('orig-addr')) or 'any'}",
+                f"  Destination address: {names(entry.get('dst-addr')) or 'any'}",
+                f"  Protocol: {entry.get('protocol', 'any')}",
+                f"  NAT IP pool: {names(entry.get('nat-ippool')) or 'none'}",
+            ])
+            if entry.get("comments"):
+                lines.append(f"  Comments: {entry['comments']}")
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _shortest_interval_key(label: Any) -> int:
+        """Sort key so '1-min' < '10-min' < '30-min' < '1-hour' etc."""
+        text = str(label).lower()
+        digits = "".join(ch for ch in text.split("-")[0] if ch.isdigit())
+        number = int(digits) if digits else 10**6
+        if "hour" in text:
+            number *= 60
+        elif "day" in text:
+            number *= 1440
+        return number
+
+    @staticmethod
+    def system_resources(data: Dict[str, Any]) -> str:
+        """Format the latest value per resource (monitor/system/resource/usage)."""
+        lines = ["System Resources", ""]
+        results = data.get("results") if isinstance(data, dict) else None
+        pairs: List[Any] = []
+        if isinstance(results, dict):
+            pairs = list(results.items())
+        elif isinstance(results, list):
+            for item in results:
+                if isinstance(item, dict):
+                    name = item.get("name") or item.get("resource")
+                    if name is not None:
+                        pairs.append((name, item))
+        if not pairs:
+            lines.append("No resource data")
+            return "\n".join(lines)
+        for name, value in pairs:
+            latest: Any = None
+            interval = None
+            if isinstance(value, list):
+                buckets = [b for b in value if isinstance(b, dict) and "current" in b]
+                if buckets:
+                    best = min(
+                        buckets,
+                        key=lambda b: FortiGateTemplates._shortest_interval_key(
+                            b.get("interval", "")
+                        ),
+                    )
+                    latest = best["current"]
+                    interval = best.get("interval")
+            elif isinstance(value, dict):
+                latest = value.get("current")
+                interval = value.get("interval")
+            elif isinstance(value, (int, float, str)):
+                latest = value
+            if latest is None:
+                lines.append(f"{name}: no data")
+            elif interval:
+                lines.append(f"{name}: {latest} ({interval})")
+            else:
+                lines.append(f"{name}: {latest}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def license_status(data: Dict[str, Any]) -> str:
+        """Format license/contract status (monitor/license/status)."""
+        lines = ["License Status", ""]
+        results = data.get("results") if isinstance(data, dict) else None
+        entries: List[Any] = []
+        if isinstance(results, dict):
+            entries = list(results.items())
+        elif isinstance(results, list):
+            entries = [
+                (item.get("name", f"entry {i + 1}"), item)
+                for i, item in enumerate(results)
+                if isinstance(item, dict)
+            ]
+        if not entries:
+            lines.append("No license data")
+            return "\n".join(lines)
+        for name, entry in entries:
+            if not isinstance(entry, dict):
+                lines.append(f"{name}: {entry}")
+                continue
+            status = entry.get("status")
+            expiry = entry.get("expires") or entry.get("expiry") or entry.get("expiration")
+            if status is not None or expiry is not None:
+                line = f"{name}: status {status if status is not None else 'unknown'}"
+                if expiry is not None:
+                    line += f", expires {expiry}"
+                lines.append(line)
+            else:
+                scalars = [
+                    f"{k}: {v}"
+                    for k, v in list(entry.items())[:10]
+                    if isinstance(v, (str, int, float, bool))
+                ]
+                lines.append(f"{name}: " + (", ".join(scalars) if scalars else "no details"))
+        return "\n".join(lines)
+
+    @staticmethod
+    def ha_status(data: Dict[str, Any]) -> str:
+        """Format HA peers; empty results means standalone (not an error)."""
+        lines = ["HA Status", ""]
+        results = data.get("results") if isinstance(data, dict) else None
+        if isinstance(results, dict):
+            results = [results] if results else []
+        peers = [p for p in results if isinstance(p, dict)] if isinstance(results, list) else []
+        if not peers:
+            lines.append("Mode: standalone (no HA peers configured)")
+            return "\n".join(lines)
+        lines.append("Mode: HA")
+        lines.append(f"Peers: {len(peers)}")
+        lines.append("")
+        for peer in peers:
+            lines.append(f"{peer.get('hostname', 'unknown')}")
+            if peer.get("serial_no") is not None:
+                lines.append(f"  Serial: {peer['serial_no']}")
+            if peer.get("priority") is not None:
+                lines.append(f"  Priority: {peer['priority']}")
+            if peer.get("role") is not None:
+                lines.append(f"  Role: {peer['role']}")
+            elif peer.get("primary") is not None:
+                lines.append(f"  Primary: {peer['primary']}")
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _capped_table(
+        title: str, empty_text: str, rows: List[str], data: Dict[str, Any], count: int
+    ) -> str:
+        interface = data.get("interface")
+        lines = [title, "Note: contains MAC addresses and hostnames - treat as sensitive", ""]
+        if not rows:
+            suffix = f" on interface {interface}" if interface else ""
+            lines.append(empty_text + suffix)
+            return "\n".join(lines)
+        total = data.get("total")
+        if isinstance(total, int) and not isinstance(total, bool) and total > count:
+            lines.append(f"Showing {count} of {total} entries (limit {data.get('limit', count)})")
+            lines.append("")
+        lines.extend(rows)
+        return "\n".join(lines)
+
+    @staticmethod
+    def arp_table(data: Dict[str, Any]) -> str:
+        """Format ARP entries; data carries tool-set total/limit/interface."""
+        entries = FortiGateTemplates._results_list(data)
+        rows = [
+            f"{e.get('ip', 'N/A')}  {e.get('mac', 'N/A')}  {e.get('interface', 'N/A')}"
+            f"  age {e.get('age', 'N/A')}"
+            for e in entries
+        ]
+        return FortiGateTemplates._capped_table(
+            "ARP Table", "No ARP entries", rows, data, len(entries)
+        )
+
+    @staticmethod
+    def dhcp_leases(data: Dict[str, Any]) -> str:
+        """Format DHCP leases; data carries tool-set total/limit/interface."""
+        entries = FortiGateTemplates._results_list(data)
+        rows = []
+        for e in entries:
+            state = e.get("expire_time", e.get("expire", e.get("status", "N/A")))
+            rows.append(
+                f"{e.get('ip', 'N/A')}  {e.get('mac', 'N/A')}  {e.get('hostname') or '-'}"
+                f"  {e.get('interface', 'N/A')}  {state}"
+            )
+        return FortiGateTemplates._capped_table(
+            "DHCP Leases", "No DHCP leases", rows, data, len(entries)
+        )
 
     @staticmethod
     def health_status(status: str, details: Dict[str, Any]) -> str:
