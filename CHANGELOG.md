@@ -55,6 +55,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unlocked `uv pip install --system -e .`, so the built image's dependency graph is
   byte-identical to the audited `uv.lock` (CI-05)
 
+- `fastmcp` upgraded to `>=4.1.2,<5` (locked 4.1.2). The direct `mcp` dependency is
+  replaced by `mcp-types>=2.3,<3` (locked 2.3.0); `TextContent` is now imported from
+  `mcp_types`. `mcp` 2.3.0 remains only as a transitive dependency of fastmcp. The MCP
+  tool surface and the golden schemas are unchanged
+- The SDK-engine test halves were retired because mcp 2 removed its bundled FastMCP
+  module; every gate, registry and engine scenario now runs on the fastmcp engine
+- Added an offline stdio smoke test that spawns the server and compares its tool names
+  with the golden
+- Rollback: to revert, pin `fastmcp==3.4.10` and `mcp>=1.30,<2.0` (the last verified
+  pair), restore `from mcp.types import TextContent`, and relock
+
 ### Security
 
 - `fastmcp` dependency ceiling raised from `>=2.11,<3` to `>=3.2.0` (resolved 3.4.0),
