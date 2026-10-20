@@ -1056,3 +1056,61 @@ class TestFortiGateAPINewEndpointsRespx:
             result = self.api.get_local_in_policies()
 
         assert result == {"status": "success"}
+
+
+PHASE15_ENDPOINTS = [
+    ("get_address_groups", "cmdb/firewall/addrgrp"),
+    ("get_service_groups", "cmdb/firewall.service/group"),
+    ("get_recurring_schedules", "cmdb/firewall.schedule/recurring"),
+    ("get_onetime_schedules", "cmdb/firewall.schedule/onetime"),
+    ("get_schedule_groups", "cmdb/firewall.schedule/group"),
+    ("get_ip_pools", "cmdb/firewall/ippool"),
+    ("get_central_snat_maps", "cmdb/firewall/central-snat-map"),
+    ("get_system_resource_usage", "monitor/system/resource/usage"),
+    ("get_license_status", "monitor/license/status"),
+    ("get_ha_peers", "monitor/system/ha-peer"),
+    ("get_arp_table", "monitor/network/arp"),
+    ("get_dhcp_leases", "monitor/system/dhcp"),
+]
+
+
+class TestPhase15ApiMethods:
+    """Wire-level GET/path/vdom/404 behavior of the Phase 15 API methods."""
+
+    BODY = {"results": [], "status": "success"}
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10", api_token="test-token-not-real", vdom="root"
+        )
+        self.api = FortiGateAPI("test_device", config)
+
+    def _router(self, endpoint, response):
+        router = respx.mock(assert_all_mocked=True, assert_all_called=True)
+        router.route(
+            method="GET", path__regex=r"^/api/v2/" + endpoint.replace(".", r"\.") + r"$"
+        ).mock(return_value=response)
+        return router
+
+    @pytest.mark.parametrize("method,endpoint", PHASE15_ENDPOINTS)
+    def test_default_vdom_and_body(self, method, endpoint):
+        with self._router(endpoint, httpx.Response(200, json=self.BODY)) as router:
+            result = getattr(self.api, method)()
+            req = router.calls.last.request
+        assert result == self.BODY
+        assert req.method == "GET"
+        assert req.url.params["vdom"] == "root"
+
+    @pytest.mark.parametrize("method,endpoint", PHASE15_ENDPOINTS)
+    def test_vdom_override(self, method, endpoint):
+        with self._router(endpoint, httpx.Response(200, json=self.BODY)) as router:
+            getattr(self.api, method)(vdom="vd1")
+            req = router.calls.last.request
+        assert req.url.params["vdom"] == "vd1"
+
+    @pytest.mark.parametrize("method,endpoint", PHASE15_ENDPOINTS)
+    def test_404_raises_with_status(self, method, endpoint):
+        with self._router(endpoint, httpx.Response(404, json={"status": "error"})):
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                getattr(self.api, method)()
+        assert exc_info.value.status_code == 404
