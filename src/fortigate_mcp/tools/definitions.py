@@ -749,3 +749,60 @@ Returns:
 - A 'Showing X of N' line when the result is capped
 - On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
 """
+
+GET_IPSEC_TUNNEL_STATUS_DESC = """
+Get IPsec VPN tunnel status of a FortiGate device (read-only).
+
+Uses the monitor endpoint only. Pre-shared keys are never returned.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Per tunnel: name, remote gateway, status
+- Per phase 2 selector: source/destination selectors, status, incoming/outgoing bytes
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_FIREWALL_SESSIONS_DESC = """
+List active firewall sessions of a FortiGate device (read-only).
+
+Output contains IP addresses of live traffic and is sensitive.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+- count: Maximum sessions to return (optional, default 20, maximum 200; larger values are rejected)
+- srcaddr: Only sessions from this literal IPv4/IPv6 address (optional)
+- dstaddr: Only sessions to this literal IPv4/IPv6 address (optional)
+- srcport: Only sessions from this source port (optional, 1-65535)
+- dstport: Only sessions to this destination port (optional, 1-65535)
+- proto: Only this protocol (optional: tcp, udp, icmp, sctp or a number 1-255)
+
+Returns:
+- Sessions (protocol, source, destination, policy, duration, expiry)
+- The requested limit, the number shown and a note when the limit was reached
+- Invalid filters are rejected before the device is contacted
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+ANALYZE_POLICY_HYGIENE_DESC = """
+Analyze the firewall policy base of a FortiGate device for hygiene issues (read-only).
+
+Fetches firewall policies, addresses and address groups, then analyzes the fetched
+configuration offline. Nothing is changed on the device.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- shadowed: policies fully covered by an earlier enabled policy
+- duplicate: policies with an identical match and action
+- any_any / permissive_any: accept policies with 'all' source/destination and service ALL
+- disabled: disabled policies
+- Summary counts and notes; a source (address/addrgrp) that could not be fetched is stated
+- Shadowing is decided from names and address-group membership only (no subnet arithmetic)
+- On HTTP 404 for policies: an error stating the endpoint is not supported on this FortiOS version
+"""

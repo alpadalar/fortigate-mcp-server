@@ -1404,8 +1404,8 @@ class FortiGateTemplates:
         lines.append(f"Requested up to {limit} session(s); showing {returned}")
         if data.get("truncated"):
             lines.append(
-                f"Truncated: the device returned more than {limit} session(s); "
-                "narrow the filters to see others"
+                f"Result limit of {limit} reached; more sessions may exist "
+                "(narrow the filters to see others)"
             )
         filters = data.get("filters")
         if isinstance(filters, dict) and filters:

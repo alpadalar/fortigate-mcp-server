@@ -2,11 +2,20 @@
 from typing import Any, Callable, Dict, List, Optional
 from mcp_types import TextContent as Content
 from .base import FortiGateTool
-from ..validation import redact_sensitive_fields, validate_interface_name, validate_result_limit
+from ..validation import (
+    redact_sensitive_fields,
+    validate_interface_name,
+    validate_result_limit,
+    validate_session_filters,
+)
 
 # Result cap shared by get_arp_table and list_dhcp_leases.
 DEFAULT_RESULT_LIMIT = 100
 MAX_RESULT_LIMIT = 500
+
+# Result cap for list_firewall_sessions.
+SESSION_DEFAULT_COUNT = 20
+SESSION_MAX_COUNT = 200
 
 
 class MonitorTools(FortiGateTool):
@@ -116,6 +125,47 @@ class MonitorTools(FortiGateTool):
             limit,
         )
 
+    def list_firewall_sessions(
+        self,
+        device_id: str,
+        vdom: Optional[str] = None,
+        count: Optional[int] = None,
+        srcaddr: Optional[str] = None,
+        dstaddr: Optional[str] = None,
+        srcport: Optional[int] = None,
+        dstport: Optional[int] = None,
+        proto: Optional[str] = None,
+    ) -> List[Content]:
+        """List active firewall sessions with optional filters.
+
+        `count` defaults to SESSION_DEFAULT_COUNT (20) and is rejected above
+        SESSION_MAX_COUNT (200). All inputs are validated before any device
+        contact; the cap is also enforced client-side on the returned list.
+        """
+        try:
+            cap = validate_result_limit(count, SESSION_DEFAULT_COUNT, SESSION_MAX_COUNT, "count")
+            filters = validate_session_filters(srcaddr, dstaddr, srcport, dstport, proto)
+            self._validate_device_exists(device_id)
+            api_client = self._get_device_api(device_id)
+            data = redact_sensitive_fields(
+                api_client.get_firewall_sessions(cap, filters, vdom=vdom)
+            )
+            results = data.get("results") if isinstance(data, dict) else None
+            if isinstance(results, dict):
+                # Some FortiOS versions wrap sessions as {"summary": ..., "details": [...]}.
+                results = results.get("details")
+            entries = [e for e in results if isinstance(e, dict)] if isinstance(results, list) else []
+            payload = {
+                "results": entries[:cap],
+                "total": len(entries),
+                "limit": cap,
+                "truncated": len(entries) >= cap,
+                "filters": filters,
+            }
+            return self._format_response(payload, "firewall_sessions")
+        except Exception as e:
+            return self._handle_visibility_error("list firewall sessions", device_id, e)
+
     def get_schema_info(self) -> Dict[str, Any]:
         """Get schema information for monitor tools."""
         base = [
@@ -132,6 +182,18 @@ class MonitorTools(FortiGateTool):
             ("get_ha_status", "Get HA peer status (empty means standalone)", base),
             ("get_arp_table", "Get the ARP table with optional interface filter and cap", filt),
             ("list_dhcp_leases", "List DHCP leases with optional interface filter and cap", filt),
+            (
+                "list_firewall_sessions",
+                "List active firewall sessions with validated filters (default 20, max 200)",
+                base + [
+                    {"name": "count", "type": "integer", "required": False},
+                    {"name": "srcaddr", "type": "string", "required": False},
+                    {"name": "dstaddr", "type": "string", "required": False},
+                    {"name": "srcport", "type": "integer", "required": False},
+                    {"name": "dstport", "type": "integer", "required": False},
+                    {"name": "proto", "type": "string", "required": False},
+                ],
+            ),
         ]
         return {
             "name": "monitor_tools",
