@@ -1114,3 +1114,41 @@ class TestPhase15ApiMethods:
             with pytest.raises(FortiGateAPIError) as exc_info:
                 getattr(self.api, method)()
         assert exc_info.value.status_code == 404
+
+
+class TestPhase16ApiMethods:
+    """Wire-level behavior of the IPsec and firewall session API methods."""
+
+    def setup_method(self):
+        config = FortiGateDeviceConfig(
+            host="198.51.100.10", api_token="test-token-not-real", vdom="root"
+        )
+        self.api = FortiGateAPI("test_device", config)
+
+    def _router(self, endpoint, response):
+        router = respx.mock(assert_all_mocked=True, assert_all_called=True)
+        router.route(method="GET", path__regex=r"^/api/v2/" + endpoint + r"$").mock(
+            return_value=response
+        )
+        return router
+
+    def test_ipsec_tunnels_path_and_vdom(self):
+        with self._router("monitor/vpn/ipsec", httpx.Response(200, json={"results": []})) as r:
+            self.api.get_ipsec_tunnels(vdom="vd1")
+            req = r.calls.last.request
+        assert req.url.params["vdom"] == "vd1"
+
+    def test_sessions_send_count_and_filters_as_params(self):
+        with self._router("monitor/firewall/session", httpx.Response(200, json={"results": []})) as r:
+            self.api.get_firewall_sessions(20, {"srcaddr": "192.0.2.1", "dstport": "443"})
+            req = r.calls.last.request
+        assert req.url.params["count"] == "20"
+        assert req.url.params["srcaddr"] == "192.0.2.1"
+        assert req.url.params["dstport"] == "443"
+        assert req.url.params["vdom"] == "root"
+
+    def test_sessions_404_raises_with_status(self):
+        with self._router("monitor/firewall/session", httpx.Response(404, json={})):
+            with pytest.raises(FortiGateAPIError) as exc_info:
+                self.api.get_firewall_sessions(20)
+        assert exc_info.value.status_code == 404

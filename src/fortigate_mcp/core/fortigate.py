@@ -529,6 +529,29 @@ class FortiGateAPI:
         return self._make_request("GET", "monitor/system/dhcp", vdom=vdom)
 
 
+    # IPsec and session monitor endpoints (Phase 16)
+    def get_ipsec_tunnels(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get IPsec tunnel status; results is a list of tunnels with proxyid lists."""
+        return self._make_request("GET", "monitor/vpn/ipsec", vdom=vdom)
+
+    def get_firewall_sessions(
+        self,
+        count: int,
+        filters: Optional[Dict[str, str]] = None,
+        vdom: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Get active firewall sessions.
+
+        `count` and `filters` are sent as query parameters (never concatenated
+        into the URL). Callers must pass pre-validated values; see
+        validation.validate_session_filters.
+        """
+        params: Dict[str, Any] = {"count": count}
+        if filters:
+            params.update(filters)
+        return self._make_request("GET", "monitor/firewall/session", params=params, vdom=vdom)
+
+
 class FortiGateManager:
     """Manager for multiple FortiGate devices.
     
