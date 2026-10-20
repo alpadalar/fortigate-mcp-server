@@ -37,20 +37,20 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=7.0.0",
     "black>=23.0.0",
     "isort>=5.12.0",
     "flake8>=6.0.0",
-    "mypy>=1.0.0",
-    "bandit>=1.7.0",
+    "mypy>=1.17",
+    "bandit>=1.8",
     "respx>=0.23.1",
 ]
 test = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=7.0.0",
     "respx>=0.23.1",
     "pyyaml>=6.0",
 ]
@@ -58,11 +58,11 @@ lint = [
     "black>=23.0.0",
     "isort>=5.12.0",
     "flake8>=6.0.0",
-    "mypy>=1.0.0",
-    "ruff>=0.15.0",
+    "mypy>=1.17",
+    "ruff>=0.17.0",
 ]
 security = [
-    "bandit>=1.7.0",
+    "bandit>=1.8",
 ]
 
 [project.urls]
@@ -129,6 +129,10 @@ ensure_newline_before_comments = true
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.ruff.lint]
+# Explicit set keeps ruff 0.17 (new default rules) equal to the previous clean behavior
+select = ["E4", "E7", "E9", "F"]
 
 [tool.mypy]
 python_version = "3.11"
