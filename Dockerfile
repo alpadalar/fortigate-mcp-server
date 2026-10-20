@@ -1,11 +1,11 @@
 # FortiGate MCP Server Dockerfile
-# Base image is version- AND digest-pinned: a floating `python:3.11-slim`
+# Base image is version- AND digest-pinned: a floating `python:3.13-slim`
 # tag is the same mutable-reference supply-chain class the workflows
-# eliminate with SHA-pinned `uses:`. Human tag: python:3.11-slim ==
-# 3.11.17-slim-trixie. Digest is the multi-arch OCI index digest, verified
+# eliminate with SHA-pinned `uses:`. Human tag: python:3.13-slim ==
+# 3.13.16-slim-trixie. Digest is the multi-arch OCI index digest, verified
 # live against the registry:
-#   docker buildx imagetools inspect python:3.11-slim
-FROM python:3.11-slim@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce
+#   docker buildx imagetools inspect python:3.13-slim
+FROM python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f
 
 # Metadata
 LABEL maintainer="FortiGate MCP Team"
@@ -56,7 +56,7 @@ COPY src/ src/
 # .venv, never uv's cache.
 RUN uv sync --locked --no-dev --no-editable --no-cache
 
-# The python:3.11-slim base image bootstraps its own system-level pip,
+# The python:3.13-slim base image bootstraps its own system-level pip,
 # setuptools, and wheel via ensurepip. The application never uses them --
 # uv manages /app/.venv directly via the standalone uv binary above, and the
 # container's CMD runs `uv run`, not the system python's pip -- but they
