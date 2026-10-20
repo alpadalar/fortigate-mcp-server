@@ -65,6 +65,30 @@
       "type": "object"
     }
   },
+  "analyze_policy_hygiene": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "create_address_object": {
     "inputSchema": {
       "properties": {
@@ -526,6 +550,30 @@
       "type": "object"
     }
   },
+  "get_ipsec_tunnel_status": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "get_license_status": {
     "inputSchema": {
       "properties": {
@@ -843,6 +891,96 @@
       "properties": {
         "device_id": {
           "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_firewall_sessions": {
+    "inputSchema": {
+      "properties": {
+        "count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "device_id": {
+          "type": "string"
+        },
+        "dstaddr": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "dstport": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "proto": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "srcaddr": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "srcport": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "vdom": {
           "anyOf": [
