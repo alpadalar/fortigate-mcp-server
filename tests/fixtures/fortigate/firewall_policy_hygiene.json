@@ -1,0 +1,332 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "policyid": 1,
+      "name": "policy-1",
+      "status": "enable",
+      "action": "deny",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "all"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "BLOCKED-NET"
+        }
+      ],
+      "service": [
+        {
+          "name": "ALL"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 2,
+      "name": "policy-2",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "NET-A"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "BLOCKED-NET"
+        }
+      ],
+      "service": [
+        {
+          "name": "HTTP"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 3,
+      "name": "policy-3",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "NET-A"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-WEB"
+        }
+      ],
+      "service": [
+        {
+          "name": "HTTPS"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 4,
+      "name": "policy-4",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "NET-A"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-WEB"
+        }
+      ],
+      "service": [
+        {
+          "name": "HTTPS"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 5,
+      "name": "policy-5",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "dmz"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "all"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "all"
+        }
+      ],
+      "service": [
+        {
+          "name": "ALL"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 6,
+      "name": "policy-6",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "dmz"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "all"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-WEB"
+        }
+      ],
+      "service": [
+        {
+          "name": "ALL"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 7,
+      "name": "policy-7",
+      "status": "disable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "NET-C"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-WEB"
+        }
+      ],
+      "service": [
+        {
+          "name": "SSH"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 8,
+      "name": "policy-8",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "GRP-LAN"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-DB"
+        }
+      ],
+      "service": [
+        {
+          "name": "ALL"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 9,
+      "name": "policy-9",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "NET-B"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-DB"
+        }
+      ],
+      "service": [
+        {
+          "name": "DNS"
+        }
+      ],
+      "schedule": "always"
+    },
+    {
+      "policyid": 10,
+      "name": "policy-10",
+      "status": "enable",
+      "action": "accept",
+      "srcintf": [
+        {
+          "name": "lan"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "wan"
+        }
+      ],
+      "srcaddr": [
+        {
+          "name": "GRP-CYC-1"
+        }
+      ],
+      "dstaddr": [
+        {
+          "name": "SRV-WEB"
+        }
+      ],
+      "service": [
+        {
+          "name": "SSH"
+        }
+      ],
+      "schedule": "always"
+    },
+    "not-a-policy"
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

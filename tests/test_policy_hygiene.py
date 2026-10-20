@@ -2,7 +2,14 @@
 import copy
 import json
 
+import httpx
+import respx
+
 from src.fortigate_mcp.analysis.policy_hygiene import analyze_policy_hygiene
+from src.fortigate_mcp.config.models import AuthConfig, FortiGateDeviceConfig
+from src.fortigate_mcp.core.fortigate import FortiGateAPI, FortiGateManager
+from src.fortigate_mcp.tools.firewall import FirewallTools
+from tests.support.fake_fortigate import load_fixture
 
 
 def pol(pid, src="all", dst="all", svc="ALL", action="accept", status="enable",
@@ -142,3 +149,177 @@ class TestGroupsAndRobustness:
     def test_findings_sorted_numerically(self):
         r = run([pol(10, status="disable"), pol(9, status="disable"), pol(100, status="disable")])
         assert ids(r, "disabled") == [9, 10, 100]
+
+
+# ---------------------------------------------------------------------------
+# Fixture-driven and tool-level tests (Plan 16-03)
+# ---------------------------------------------------------------------------
+
+BASE_URL = "https://198.51.100.10:443/api/v2"
+POLICY_PATH = "/cmdb/firewall/policy"
+ADDRESS_PATH = "/cmdb/firewall/address"
+ADDRGRP_PATH = "/cmdb/firewall/addrgrp"
+
+
+def _fx(name):
+    return load_fixture(name)["results"]
+
+
+def _fixture_result():
+    return analyze_policy_hygiene(
+        _fx("firewall_policy_hygiene.json"),
+        _fx("firewall_address_hygiene.json"),
+        _fx("firewall_addrgrp_hygiene.json"),
+    )
+
+
+class TestFixtureDriven:
+    def test_each_category_has_positive_and_negative_neighbor(self):
+        r = _fixture_result()
+        assert r["findings"]["shadowed"] == [
+            {"policyid": 2, "shadowed_by": 1, "earlier_action": "deny", "action": "accept"},
+            {"policyid": 9, "shadowed_by": 8, "earlier_action": "accept", "action": "accept"},
+        ]
+        assert r["findings"]["duplicate"] == [{"policyid": 4, "duplicate_of": 3}]
+        assert ids(r, "any_any") == [5]
+        assert r["findings"]["permissive_any"] == [{"policyid": 6, "any_side": "source"}]
+        assert ids(r, "disabled") == [7]
+        # Negative neighbors: 3 (same dst as its duplicate but first), 8, 10 are clean.
+        flagged = {f["policyid"] for v in r["findings"].values() for f in v}
+        assert not ({3, 8, 10, 1} & flagged)
+        assert r["summary"]["policies_analyzed"] == 10 and r["summary"]["skipped"] == 1
+
+    def test_group_cycle_noted_and_malformed_skipped(self):
+        r = _fixture_result()
+        assert any("GRP-CYC-1" in n for n in r["notes"])
+        assert any("malformed" in n for n in r["notes"])
+
+    def test_byte_identical_twice_and_shuffled_keys(self):
+        first = json.dumps(_fixture_result())
+        assert first == json.dumps(_fixture_result())
+        policies = [
+            dict(reversed(list(p.items()))) if isinstance(p, dict) else p
+            for p in _fx("firewall_policy_hygiene.json")
+        ]
+        groups = [dict(reversed(list(g.items()))) for g in _fx("firewall_addrgrp_hygiene.json")]
+        shuffled = analyze_policy_hygiene(policies, _fx("firewall_address_hygiene.json"), groups)
+        assert first == json.dumps(shuffled)
+
+    def test_clean_policy_set_yields_empty_findings(self):
+        clean = [p for p in _fx("firewall_policy_hygiene.json")
+                 if isinstance(p, dict) and p["policyid"] in (3, 10)]
+        r = analyze_policy_hygiene(
+            clean, _fx("firewall_address_hygiene.json"), _fx("firewall_addrgrp_hygiene.json")
+        )
+        assert all(not v for v in r["findings"].values())
+
+
+def _manager():
+    config = FortiGateDeviceConfig(host="198.51.100.10", api_token="test-token-not-real",
+                                   vdom="root")
+    manager = FortiGateManager(
+        {}, AuthConfig(require_auth=False, api_tokens=[], allowed_origins=["*"])
+    )
+    manager.devices["test_device"] = FortiGateAPI("test_device", config)
+    return manager
+
+
+def _router():
+    return respx.mock(base_url=BASE_URL, assert_all_called=False, assert_all_mocked=True)
+
+
+def _serve(router, addr=None, grp=None, policy=None):
+    router.get(POLICY_PATH).mock(
+        return_value=policy or httpx.Response(200, json=load_fixture("firewall_policy_hygiene.json"))
+    )
+    router.get(ADDRESS_PATH).mock(
+        return_value=addr or httpx.Response(200, json=load_fixture("firewall_address_hygiene.json"))
+    )
+    router.get(ADDRGRP_PATH).mock(
+        return_value=grp or httpx.Response(200, json=load_fixture("firewall_addrgrp_hygiene.json"))
+    )
+
+
+class TestAnalyzePolicyHygieneTool:
+    def setup_method(self):
+        self.tools = FirewallTools(_manager())
+
+    def test_output_has_expected_ids_and_summary(self):
+        with _router() as router:
+            _serve(router)
+            text = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert "Policies analyzed: 10 (skipped: 1)" in text
+        assert "shadowed=2, duplicate=1, any_any=1, permissive_any=1, disabled=1" in text
+        assert "Policy 2: action=accept, earlier_action=deny, shadowed_by=1" in text
+        assert "Policy 4: duplicate_of=3" in text
+        assert "any_any (1)\n  Policy 5" in text
+        assert "Policy 6: any_side=source" in text
+        assert "disabled (1)\n  Policy 7" in text
+        assert "Source" not in text
+
+    def test_deterministic_across_calls(self):
+        with _router() as router:
+            _serve(router)
+            a = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+            b = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert a == b
+
+    def test_addrgrp_403_degrades_with_fixed_text(self):
+        forbidden = httpx.Response(403, json={"status": "error", "error": "Forbidden raw-xyz"})
+        with _router() as router:
+            _serve(router, grp=forbidden)
+            text = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert "Source addrgrp: permission denied (analysis may be incomplete)" in text
+        assert "Forbidden raw-xyz" not in text
+        # Policy-only findings still appear; group-resolved shadowing (9) cannot.
+        assert "Policy 2:" in text and "Policy 4:" in text and "Policy 9:" not in text
+
+    def test_address_404_degrades_with_fixed_text(self):
+        nf = httpx.Response(404, json=load_fixture("error_404.json"))
+        with _router() as router:
+            _serve(router, addr=nf)
+            text = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert "Source address: endpoint not found" in text
+        assert "raw-device-text-xyz" not in text
+
+    def test_policy_404_maps_to_not_supported(self):
+        with _router() as router:
+            _serve(router, policy=httpx.Response(404, json=load_fixture("error_404.json")))
+            text = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert "not supported on this FortiOS version" in text
+        assert "raw-device-text-xyz" not in text
+
+    def test_network_failure_on_subfetch_propagates(self):
+        with _router() as router:
+            router.get(POLICY_PATH).mock(
+                return_value=httpx.Response(200, json=load_fixture("firewall_policy_hygiene.json"))
+            )
+            router.get(ADDRESS_PATH).mock(side_effect=httpx.ConnectError("down"))
+            text = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert "failed" in text.lower() and "Policies analyzed" not in text
+
+    def test_policy_403_renders_fixed_text(self):
+        with _router() as router:
+            _serve(router, policy=httpx.Response(403, json={"error": "Forbidden raw-xyz"}))
+            text = self.tools.analyze_policy_hygiene(device_id="test_device")[0].text
+        assert "Permission denied" in text and "raw-xyz" not in text
+
+
+def test_tool_through_registered_mcp_session(tmp_config_path):
+    """End-to-end through the registry (stdio server + in-memory MCP client)."""
+    import asyncio
+
+    from fastmcp import Client
+
+    from src.fortigate_mcp.server import FortiGateMCPServer
+
+    server = FortiGateMCPServer(tmp_config_path)
+
+    async def call():
+        async with Client(server.mcp) as client:
+            return await client.call_tool("analyze_policy_hygiene", {"device_id": "default"})
+
+    with respx.mock(base_url=BASE_URL, assert_all_called=False, assert_all_mocked=True) as router:
+        _serve(router)
+        result = asyncio.run(call())
+    assert "Policy 5" in result.content[0].text and "shadowed=2" in result.content[0].text

@@ -1,0 +1,41 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "GRP-LAN",
+      "member": [
+        {
+          "name": "NET-A"
+        },
+        {
+          "name": "NET-B"
+        }
+      ]
+    },
+    {
+      "name": "GRP-CYC-1",
+      "member": [
+        {
+          "name": "GRP-CYC-2"
+        },
+        {
+          "name": "NET-C"
+        }
+      ]
+    },
+    {
+      "name": "GRP-CYC-2",
+      "member": [
+        {
+          "name": "GRP-CYC-1"
+        }
+      ]
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

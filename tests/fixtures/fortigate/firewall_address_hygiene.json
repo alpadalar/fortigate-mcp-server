@@ -1,0 +1,41 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "NET-A",
+      "type": "ipmask",
+      "subnet": "192.0.2.0 255.255.255.0"
+    },
+    {
+      "name": "NET-B",
+      "type": "ipmask",
+      "subnet": "198.51.100.0 255.255.255.0"
+    },
+    {
+      "name": "NET-C",
+      "type": "ipmask",
+      "subnet": "203.0.113.0 255.255.255.0"
+    },
+    {
+      "name": "SRV-WEB",
+      "type": "ipmask",
+      "subnet": "10.0.0.10 255.255.255.255"
+    },
+    {
+      "name": "SRV-DB",
+      "type": "ipmask",
+      "subnet": "10.0.0.20 255.255.255.255"
+    },
+    {
+      "name": "BLOCKED-NET",
+      "type": "ipmask",
+      "subnet": "192.0.2.128 255.255.255.128"
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}
