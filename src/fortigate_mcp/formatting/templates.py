@@ -1335,6 +1335,137 @@ class FortiGateTemplates:
             "DHCP Leases", "No DHCP leases", rows, data, len(entries)
         )
 
+    # ------------------------------------------------------------------
+    # Phase 16: IPsec status, firewall sessions, policy hygiene
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _subnet_text(value: Any) -> str:
+        """Render proxyid selector (list of {subnet} dicts or a string)."""
+        if isinstance(value, (str, dict)):
+            value = [value]
+        if not isinstance(value, list):
+            return "N/A"
+        parts = []
+        for item in value:
+            if isinstance(item, dict):
+                parts.append(str(item.get("subnet", item.get("name", "N/A"))))
+            else:
+                parts.append(str(item))
+        return ", ".join(parts) if parts else "N/A"
+
+    @staticmethod
+    def ipsec_tunnels(data: Dict[str, Any]) -> str:
+        """Format IPsec tunnel status using an explicit field whitelist.
+
+        Only name, remote gateway, status and proxyid selectors/bytes/status are
+        ever rendered; any other key (including pre-shared keys) is dropped even
+        if the payload contains it.
+        """
+        lines = ["IPsec Tunnels", ""]
+        tunnels = FortiGateTemplates._results_list(data)
+        if not tunnels:
+            lines.append("No IPsec tunnels found")
+            return "\n".join(lines)
+        for tunnel in tunnels:
+            proxyids = tunnel.get("proxyid")
+            proxyids = [p for p in proxyids if isinstance(p, dict)] if isinstance(proxyids, list) else []
+            status = tunnel.get("status")
+            if not isinstance(status, str):
+                if any(p.get("status") == "up" for p in proxyids):
+                    status = "up"
+                elif proxyids:
+                    status = "down"
+                else:
+                    status = "unknown"
+            lines.append(f"{tunnel.get('name', 'Unnamed')} (status: {status})")
+            lines.append(f"  Remote gateway: {tunnel.get('rgwy', tunnel.get('remote_gateway', 'N/A'))}")
+            if not proxyids:
+                lines.append("  Phase 2 selectors: none")
+            for p in proxyids:
+                lines.append(
+                    f"  Phase 2 {p.get('p2name', 'N/A')}: "
+                    f"{FortiGateTemplates._subnet_text(p.get('proxy_src'))} -> "
+                    f"{FortiGateTemplates._subnet_text(p.get('proxy_dst'))} "
+                    f"[{p.get('status', 'unknown')}] "
+                    f"in {p.get('incoming_bytes', 0)} B / out {p.get('outgoing_bytes', 0)} B"
+                )
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def firewall_sessions(data: Dict[str, Any]) -> str:
+        """Format a capped session list; data carries tool-set total/limit/filters."""
+        entries = FortiGateTemplates._results_list(data)
+        lines = ["Firewall Sessions", ""]
+        limit = data.get("limit")
+        total = data.get("total")
+        returned = len(entries)
+        lines.append(f"Requested up to {limit} session(s); showing {returned}")
+        if data.get("truncated"):
+            lines.append(
+                f"Truncated: the device returned more than {limit} session(s); "
+                "narrow the filters to see others"
+            )
+        filters = data.get("filters")
+        if isinstance(filters, dict) and filters:
+            lines.append("Filters: " + ", ".join(f"{k}={filters[k]}" for k in sorted(filters)))
+        if isinstance(total, int) and not isinstance(total, bool) and total > returned:
+            lines.append(f"Device reported {total} matching session(s)")
+        lines.append("")
+        if not entries:
+            lines.append("No sessions found")
+            return "\n".join(lines)
+        for e in entries:
+            src = e.get("saddr", e.get("srcaddr", "N/A"))
+            dst = e.get("daddr", e.get("dstaddr", "N/A"))
+            lines.append(
+                f"{e.get('proto', 'N/A')}  {src}:{e.get('sport', '-')} -> "
+                f"{dst}:{e.get('dport', '-')}  policy {e.get('policyid', 'N/A')}  "
+                f"duration {e.get('duration', 'N/A')}s  expiry {e.get('expiry', 'N/A')}s"
+            )
+        return "\n".join(lines)
+
+    @staticmethod
+    def policy_hygiene(data: Dict[str, Any]) -> str:
+        """Format the output of analysis.analyze_policy_hygiene."""
+        raw_summary = data.get("summary")
+        raw_findings = data.get("findings")
+        summary: Dict[str, Any] = raw_summary if isinstance(raw_summary, dict) else {}
+        findings: Dict[str, Any] = raw_findings if isinstance(raw_findings, dict) else {}
+        lines = ["Firewall Policy Hygiene (offline analysis of fetched configuration)", ""]
+        lines.append(
+            f"Policies analyzed: {summary.get('policies_analyzed', 0)} "
+            f"(skipped: {summary.get('skipped', 0)})"
+        )
+        order = ("shadowed", "duplicate", "any_any", "permissive_any", "disabled")
+        lines.append(
+            "Findings: " + ", ".join(f"{k}={summary.get(k, 0)}" for k in order)
+        )
+        sources = data.get("sources")
+        if isinstance(sources, dict):
+            for name in sorted(sources):
+                if sources[name] != "ok":
+                    lines.append(f"Source {name}: {sources[name]} (analysis may be incomplete)")
+        lines.append("")
+        for key in order:
+            items = findings.get(key) or []
+            if not items:
+                continue
+            lines.append(f"{key} ({len(items)})")
+            for item in items:
+                extras = ", ".join(
+                    f"{k}={item[k]}" for k in sorted(item) if k != "policyid"
+                )
+                lines.append(f"  Policy {item.get('policyid')}" + (f": {extras}" if extras else ""))
+            lines.append("")
+        if not any(findings.get(k) for k in order):
+            lines.append("No hygiene findings")
+            lines.append("")
+        for note in data.get("notes") or []:
+            lines.append(f"Note: {note}")
+        return "\n".join(lines).rstrip()
+
     @staticmethod
     def health_status(status: str, details: Dict[str, Any]) -> str:
         """Format health check status.

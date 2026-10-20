@@ -323,6 +323,21 @@ class FortiGateFormatters:
         return [Content(type="text", text=FortiGateTemplates.dhcp_leases(data))]
 
     @staticmethod
+    def format_ipsec_tunnels(data: Dict[str, Any]) -> List[Content]:
+        """Format ipsec tunnels response."""
+        return [Content(type="text", text=FortiGateTemplates.ipsec_tunnels(data))]
+
+    @staticmethod
+    def format_firewall_sessions(data: Dict[str, Any]) -> List[Content]:
+        """Format firewall sessions response."""
+        return [Content(type="text", text=FortiGateTemplates.firewall_sessions(data))]
+
+    @staticmethod
+    def format_policy_hygiene(data: Dict[str, Any]) -> List[Content]:
+        """Format policy hygiene response."""
+        return [Content(type="text", text=FortiGateTemplates.policy_hygiene(data))]
+
+    @staticmethod
     def format_json_response(data: Any, title: Optional[str] = None) -> List[Content]:
         """Format JSON response data.
         

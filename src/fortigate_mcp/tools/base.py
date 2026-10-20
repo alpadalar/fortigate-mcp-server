@@ -102,7 +102,8 @@ class FortiGateTool:
                          'address_groups', 'service_groups', 'schedules',
                          'ip_pools', 'central_snat_maps', 'system_resources',
                          'license_status', 'ha_status', 'arp_table',
-                         'dhcp_leases'
+                         'dhcp_leases', 'ipsec_tunnels', 'firewall_sessions',
+                         'policy_hygiene'
 
         Returns:
             List of Content objects formatted according to resource type
@@ -179,6 +180,12 @@ class FortiGateTool:
             return FortiGateFormatters.format_arp_table(data)
         elif resource_type == "dhcp_leases":
             return FortiGateFormatters.format_dhcp_leases(data)
+        elif resource_type == "ipsec_tunnels":
+            return FortiGateFormatters.format_ipsec_tunnels(data)
+        elif resource_type == "firewall_sessions":
+            return FortiGateFormatters.format_firewall_sessions(data)
+        elif resource_type == "policy_hygiene":
+            return FortiGateFormatters.format_policy_hygiene(data)
         else:
             # Fallback to JSON formatting for unknown types
             return FortiGateFormatters.format_json_response(data)
