@@ -16,6 +16,7 @@ from src.fortigate_mcp.validation import (
     validate_numeric_id,
     validate_object_name,
     validate_port,
+    validate_result_limit,
     validate_vdom,
 )
 
@@ -383,3 +384,24 @@ class TestRedactSensitiveFields:
 
         assert result["psksecret"] == "***REDACTED***"
         assert result["psksecret-remote"] == "***REDACTED***"
+
+
+class TestValidateResultLimit:
+    """validate_result_limit: explicit rejection, never silent clamping."""
+
+    def test_none_returns_default(self):
+        assert validate_result_limit(None, 20, 200) == 20
+
+    @pytest.mark.parametrize("value", [1, 20, 200])
+    def test_in_range_returned(self, value):
+        assert validate_result_limit(value, 20, 200) == value
+
+    @pytest.mark.parametrize("value", [True, False, 1.5, "10", 0, -1, 201, 10**9])
+    def test_invalid_rejected_naming_field(self, value):
+        with pytest.raises(ValueError, match="max_items"):
+            validate_result_limit(value, 20, 200, "max_items")
+
+    @pytest.mark.parametrize("default,maximum", [(0, 10), (11, 10), (-1, 10)])
+    def test_bad_default_is_error(self, default, maximum):
+        with pytest.raises(ValueError):
+            validate_result_limit(None, default, maximum)

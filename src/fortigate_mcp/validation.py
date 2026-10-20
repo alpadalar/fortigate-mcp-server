@@ -214,6 +214,29 @@ def validate_interface_name(name: str) -> str:
     return name
 
 
+def validate_result_limit(
+    value: Optional[int], default: int, maximum: int, field_name: str = "limit"
+) -> int:
+    """Validate a caller-supplied result cap.
+
+    None yields `default`. Out-of-range values are rejected explicitly
+    (never silently clamped) so the cap is observable to the caller.
+
+    Raises:
+        ValueError: if `default`/`maximum` are inconsistent, or `value` is
+            not an int in 1..maximum (bool is rejected explicitly).
+    """
+    if default < 1 or default > maximum:
+        raise ValueError(f"default for {field_name} must be within 1..{maximum}")
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{field_name} must be an integer between 1 and {maximum}")
+    if value < 1 or value > maximum:
+        raise ValueError(f"{field_name} must be between 1 and {maximum}")
+    return value
+
+
 def scrub_secrets(text: str, secrets: Iterable[Optional[str]]) -> str:
     """Redact known secret values and Bearer-pattern tokens from `text`.
 
