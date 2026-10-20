@@ -2,7 +2,7 @@
 
 Both the stdio server (server.py) and the HTTP server (server_http.py)
 register tools from this single module instead of each hand-duplicating a
-~30-tool ``_setup_tools()`` body. 28 of the 37 unique tool names are
+~30-tool ``_setup_tools()`` body. 38 of the 47 unique tool names are
 schema-identical and share ONE tool definition; ``get_firewall_policy_detail``
 is schema-identical but was dispatch-divergent (sync vs async on the same
 class) -- it is unified here to a single async definition, verified safe
@@ -66,6 +66,16 @@ from .tools.definitions import (
     LIST_ADMINS_DESC,
     GET_SSLVPN_SETTINGS_DESC,
     LIST_LOCAL_IN_POLICIES_DESC,
+    LIST_ADDRESS_GROUPS_DESC,
+    LIST_SERVICE_GROUPS_DESC,
+    LIST_SCHEDULES_DESC,
+    LIST_IP_POOLS_DESC,
+    LIST_CENTRAL_SNAT_MAPS_DESC,
+    GET_SYSTEM_RESOURCES_DESC,
+    GET_LICENSE_STATUS_DESC,
+    GET_HA_STATUS_DESC,
+    GET_ARP_TABLE_DESC,
+    LIST_DHCP_LEASES_DESC,
 )
 
 
@@ -96,6 +106,17 @@ RISK_CLASSIFICATION = {
     "list_admins": "read",
     "get_sslvpn_settings": "read",
     "list_local_in_policies": "read",
+    # v1.2 Phase 15 visibility tools (NEW-08) -- read-only by design
+    "list_address_groups": "read",
+    "list_service_groups": "read",
+    "list_schedules": "read",
+    "list_ip_pools": "read",
+    "list_central_snat_maps": "read",
+    "get_system_resources": "read",
+    "get_license_status": "read",
+    "get_ha_status": "read",
+    "get_arp_table": "read",
+    "list_dhcp_leases": "read",
     # write -- create_*/update_*/add_device
     "add_device": "write",
     "create_firewall_policy": "write",
@@ -592,7 +613,9 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
                     "routing_tools": tools.routing_tools.get_schema_info(),
                     "virtual_ip_tools": tools.virtual_ip_tools.get_schema_info(),
                     "security_tools": tools.security_tools.get_schema_info(),
-                    "admin_tools": tools.admin_tools.get_schema_info()
+                    "admin_tools": tools.admin_tools.get_schema_info(),
+                    "object_tools": tools.object_tools.get_schema_info(),
+                    "monitor_tools": tools.monitor_tools.get_schema_info()
                 }
             }
             return _format_json_response(schema_info, "get_schema_info", logger=getattr(tools, "logger", None))
@@ -629,5 +652,82 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
     ) -> List[Content]:
         return cast(List[Content], tools.security_tools.list_local_in_policies(device_id, vdom))
+
+    # --- (G) v1.2 read-only visibility tools (Phase 15) ---------------------
+    # Unconditional -- registered for BOTH transports.
+
+    @_tool(LIST_ADDRESS_GROUPS_DESC)
+    def list_address_groups(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_address_groups(device_id, vdom))
+
+    @_tool(LIST_SERVICE_GROUPS_DESC)
+    def list_service_groups(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_service_groups(device_id, vdom))
+
+    @_tool(LIST_SCHEDULES_DESC)
+    def list_schedules(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_schedules(device_id, vdom))
+
+    @_tool(LIST_IP_POOLS_DESC)
+    def list_ip_pools(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_ip_pools(device_id, vdom))
+
+    @_tool(LIST_CENTRAL_SNAT_MAPS_DESC)
+    def list_central_snat_maps(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_central_snat_maps(device_id, vdom))
+
+    @_tool(GET_SYSTEM_RESOURCES_DESC)
+    def get_system_resources(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.monitor_tools.get_system_resources(device_id, vdom))
+
+    @_tool(GET_LICENSE_STATUS_DESC)
+    def get_license_status(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.monitor_tools.get_license_status(device_id, vdom))
+
+    @_tool(GET_HA_STATUS_DESC)
+    def get_ha_status(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.monitor_tools.get_ha_status(device_id, vdom))
+
+    @_tool(GET_ARP_TABLE_DESC)
+    def get_arp_table(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None,
+        interface: Annotated[Optional[str], Field(description="Only entries on this interface", default=None)] = None,
+        limit: Annotated[Optional[int], Field(description="Maximum entries to return (default 100, max 500)", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.monitor_tools.get_arp_table(device_id, vdom, interface, limit))
+
+    @_tool(LIST_DHCP_LEASES_DESC)
+    def list_dhcp_leases(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None,
+        interface: Annotated[Optional[str], Field(description="Only entries on this interface", default=None)] = None,
+        limit: Annotated[Optional[int], Field(description="Maximum entries to return (default 100, max 500)", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.monitor_tools.list_dhcp_leases(device_id, vdom, interface, limit))
 
     return len(registered)

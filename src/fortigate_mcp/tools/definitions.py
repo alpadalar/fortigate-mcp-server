@@ -607,3 +607,145 @@ Returns:
 - Source/destination interface and address scoping
 - Action (accept/deny) and logging status
 """
+
+LIST_ADDRESS_GROUPS_DESC = """
+List firewall address groups (members and comments) on a FortiGate device (read-only).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Address group names with member counts and member names
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_SERVICE_GROUPS_DESC = """
+List firewall service groups (members and comments) on a FortiGate device (read-only).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Service group names with member counts and member names
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_SCHEDULES_DESC = """
+List recurring, one-time and group schedules on a FortiGate device (read-only).
+
+Each schedule table is queried independently: a failure on one is shown
+for that category only and never hides the others.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Recurring schedules (days, start, end)
+- One-time schedules (start, end, expiration)
+- Schedule groups and their members
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_IP_POOLS_DESC = """
+List IP pools (NAT pools) on a FortiGate device (read-only).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Pool name, type and address range
+- Source range where configured
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_CENTRAL_SNAT_MAPS_DESC = """
+List central SNAT map entries on a FortiGate device (read-only).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Entry id, status and interfaces
+- Original/destination addresses, protocol and NAT IP pool
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+GET_SYSTEM_RESOURCES_DESC = """
+Get the latest CPU, memory, session and setup-rate values of a FortiGate
+device (read-only). Only the current value per resource is returned, never
+the history.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- One current value per resource
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+GET_LICENSE_STATUS_DESC = """
+Get license and contract entitlement status of a FortiGate device (read-only).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Entitlement name, status and expiry
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+GET_HA_STATUS_DESC = """
+Get HA peer status of a FortiGate device (read-only).
+
+A unit with no HA peers is reported as standalone, which is a normal
+result and not an error.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- HA mode (standalone or HA) and peer hostname, serial, priority, role
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+GET_ARP_TABLE_DESC = """
+Get the ARP table of a FortiGate device (read-only).
+
+Output contains MAC addresses and is sensitive.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+- interface: Only entries on this interface (optional)
+- limit: Maximum entries to return (optional, default 100, maximum 500)
+
+Returns:
+- ARP entries (IP, MAC, interface, age)
+- A 'Showing X of N' line when the result is capped
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_DHCP_LEASES_DESC = """
+List DHCP leases of a FortiGate device (read-only).
+
+Output contains MAC addresses and hostnames and is sensitive.
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+- interface: Only entries on this interface (optional)
+- limit: Maximum entries to return (optional, default 100, maximum 500)
+
+Returns:
+- DHCP leases (IP, MAC, hostname, interface, expiry)
+- A 'Showing X of N' line when the result is capped
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
