@@ -20,16 +20,19 @@ FortiGate MCP Server exposes 50 unique tools, 95 total tool-surface registration
 - **Config-Object Visibility**: Read-only address groups, service groups, schedules (recurring, one-time, groups), IP pools, and central SNAT maps
 - **Monitor Visibility**: Read-only system resources, license status, HA status (standalone reported as such), ARP table, and DHCP leases
 - **IPsec, Sessions & Policy Hygiene**: Read-only IPsec tunnel status (no pre-shared keys), capped firewall session listing with validated filters, and offline policy hygiene analysis (shadowed, duplicate, any-any, disabled)
-- **HTTP Transport**: MCP protocol over HTTP using FastMCP
+- **HTTP Transport**: MCP protocol over HTTP using FastMCP 4 (`fastmcp>=4.1.2,<5`)
 - **Docker Support**: Easy installation and deployment
 - **MCP Client Integration**: Works with Claude Desktop, Claude Code, Cursor, and other MCP-compatible clients
 
 ## 📋 Requirements
 
-- Python 3.11+
+- Python 3.11+ (3.11, 3.12, 3.13 and 3.14 are tested in CI)
 - `uv` package manager (recommended) or `pip`
 - Access to FortiGate device
-- API token or username/password
+- API token (recommended) or username/password
+- FortiOS 7.4 and 7.6 are the supported release lines. FortiOS 8.0 has not been verified.
+  On 7.6 and later, use an API token: password/session login is reported to be deprecated
+  there (unofficial community sources; see SECURITY.md)
 
 ## 🛠️ Installation
 

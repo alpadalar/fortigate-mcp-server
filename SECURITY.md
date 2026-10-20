@@ -4,9 +4,10 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | :white_check_mark: |
+| 1.2.x   | :white_check_mark: |
+| < 1.2   | :x: |
 
-This project follows a **latest-only** support policy: only the most recent `1.0.x` release
+This project follows a **latest-only** support policy: only the most recent `1.2.x` release
 line receives security fixes. There is no LTS or backport commitment.
 
 ## Reporting a Vulnerability
@@ -97,11 +98,12 @@ permissions.
 | `delete_static_route` | destructive |
 | `delete_virtual_ip` | destructive |
 
-**Read-only tools** (34) only retrieve information — device status, firewall policies,
+**Read-only tools** (37) only retrieve information — device status, firewall policies,
 address/service objects, routes, interfaces, virtual IPs, server health/schema data, and the
 v1.1 visibility additions (security profiles, admin accounts, SSL-VPN settings, local-in
-policies) and the v1.2 Phase 15 additions (address/service groups, schedules, IP pools,
-central SNAT maps, system resources, license status, HA status, ARP table, DHCP leases). They never modify FortiGate device state and are never subject to the write gate
+policies) and the v1.2 additions (address/service groups, schedules, IP pools,
+central SNAT maps, system resources, license status, HA status, ARP table, DHCP leases,
+IPsec tunnel status, firewall sessions, policy hygiene analysis). They never modify FortiGate device state and are never subject to the write gate
 described below.
 
 **Write tools** (9) create new objects (policies, address/service objects, routes, virtual
@@ -158,6 +160,25 @@ Binding to `0.0.0.0` for wider network access requires first enabling Bearer aut
 (`auth.require_auth=true` with at least one configured `auth.api_tokens` entry), plus
 network-level controls (firewall rules, a VPN, or a reverse-proxy allowlist) as
 defense-in-depth on top of application-level auth.
+
+## Authentication Guidance for FortiGate Devices
+
+**Prefer a REST API token.** Configure each device with `api_token` (a REST API administrator
+bound to a restricted `accprofile` and trusted hosts) rather than `username`/`password`.
+Tokens are never exchanged for a cookie session, can be scoped and revoked independently, and
+are redacted from this server's logs.
+
+**Password/session login is deprecated on FortiOS 7.6+ (unofficial).** Community reports
+(unofficial, not confirmed by Fortinet documentation) state that from FortiOS 7.6.3 the
+`/logincheck` endpoint no longer returns a usable session cookie, and that password
+authentication is deprecated on 7.6.x and later. Treat username/password devices on 7.6+ as
+unsupported and use an API token.
+
+**FG-IR-24-268 (FortiOS 7.4.0-7.4.3).** Fortinet PSIRT advisory FG-IR-24-268 ("Insertion of
+sensitive information into log file") describes API token exposure in REST API logs on
+FortiOS 7.4.0 through 7.4.3, fixed in 7.4.4 and later. Run a fixed FortiOS release on any
+device this server connects to with an API token. This is a FortiOS issue, not a defect of
+this server.
 
 ## Known Security Limitations
 

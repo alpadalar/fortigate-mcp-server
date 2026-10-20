@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-20
+
+Not yet tagged; tagging is a separate operator decision.
+
 ### Added
+
+- 13 read-only tools, bringing the surface to 50 unique tools (47 stdio, 48 HTTP):
+  `list_address_groups`, `list_service_groups`, `list_schedules`, `list_ip_pools`,
+  `list_central_snat_maps`, `get_system_resources`, `get_license_status`, `get_ha_status`,
+  `get_arp_table`, `list_dhcp_leases`, `get_ipsec_tunnel_status`, `list_firewall_sessions`
+  and `analyze_policy_hygiene`. Existing tool names and parameters are unchanged; the golden
+  schemas changed additively only
+- Behavioral and coverage tests for virtual IP, routing, config loader and both server
+  modules; total coverage is now above 90 percent and the pytest gate was raised from 67
+- `SECURITY.md`: FG-IR-24-268 note, API-token-preferred guidance, and unofficial notes on
+  password/session login deprecation in FortiOS 7.6+
 
 - Four GitHub Actions workflows (`test.yml`, `lint.yml`, `security.yml`, `release.yml`),
   each with every `uses:` action pinned to a live-verified 40-character commit SHA and
@@ -48,6 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Behavioral/breaking:** Python 3.11 is now the minimum (`requires-python >=3.11`);
+  3.11 through 3.14 are tested. Installs on 3.10 or older are no longer possible
+- `mcp` is no longer a direct dependency (see the fastmcp 4 entry below); starlette,
+  pydantic, uvicorn and the dev toolchain were refreshed. Supported FortiOS: 7.4 and 7.6
+  (8.0 unverified)
+- Bandit findings triaged: the intentional container default bind `0.0.0.0` (B104) and
+  example placeholder values (B105) carry justified `# nosec` comments; defaults unchanged
+- Package version bumped to 1.2.0 (pyproject, `__version__`, Dockerfile label, config defaults)
 - `ruff` added as a pinned lint dependency and calibrated clean against its built-in
   default rule set across `src/` and `tests/`; `mypy src/` now exits 0 under the
   pre-existing strict `[tool.mypy]` config, with zero strictness dialed back (CI-02)
