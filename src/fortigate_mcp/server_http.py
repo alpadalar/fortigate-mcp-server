@@ -34,6 +34,8 @@ from .tools.routing import RoutingTools
 from .tools.virtual_ip import VirtualIPTools
 from .tools.security import SecurityTools
 from .tools.admin import AdminTools
+from .tools.objects import ObjectTools
+from .tools.monitor import MonitorTools
 
 class FortiGateMCPHTTPServer:
     """
@@ -119,6 +121,8 @@ class FortiGateMCPHTTPServer:
         self.virtual_ip_tools = VirtualIPTools(self.fortigate_manager)
         self.security_tools = SecurityTools(self.fortigate_manager)
         self.admin_tools = AdminTools(self.fortigate_manager)
+        self.object_tools = ObjectTools(self.fortigate_manager)
+        self.monitor_tools = MonitorTools(self.fortigate_manager)
 
         # Initialize FastMCP
         self.mcp = FastMCP("FortiGateMCP-HTTP")

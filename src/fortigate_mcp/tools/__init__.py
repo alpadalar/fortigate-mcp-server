@@ -8,6 +8,8 @@ from .routing import RoutingTools
 from .virtual_ip import VirtualIPTools
 from .admin import AdminTools
 from .security import SecurityTools
+from .objects import ObjectTools
+from .monitor import MonitorTools
 
 __all__ = [
     "FortiGateTool",
@@ -17,5 +19,7 @@ __all__ = [
     "RoutingTools",
     "VirtualIPTools",
     "AdminTools",
-    "SecurityTools"
+    "SecurityTools",
+    "ObjectTools",
+    "MonitorTools",
 ]
