@@ -76,6 +76,9 @@ from .tools.definitions import (
     GET_HA_STATUS_DESC,
     GET_ARP_TABLE_DESC,
     LIST_DHCP_LEASES_DESC,
+    GET_IPSEC_TUNNEL_STATUS_DESC,
+    LIST_FIREWALL_SESSIONS_DESC,
+    ANALYZE_POLICY_HYGIENE_DESC,
 )
 
 
@@ -117,6 +120,10 @@ RISK_CLASSIFICATION = {
     "get_ha_status": "read",
     "get_arp_table": "read",
     "list_dhcp_leases": "read",
+    # v1.2 Phase 16 tools (NEW-08) -- read-only by design
+    "get_ipsec_tunnel_status": "read",
+    "list_firewall_sessions": "read",
+    "analyze_policy_hygiene": "read",
     # write -- create_*/update_*/add_device
     "add_device": "write",
     "create_firewall_policy": "write",
@@ -615,7 +622,8 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
                     "security_tools": tools.security_tools.get_schema_info(),
                     "admin_tools": tools.admin_tools.get_schema_info(),
                     "object_tools": tools.object_tools.get_schema_info(),
-                    "monitor_tools": tools.monitor_tools.get_schema_info()
+                    "monitor_tools": tools.monitor_tools.get_schema_info(),
+                    "vpn_tools": tools.vpn_tools.get_schema_info()
                 }
             }
             return _format_json_response(schema_info, "get_schema_info", logger=getattr(tools, "logger", None))
@@ -729,5 +737,37 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         limit: Annotated[Optional[int], Field(description="Maximum entries to return (default 100, max 500)", default=None)] = None
     ) -> List[Content]:
         return cast(List[Content], tools.monitor_tools.list_dhcp_leases(device_id, vdom, interface, limit))
+
+    @_tool(GET_IPSEC_TUNNEL_STATUS_DESC)
+    def get_ipsec_tunnel_status(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.vpn_tools.get_ipsec_tunnel_status(device_id, vdom))
+
+    @_tool(LIST_FIREWALL_SESSIONS_DESC)
+    def list_firewall_sessions(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None,
+        count: Annotated[Optional[int], Field(description="Maximum sessions to return (default 20, max 200)", default=None)] = None,
+        srcaddr: Annotated[Optional[str], Field(description="Only sessions from this IP address", default=None)] = None,
+        dstaddr: Annotated[Optional[str], Field(description="Only sessions to this IP address", default=None)] = None,
+        srcport: Annotated[Optional[int], Field(description="Only sessions from this source port", default=None)] = None,
+        dstport: Annotated[Optional[int], Field(description="Only sessions to this destination port", default=None)] = None,
+        proto: Annotated[Optional[str], Field(description="Protocol: tcp, udp, icmp, sctp or a number 1-255", default=None)] = None
+    ) -> List[Content]:
+        return cast(
+            List[Content],
+            tools.monitor_tools.list_firewall_sessions(
+                device_id, vdom, count, srcaddr, dstaddr, srcport, dstport, proto
+            ),
+        )
+
+    @_tool(ANALYZE_POLICY_HYGIENE_DESC)
+    def analyze_policy_hygiene(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.firewall_tools.analyze_policy_hygiene(device_id, vdom))
 
     return len(registered)

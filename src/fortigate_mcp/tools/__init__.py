@@ -10,6 +10,7 @@ from .admin import AdminTools
 from .security import SecurityTools
 from .objects import ObjectTools
 from .monitor import MonitorTools
+from .vpn import VPNTools
 
 __all__ = [
     "FortiGateTool",
@@ -22,4 +23,5 @@ __all__ = [
     "SecurityTools",
     "ObjectTools",
     "MonitorTools",
+    "VPNTools",
 ]

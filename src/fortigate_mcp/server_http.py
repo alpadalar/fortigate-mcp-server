@@ -36,6 +36,7 @@ from .tools.security import SecurityTools
 from .tools.admin import AdminTools
 from .tools.objects import ObjectTools
 from .tools.monitor import MonitorTools
+from .tools.vpn import VPNTools
 
 class FortiGateMCPHTTPServer:
     """
@@ -123,6 +124,7 @@ class FortiGateMCPHTTPServer:
         self.admin_tools = AdminTools(self.fortigate_manager)
         self.object_tools = ObjectTools(self.fortigate_manager)
         self.monitor_tools = MonitorTools(self.fortigate_manager)
+        self.vpn_tools = VPNTools(self.fortigate_manager)
 
         # Initialize FastMCP
         self.mcp = FastMCP("FortiGateMCP-HTTP")

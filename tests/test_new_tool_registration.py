@@ -68,14 +68,28 @@ NEW_TOOL_MATRIX = [
      {"device_id": "probe", "vdom": "vd-test", "interface": "port1", "limit": 5}),
     ("list_dhcp_leases", "monitor_tools", "list_dhcp_leases",
      {"device_id": "probe", "vdom": "vd-test", "interface": "port2.100", "limit": 7}),
+    # v1.2 Phase 16 tools
+    ("get_ipsec_tunnel_status", "vpn_tools", "get_ipsec_tunnel_status", {"device_id": "probe"}),
+    ("get_ipsec_tunnel_status", "vpn_tools", "get_ipsec_tunnel_status",
+     {"device_id": "probe", "vdom": "vd-test"}),
+    ("analyze_policy_hygiene", "firewall_tools", "analyze_policy_hygiene", {"device_id": "probe"}),
+    ("list_firewall_sessions", "monitor_tools", "list_firewall_sessions", {"device_id": "probe"}),
+    ("list_firewall_sessions", "monitor_tools", "list_firewall_sessions",
+     {"device_id": "probe", "vdom": "vd-test", "count": 50, "srcaddr": "192.0.2.1",
+      "dstaddr": "198.51.100.7", "srcport": 1234, "dstport": 443, "proto": "tcp"}),
 ]
 
 # Tools whose closures also forward interface + limit positionally.
 _FILTERED = {"get_arp_table", "list_dhcp_leases"}
 
 
+_SESSION_KEYS = ("count", "srcaddr", "dstaddr", "srcport", "dstport", "proto")
+
+
 def _expected_call(tool_name, args):
     base = (args["device_id"], args.get("vdom"))
+    if tool_name == "list_firewall_sessions":
+        return base + tuple(args.get(k) for k in _SESSION_KEYS)
     if tool_name in _FILTERED:
         return base + (args.get("interface"), args.get("limit"))
     return base
@@ -170,8 +184,8 @@ def test_get_schema_info_includes_security_and_admin_tools_schema_info(tmp_confi
 
 
 def test_get_schema_info_includes_object_and_monitor_tools(tmp_config_path):
-    """Phase 15: HTTP get_schema_info aggregation exposes object_tools and
-    monitor_tools with 5 operations each."""
+    """HTTP get_schema_info aggregation exposes object_tools (5 operations),
+    monitor_tools (6, Phase 16 added list_firewall_sessions) and vpn_tools (1)."""
     with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
         server = FortiGateMCPHTTPServer(config_path=tmp_config_path, host="127.0.0.1", port=0, path="/fortigate-mcp")
 
@@ -181,4 +195,6 @@ def test_get_schema_info_includes_object_and_monitor_tools(tmp_config_path):
     assert schema["tools"]["object_tools"]["name"] == "object_tools"
     assert schema["tools"]["monitor_tools"]["name"] == "monitor_tools"
     assert len(schema["tools"]["object_tools"]["operations"]) == 5
-    assert len(schema["tools"]["monitor_tools"]["operations"]) == 5
+    assert len(schema["tools"]["monitor_tools"]["operations"]) == 6
+    assert schema["tools"]["vpn_tools"]["name"] == "vpn_tools"
+    assert len(schema["tools"]["vpn_tools"]["operations"]) == 1

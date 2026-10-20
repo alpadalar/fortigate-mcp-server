@@ -193,12 +193,12 @@ class TestMonitorCappedTables:
         assert "No " in text
 
 
-def test_schema_info_lists_five_operations():
+def test_schema_info_lists_operations():
     info = MonitorTools(_manager()).get_schema_info()
     assert info["name"] == "monitor_tools"
     assert [o["name"] for o in info["operations"]] == [
         "get_system_resources", "get_license_status", "get_ha_status",
-        "get_arp_table", "list_dhcp_leases",
+        "get_arp_table", "list_dhcp_leases", "list_firewall_sessions",
     ]
     arp = info["operations"][3]
     assert [p["name"] for p in arp["parameters"]] == ["device_id", "vdom", "interface", "limit"]
