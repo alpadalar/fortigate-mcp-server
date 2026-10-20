@@ -52,7 +52,33 @@ NEW_TOOL_MATRIX = [
     ("get_sslvpn_settings", "security_tools", "get_sslvpn_settings", {"device_id": "probe"}),
     ("list_local_in_policies", "security_tools", "list_local_in_policies", {"device_id": "probe"}),
     ("list_admins", "admin_tools", "list_admins", {"device_id": "probe", "vdom": "vd-test"}),
+    # v1.2 Phase 15 visibility tools
+    ("list_address_groups", "object_tools", "list_address_groups", {"device_id": "probe"}),
+    ("list_service_groups", "object_tools", "list_service_groups", {"device_id": "probe"}),
+    ("list_schedules", "object_tools", "list_schedules", {"device_id": "probe"}),
+    ("list_ip_pools", "object_tools", "list_ip_pools", {"device_id": "probe"}),
+    ("list_central_snat_maps", "object_tools", "list_central_snat_maps", {"device_id": "probe"}),
+    ("get_system_resources", "monitor_tools", "get_system_resources", {"device_id": "probe"}),
+    ("get_license_status", "monitor_tools", "get_license_status", {"device_id": "probe"}),
+    ("get_ha_status", "monitor_tools", "get_ha_status", {"device_id": "probe"}),
+    ("get_arp_table", "monitor_tools", "get_arp_table", {"device_id": "probe"}),
+    ("list_dhcp_leases", "monitor_tools", "list_dhcp_leases", {"device_id": "probe"}),
+    ("list_ip_pools", "object_tools", "list_ip_pools", {"device_id": "probe", "vdom": "vd-test"}),
+    ("get_arp_table", "monitor_tools", "get_arp_table",
+     {"device_id": "probe", "vdom": "vd-test", "interface": "port1", "limit": 5}),
+    ("list_dhcp_leases", "monitor_tools", "list_dhcp_leases",
+     {"device_id": "probe", "vdom": "vd-test", "interface": "port2.100", "limit": 7}),
 ]
+
+# Tools whose closures also forward interface + limit positionally.
+_FILTERED = {"get_arp_table", "list_dhcp_leases"}
+
+
+def _expected_call(tool_name, args):
+    base = (args["device_id"], args.get("vdom"))
+    if tool_name in _FILTERED:
+        return base + (args.get("interface"), args.get("limit"))
+    return base
 
 
 @pytest.mark.parametrize("tool_name, tools_attr, method_name, args", NEW_TOOL_MATRIX)
@@ -67,7 +93,7 @@ def test_new_tool_dispatches_on_stdio(tmp_config_path, tool_name, tools_attr, me
     result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
 
     assert result.content[0].text == f"SENTINEL-{tool_name}"
-    mock_method.assert_called_once_with(args["device_id"], args.get("vdom"))
+    mock_method.assert_called_once_with(*_expected_call(tool_name, args))
 
 
 @pytest.mark.parametrize("tool_name, tools_attr, method_name, args", NEW_TOOL_MATRIX)
@@ -93,7 +119,7 @@ def test_new_tool_never_gated_regardless_of_allow_writes(
     result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
 
     assert result.content[0].text == f"SENTINEL-{tool_name}"
-    mock_method.assert_called_once_with(args["device_id"], args.get("vdom"))
+    mock_method.assert_called_once_with(*_expected_call(tool_name, args))
 
 
 @pytest.mark.parametrize("tool_name", list(dict.fromkeys(entry[0] for entry in NEW_TOOL_MATRIX)))
@@ -120,7 +146,7 @@ def test_new_tool_dispatches_on_http(tmp_config_path, tool_name, tools_attr, met
     result = asyncio.run(_call_via_client(server.mcp, tool_name, args))
 
     assert result.content[0].text == f"SENTINEL-{tool_name}"
-    mock_method.assert_called_once_with(args["device_id"], args.get("vdom"))
+    mock_method.assert_called_once_with(*_expected_call(tool_name, args))
 
 
 def test_get_schema_info_includes_security_and_admin_tools_schema_info(tmp_config_path):
@@ -141,3 +167,18 @@ def test_get_schema_info_includes_security_and_admin_tools_schema_info(tmp_confi
     assert schema["tools"]["admin_tools"]["name"] == "admin_tools"
     assert len(schema["tools"]["security_tools"]["operations"]) >= 3
     assert len(schema["tools"]["admin_tools"]["operations"]) >= 1
+
+
+def test_get_schema_info_includes_object_and_monitor_tools(tmp_config_path):
+    """Phase 15: HTTP get_schema_info aggregation exposes object_tools and
+    monitor_tools with 5 operations each."""
+    with patch.object(FortiGateMCPHTTPServer, "_test_initial_connection", lambda self: None):
+        server = FortiGateMCPHTTPServer(config_path=tmp_config_path, host="127.0.0.1", port=0, path="/fortigate-mcp")
+
+    result = asyncio.run(_call_via_client(server.mcp, "get_schema_info", {}))
+
+    schema = json.loads(result.content[0].text)
+    assert schema["tools"]["object_tools"]["name"] == "object_tools"
+    assert schema["tools"]["monitor_tools"]["name"] == "monitor_tools"
+    assert len(schema["tools"]["object_tools"]["operations"]) == 5
+    assert len(schema["tools"]["monitor_tools"]["operations"]) == 5
