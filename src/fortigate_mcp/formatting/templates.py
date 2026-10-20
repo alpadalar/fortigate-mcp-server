@@ -1019,12 +1019,28 @@ class FortiGateTemplates:
         if not isinstance(members, (list, tuple)):
             return ""
         names = []
-        for member in members:
+        for member in members[: FortiGateTemplates._MEMBER_CAP]:
             if isinstance(member, dict):
                 names.append(str(member.get("name", "unknown")))
             else:
                 names.append(str(member))
+        if len(members) > FortiGateTemplates._MEMBER_CAP:
+            names.append(f"... ({len(members) - FortiGateTemplates._MEMBER_CAP} more)")
         return ", ".join(names)
+
+    # Output caps for list-style tools whose device queries are not paged.
+    _LIST_CAP = 500
+    _MEMBER_CAP = 200
+    _FINDING_CAP = 100
+
+    @staticmethod
+    def _capped(items: List[Any], cap: int, lines: List[str], noun: str) -> List[Any]:
+        """Return items[:cap]; append a truncation line to `lines` when cut."""
+        if len(items) > cap:
+            lines.append(f"Showing {cap} of {len(items)} {noun}; output truncated")
+            lines.append("")
+            return items[:cap]
+        return items
 
     @staticmethod
     def _results_list(data: Any) -> List[Any]:
@@ -1043,6 +1059,7 @@ class FortiGateTemplates:
         if not groups:
             lines.append(empty_text)
             return "\n".join(lines)
+        groups = FortiGateTemplates._capped(groups, FortiGateTemplates._LIST_CAP, lines, "groups")
         for group in groups:
             members = group.get("member")
             count = len(members) if isinstance(members, list) else 0
@@ -1099,6 +1116,9 @@ class FortiGateTemplates:
                 lines.extend([f"{title}: none configured", ""])
                 continue
             lines.append(title)
+            items = FortiGateTemplates._capped(
+                items, FortiGateTemplates._LIST_CAP, lines, "schedules"
+            )
             for item in items:
                 name = item.get("name", "Unnamed")
                 if key == "recurring":
@@ -1129,6 +1149,7 @@ class FortiGateTemplates:
         if not pools:
             lines.append("No IP pools configured")
             return "\n".join(lines)
+        pools = FortiGateTemplates._capped(pools, FortiGateTemplates._LIST_CAP, lines, "pools")
         for pool in pools:
             lines.extend([
                 f"{pool.get('name', 'Unnamed')}",
@@ -1153,6 +1174,9 @@ class FortiGateTemplates:
         if not entries:
             lines.append("No central SNAT map entries configured")
             return "\n".join(lines)
+        entries = FortiGateTemplates._capped(
+            entries, FortiGateTemplates._LIST_CAP, lines, "entries"
+        )
         names = FortiGateTemplates._member_names
         for entry in entries:
             lines.extend([
@@ -1453,11 +1477,15 @@ class FortiGateTemplates:
             if not items:
                 continue
             lines.append(f"{key} ({len(items)})")
-            for item in items:
+            for item in items[: FortiGateTemplates._FINDING_CAP]:
                 extras = ", ".join(
                     f"{k}={item[k]}" for k in sorted(item) if k != "policyid"
                 )
                 lines.append(f"  Policy {item.get('policyid')}" + (f": {extras}" if extras else ""))
+            if len(items) > FortiGateTemplates._FINDING_CAP:
+                lines.append(
+                    f"  ... {len(items) - FortiGateTemplates._FINDING_CAP} more not shown"
+                )
             lines.append("")
         if not any(findings.get(k) for k in order):
             lines.append("No hygiene findings")
