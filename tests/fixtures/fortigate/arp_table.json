@@ -1,0 +1,54 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "ip": "10.0.0.1",
+      "mac": "aa:bb:cc:00:00:01",
+      "interface": "port1",
+      "age": 1,
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    },
+    {
+      "ip": "10.0.0.2",
+      "mac": "aa:bb:cc:00:00:02",
+      "interface": "port1",
+      "age": 2
+    },
+    {
+      "ip": "10.0.0.3",
+      "mac": "aa:bb:cc:00:00:03",
+      "interface": "port1",
+      "age": 3
+    },
+    {
+      "ip": "10.0.0.4",
+      "mac": "aa:bb:cc:00:00:04",
+      "interface": "port1",
+      "age": 4
+    },
+    {
+      "ip": "10.0.0.5",
+      "mac": "aa:bb:cc:00:00:05",
+      "interface": "port2.100",
+      "age": 5
+    },
+    {
+      "ip": "10.0.0.6",
+      "mac": "aa:bb:cc:00:00:06",
+      "interface": "port2.100",
+      "age": 6
+    },
+    {
+      "ip": "10.0.0.7",
+      "mac": "aa:bb:cc:00:00:07",
+      "interface": "port2.100",
+      "age": 7
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

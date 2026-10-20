@@ -1,0 +1,24 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "hostname": "fw-a",
+      "serial_no": "FGVMEVFAKE0000001",
+      "priority": 200,
+      "role": "primary",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    },
+    {
+      "hostname": "fw-b",
+      "serial_no": "FGVMEVFAKE0000002",
+      "priority": 100,
+      "role": "secondary"
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

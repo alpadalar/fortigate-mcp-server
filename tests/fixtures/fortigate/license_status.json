@@ -1,0 +1,24 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": {
+    "forticare": {
+      "status": "licensed",
+      "expires": "2027-03-01",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    },
+    "antivirus": {
+      "status": "licensed",
+      "expires": "2027-03-01"
+    },
+    "ips": {
+      "status": "expired",
+      "expires": "2025-01-01"
+    }
+  },
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

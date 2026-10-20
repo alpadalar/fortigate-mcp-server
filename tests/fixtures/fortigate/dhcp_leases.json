@@ -1,0 +1,67 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "ip": "10.1.0.1",
+      "mac": "dd:ee:ff:00:00:01",
+      "hostname": "host-1",
+      "interface": "port1",
+      "expire_time": 1800000001,
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    },
+    {
+      "ip": "10.1.0.2",
+      "mac": "dd:ee:ff:00:00:02",
+      "hostname": "host-2",
+      "interface": "port1",
+      "expire_time": 1800000002,
+      "password": ""
+    },
+    {
+      "ip": "10.1.0.3",
+      "mac": "dd:ee:ff:00:00:03",
+      "hostname": "host-3",
+      "interface": "port1",
+      "expire_time": 1800000003,
+      "password": ""
+    },
+    {
+      "ip": "10.1.0.4",
+      "mac": "dd:ee:ff:00:00:04",
+      "hostname": "host-4",
+      "interface": "port1",
+      "expire_time": 1800000004,
+      "password": ""
+    },
+    {
+      "ip": "10.1.0.5",
+      "mac": "dd:ee:ff:00:00:05",
+      "hostname": "host-5",
+      "interface": "port2.100",
+      "expire_time": 1800000005,
+      "password": ""
+    },
+    {
+      "ip": "10.1.0.6",
+      "mac": "dd:ee:ff:00:00:06",
+      "hostname": "host-6",
+      "interface": "port2.100",
+      "expire_time": 1800000006,
+      "password": ""
+    },
+    {
+      "ip": "10.1.0.7",
+      "mac": "dd:ee:ff:00:00:07",
+      "hostname": "host-7",
+      "interface": "port2.100",
+      "expire_time": 1800000007,
+      "password": ""
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

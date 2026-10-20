@@ -1,0 +1,116 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": {
+    "cpu": [
+      {
+        "interval": "1-min",
+        "current": 12,
+        "historical": {
+          "min": 1,
+          "max": 1
+        },
+        "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+      },
+      {
+        "interval": "10-min",
+        "current": 62,
+        "historical": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      {
+        "interval": "30-min",
+        "current": 72,
+        "historical": {
+          "min": 1,
+          "max": 1
+        }
+      }
+    ],
+    "mem": [
+      {
+        "interval": "1-min",
+        "current": 41,
+        "historical": {
+          "min": 2,
+          "max": 2
+        }
+      },
+      {
+        "interval": "10-min",
+        "current": 91,
+        "historical": {
+          "min": 2,
+          "max": 2
+        }
+      },
+      {
+        "interval": "30-min",
+        "current": 101,
+        "historical": {
+          "min": 2,
+          "max": 2
+        }
+      }
+    ],
+    "session": [
+      {
+        "interval": "1-min",
+        "current": 1234,
+        "historical": {
+          "min": 3,
+          "max": 3
+        }
+      },
+      {
+        "interval": "10-min",
+        "current": 1284,
+        "historical": {
+          "min": 3,
+          "max": 3
+        }
+      },
+      {
+        "interval": "30-min",
+        "current": 1294,
+        "historical": {
+          "min": 3,
+          "max": 3
+        }
+      }
+    ],
+    "setup_rate": [
+      {
+        "interval": "1-min",
+        "current": 7,
+        "historical": {
+          "min": 4,
+          "max": 4
+        }
+      },
+      {
+        "interval": "10-min",
+        "current": 57,
+        "historical": {
+          "min": 4,
+          "max": 4
+        }
+      },
+      {
+        "interval": "30-min",
+        "current": 67,
+        "historical": {
+          "min": 4,
+          "max": 4
+        }
+      }
+    ]
+  },
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}
