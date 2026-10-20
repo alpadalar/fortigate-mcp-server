@@ -107,7 +107,7 @@ def _all_address_names(addresses: Iterable[Any]) -> FrozenSet[str]:
         if not isinstance(addr, dict) or not isinstance(addr.get("name"), str):
             continue
         subnet = addr.get("subnet")
-        if isinstance(subnet, str) and subnet.split() in (["0.0.0.0", "0.0.0.0"], ["0.0.0.0/0"]):
+        if isinstance(subnet, str) and subnet.split() in (["0.0.0.0", "0.0.0.0"], ["0.0.0.0/0"]):  # nosec B104 - string compare for any-address subnet, not a bind
             out.add(addr["name"])
     return frozenset(out)
 

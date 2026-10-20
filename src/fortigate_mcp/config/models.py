@@ -159,7 +159,10 @@ class ServerConfig(StrictConfigModel):
     Defines server runtime parameters including
     network binding and performance settings.
     """
-    host: str = Field(default="0.0.0.0", description="Server bind address")
+    host: str = Field(
+        default="0.0.0.0",  # nosec B104 - intentional container default; auth enforced via auth.require_auth, see SECURITY.md
+        description="Server bind address",
+    )
     port: int = Field(default=8814, ge=1, le=65535, description="Server port")
     name: str = Field(default="fortigate-mcp-server", description="Server name")
     version: str = Field(default="1.0.0", description="Server version")

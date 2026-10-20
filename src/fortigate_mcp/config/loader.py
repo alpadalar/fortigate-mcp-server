@@ -156,7 +156,7 @@ def create_example_config() -> dict:
     """
     return {
         "server": {
-            "host": "0.0.0.0",
+            "host": "0.0.0.0",  # nosec B104 - intentional container default; auth enforced via auth.require_auth, see SECURITY.md
             "port": 8814,
             "name": "fortigate-mcp-server",
             "version": "1.0.0",
@@ -168,8 +168,8 @@ def create_example_config() -> dict:
                     "host": "192.168.1.1",
                     "port": 443,
                     "username": "admin",
-                    "password": "your_password",
-                    "api_token": "",
+                    "password": "your_password",  # nosec B105 - example placeholder, not a secret
+                    "api_token": "",  # nosec B105 - example placeholder, not a secret
                     "vdom": "root",
                     "verify_ssl": True,
                     "timeout": 30
@@ -177,7 +177,7 @@ def create_example_config() -> dict:
                 "backup": {
                     "host": "192.168.1.2",
                     "port": 443,
-                    "api_token": "your_api_token_here",
+                    "api_token": "your_api_token_here",  # nosec B105 - example placeholder, not a secret
                     "vdom": "root",
                     "verify_ssl": True,
                     "timeout": 30
