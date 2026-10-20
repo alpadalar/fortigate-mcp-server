@@ -1,0 +1,67 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "proxyid": [
+        {
+          "proxy_src": [
+            {
+              "subnet": "10.1.0.0/24"
+            }
+          ],
+          "proxy_dst": [
+            {
+              "subnet": "10.2.0.0/24"
+            }
+          ],
+          "status": "up",
+          "p2name": "SITE-B-P2",
+          "incoming_bytes": 123456,
+          "outgoing_bytes": 654321,
+          "expire": 1800,
+          "psk": "FAKE-PSK-SENTINEL-NESTED-1"
+        }
+      ],
+      "name": "SITE-B",
+      "type": "static",
+      "rgwy": "203.0.113.20",
+      "tun_id": "203.0.113.20",
+      "status": "up",
+      "psksecret": "ENC FAKE-PSK-SENTINEL-TOP-1",
+      "preshared-key": "FAKE-PSK-SENTINEL-UNLISTED-1"
+    },
+    {
+      "proxyid": [
+        {
+          "proxy_src": [
+            {
+              "subnet": "10.1.0.0/24"
+            }
+          ],
+          "proxy_dst": [
+            {
+              "subnet": "10.3.0.0/24"
+            }
+          ],
+          "status": "down",
+          "p2name": "SITE-C-P2",
+          "incoming_bytes": 0,
+          "outgoing_bytes": 0,
+          "psksecret-remote": "FAKE-PSK-SENTINEL-NESTED-2"
+        }
+      ],
+      "name": "SITE-C",
+      "type": "static",
+      "rgwy": "203.0.113.30",
+      "tun_id": "203.0.113.30",
+      "psksecret": "ENC FAKE-PSK-SENTINEL-TOP-2",
+      "preshared-key": "FAKE-PSK-SENTINEL-UNLISTED-2"
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}
