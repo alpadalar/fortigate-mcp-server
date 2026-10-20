@@ -237,6 +237,70 @@ def validate_result_limit(
     return value
 
 
+_SESSION_PROTO_NAMES = frozenset({"tcp", "udp", "icmp", "sctp"})
+
+
+def validate_session_proto(proto: Any) -> str:
+    """Validate a session protocol filter: tcp/udp/icmp/sctp or an IP protocol number 1-255.
+
+    Returns the value as a lowercase string (names) or decimal string (numbers).
+
+    Raises:
+        ValueError: for anything else; the message never echoes the value.
+    """
+    if isinstance(proto, bool):
+        raise ValueError("proto must be tcp, udp, icmp, sctp or a number between 1 and 255")
+    if isinstance(proto, int):
+        if 1 <= proto <= 255:
+            return str(proto)
+    elif isinstance(proto, str):
+        if proto in _SESSION_PROTO_NAMES or proto.lower() in _SESSION_PROTO_NAMES:
+            return proto.lower()
+        if _NUMERIC_ID_RE.fullmatch(proto) and 1 <= int(proto) <= 255:
+            return str(int(proto))
+    raise ValueError("proto must be tcp, udp, icmp, sctp or a number between 1 and 255")
+
+
+def validate_session_filters(
+    srcaddr: Optional[str] = None,
+    dstaddr: Optional[str] = None,
+    srcport: Optional[int] = None,
+    dstport: Optional[int] = None,
+    proto: Any = None,
+) -> "dict[str, str]":
+    """Validate firewall session filters and return the wire query parameters.
+
+    Only the supplied (non-None) filters are returned. Addresses must be
+    literal IPv4/IPv6 addresses (ipaddress.ip_address; no hostnames, ranges
+    or CIDR), ports go through `validate_port`, proto through
+    `validate_session_proto`. The device-side parameter for `proto` is
+    `protocol`.
+
+    Raises:
+        ValueError: naming the offending field, never echoing its value.
+    """
+    params: "dict[str, str]" = {}
+    for field_name, value in (("srcaddr", srcaddr), ("dstaddr", dstaddr)):
+        if value is None:
+            continue
+        if not isinstance(value, str) or "%" in value:
+            raise ValueError(f"{field_name} must be a literal IPv4 or IPv6 address")
+        try:
+            params[field_name] = str(ipaddress.ip_address(value))
+        except ValueError:
+            raise ValueError(f"{field_name} must be a literal IPv4 or IPv6 address") from None
+    for field_name, port in (("srcport", srcport), ("dstport", dstport)):
+        if port is None:
+            continue
+        try:
+            params[field_name] = str(validate_port(port))
+        except ValueError:
+            raise ValueError(f"{field_name} must be an integer between 1 and 65535") from None
+    if proto is not None:
+        params["protocol"] = validate_session_proto(proto)
+    return params
+
+
 def scrub_secrets(text: str, secrets: Iterable[Optional[str]]) -> str:
     """Redact known secret values and Bearer-pattern tokens from `text`.
 

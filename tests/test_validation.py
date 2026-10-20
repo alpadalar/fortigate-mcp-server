@@ -17,6 +17,8 @@ from src.fortigate_mcp.validation import (
     validate_object_name,
     validate_port,
     validate_result_limit,
+    validate_session_filters,
+    validate_session_proto,
     validate_vdom,
 )
 
@@ -405,3 +407,48 @@ class TestValidateResultLimit:
     def test_bad_default_is_error(self, default, maximum):
         with pytest.raises(ValueError):
             validate_result_limit(None, default, maximum)
+
+
+class TestSessionFilters:
+    """validate_session_filters / validate_session_proto: injection-safe wire params."""
+
+    def test_none_yields_empty(self):
+        assert validate_session_filters() == {}
+
+    def test_valid_filters_become_wire_params(self):
+        out = validate_session_filters("192.0.2.1", "2001:db8::1", 1024, 443, "TCP")
+        assert out == {
+            "srcaddr": "192.0.2.1",
+            "dstaddr": "2001:db8::1",
+            "srcport": "1024",
+            "dstport": "443",
+            "protocol": "tcp",
+        }
+
+    @pytest.mark.parametrize("proto", ["tcp", "udp", "icmp", "sctp", 1, 255, "47", 6])
+    def test_proto_accepted(self, proto):
+        assert validate_session_proto(proto)
+
+    @pytest.mark.parametrize(
+        "proto", ["", "tcp&x=1", "tcp\n", "0", 0, 256, "256", True, 1.5, "ip", "tcp udp", "'tcp'"]
+    )
+    def test_proto_rejected(self, proto):
+        with pytest.raises(ValueError):
+            validate_session_proto(proto)
+
+    @pytest.mark.parametrize("field", ["srcaddr", "dstaddr"])
+    @pytest.mark.parametrize(
+        "bad",
+        ["", "192.0.2.1 ", "192.0.2.1\n", "192.0.2.1&x=1", "a b", "'1.1.1.1'", "example.com",
+         "fe80::1%eth0", "192.0.2.0/24", 3232235777, "1.2.3.4;ls"],
+    )
+    def test_bad_addresses_rejected_without_echo(self, field, bad):
+        with pytest.raises(ValueError, match=field) as exc:
+            validate_session_filters(**{field: bad})
+        assert str(bad) not in str(exc.value) or str(bad) == ""
+
+    @pytest.mark.parametrize("field", ["srcport", "dstport"])
+    @pytest.mark.parametrize("bad", [0, 65536, -1, "80", True, 1.5])
+    def test_bad_ports_rejected(self, field, bad):
+        with pytest.raises(ValueError, match=field):
+            validate_session_filters(**{field: bad})
