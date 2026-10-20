@@ -70,7 +70,7 @@ def _fake_tools():
 
 def test_classification_completeness_matches_registered_tools():
     """set(RISK_CLASSIFICATION) equals the union of tool names registered by
-    register_tools() for both transports -- exactly 37 unique names."""
+    register_tools() for both transports -- exactly 47 unique names."""
     # The only tool-name introspection surface is the public async list_tools().
     stdio_mcp = PrefectFastMCP("classification-stdio")
     register_tools(stdio_mcp, _fake_tools(), transport="stdio")
@@ -83,7 +83,7 @@ def test_classification_completeness_matches_registered_tools():
     union = stdio_names | http_names
 
     assert union == set(RISK_CLASSIFICATION)
-    assert len(RISK_CLASSIFICATION) == 37
+    assert len(RISK_CLASSIFICATION) == 47
     assert len(RISK_CLASSIFICATION) == len(set(RISK_CLASSIFICATION))  # no duplicate keys
 
 

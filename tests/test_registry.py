@@ -85,13 +85,13 @@ def _tool_fn(mcp, name: str):
 def test_register_tools_stdio_count():
     mcp = PrefectFastMCP("probe")
     count = register_tools(mcp, _fake_tools(), transport="stdio")
-    assert count == 34
+    assert count == 44
 
 
 def test_register_tools_http_count():
     mcp = PrefectFastMCP("probe")
     count = register_tools(mcp, _fake_tools(), transport="http")
-    assert count == 35
+    assert count == 45
 
 
 def test_unknown_transport_rejected():
