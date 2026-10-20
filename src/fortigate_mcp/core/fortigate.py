@@ -478,6 +478,56 @@ class FortiGateAPI:
         """
         return self._make_request("GET", "cmdb/firewall/local-in-policy", vdom=vdom)
 
+    # Config-object visibility endpoints (Phase 15)
+    def get_address_groups(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get address groups; results is a list of group objects with a member list."""
+        return self._make_request("GET", "cmdb/firewall/addrgrp", vdom=vdom)
+
+    def get_service_groups(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get service groups; results is a list of group objects with a member list."""
+        return self._make_request("GET", "cmdb/firewall.service/group", vdom=vdom)
+
+    def get_recurring_schedules(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get recurring schedules; results is a list of schedule objects (day, start, end)."""
+        return self._make_request("GET", "cmdb/firewall.schedule/recurring", vdom=vdom)
+
+    def get_onetime_schedules(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get one-time schedules; results is a list of schedule objects (start, end)."""
+        return self._make_request("GET", "cmdb/firewall.schedule/onetime", vdom=vdom)
+
+    def get_schedule_groups(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get schedule groups; results is a list of group objects with a member list."""
+        return self._make_request("GET", "cmdb/firewall.schedule/group", vdom=vdom)
+
+    def get_ip_pools(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get IP pools; results is a list of pool objects (type, startip, endip)."""
+        return self._make_request("GET", "cmdb/firewall/ippool", vdom=vdom)
+
+    def get_central_snat_maps(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get central SNAT map entries; results is a list of policy-like objects."""
+        return self._make_request("GET", "cmdb/firewall/central-snat-map", vdom=vdom)
+
+    # Monitor visibility endpoints (Phase 15)
+    def get_system_resource_usage(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get resource usage; results is a dict keyed by resource name, each a list of interval buckets."""
+        return self._make_request("GET", "monitor/system/resource/usage", vdom=vdom)
+
+    def get_license_status(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get license/contract status; results is a dict keyed by service name."""
+        return self._make_request("GET", "monitor/license/status", vdom=vdom)
+
+    def get_ha_peers(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get HA peers; an empty results list means standalone (the tool layer decides)."""
+        return self._make_request("GET", "monitor/system/ha-peer", vdom=vdom)
+
+    def get_arp_table(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get the ARP table; results is a list of entries (ip, mac, interface)."""
+        return self._make_request("GET", "monitor/network/arp", vdom=vdom)
+
+    def get_dhcp_leases(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DHCP leases; results is a list of lease entries (ip, mac, interface)."""
+        return self._make_request("GET", "monitor/system/dhcp", vdom=vdom)
+
 
 class FortiGateManager:
     """Manager for multiple FortiGate devices.
