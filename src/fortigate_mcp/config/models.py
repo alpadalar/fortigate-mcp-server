@@ -165,7 +165,7 @@ class ServerConfig(StrictConfigModel):
     )
     port: int = Field(default=8814, ge=1, le=65535, description="Server port")
     name: str = Field(default="fortigate-mcp-server", description="Server name")
-    version: str = Field(default="1.0.0", description="Server version")
+    version: str = Field(default="1.2.0", description="Server version")
     allow_writes: bool = Field(
         default=False,
         description=(

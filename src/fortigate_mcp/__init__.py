@@ -17,7 +17,7 @@ The server supports multiple transport modes:
 - HTTP: For web-based and external integrations
 """
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 __author__ = "FortiGate MCP Team"
 __email__ = "support@fortimcp.dev"
 

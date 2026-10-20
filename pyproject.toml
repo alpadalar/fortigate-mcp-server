@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fortigate-mcp-server"
-version = "1.0.0"
+version = "1.2.0"
 description = "FortiGate MCP Server - FastMCP based FortiGate management server"
 readme = "README.md"
 license = {text = "MIT"}
@@ -97,7 +97,7 @@ addopts = [
     "--cov=src",
     "--cov-report=html",
     "--cov-report=term-missing",
-    "--cov-fail-under=67",
+    "--cov-fail-under=90",
 ]
 asyncio_mode = "auto"
 markers = [

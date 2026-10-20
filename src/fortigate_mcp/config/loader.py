@@ -159,7 +159,7 @@ def create_example_config() -> dict:
             "host": "0.0.0.0",  # nosec B104 - intentional container default; auth enforced via auth.require_auth, see SECURITY.md
             "port": 8814,
             "name": "fortigate-mcp-server",
-            "version": "1.0.0",
+            "version": "1.2.0",
             "allow_writes": False
         },
         "fortigate": {
