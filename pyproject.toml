@@ -20,6 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Networking :: Firewalls",
     "Topic :: System :: Systems Administration",
 ]
@@ -29,9 +31,12 @@ dependencies = [
     # mcp floor 1.23.0 fixes CVE-2025-66416 (DNS rebinding, GHSA-9h52-p55h-vw2f); ceiling <2.0 avoids the FastMCP->MCPServer rename landing 2026-07-28; fastmcp floor 3.2.0 fixes CVE-2026-32871 (SSRF/path-traversal via OpenAPIProvider, GHSA-vv7q-7jx5-f767) -- this codebase does not use OpenAPIProvider/from_openapi (confirmed by repo-wide grep), but the fastmcp package itself is affected below 3.2.0 regardless of feature usage
     "mcp>=1.23.0,<2.0",
     "fastmcp>=3.2.0",
-    "httpx>=0.24.0",
-    "pydantic>=2.0.0",
-    "uvicorn[standard]>=0.24.0",
+    # httpx 0.28.1 matches the fastmcp-slim server extra; <1.0 excludes the unreviewed 1.0 major
+    "httpx>=0.28.1,<1.0",
+    # pydantic 2.12 is the floor required by fastmcp-slim 4 / mcp 2 (avoids moving it again in the fastmcp 4 migration)
+    "pydantic>=2.12.0",
+    # uvicorn 0.35 is the fastmcp-slim server extra floor; manual uvicorn.Server(Config(...)) use in server_http works through 0.54
+    "uvicorn[standard]>=0.35.0",
     "asgiref>=3.7.0",
 ]
 
