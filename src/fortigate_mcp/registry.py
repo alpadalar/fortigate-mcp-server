@@ -21,8 +21,8 @@ the ``mcp`` object passed in, so it is duck-typed across whichever engine(s)
 stdio and HTTP end up on (``mcp.server.fastmcp.FastMCP`` and/or
 ``fastmcp.FastMCP``).
 """
-import asyncio
 import functools
+import inspect
 import json
 import os
 from datetime import datetime
@@ -197,7 +197,7 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
             "FORTIGATE_MCP_ALLOW_WRITES=1 to enable it"
         )
 
-        if asyncio.iscoroutinefunction(fn):
+        if inspect.iscoroutinefunction(fn):
             @functools.wraps(fn)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 if not _writes_allowed():
