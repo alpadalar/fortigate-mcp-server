@@ -274,21 +274,28 @@ def validate_session_filters(
     literal IPv4/IPv6 addresses (ipaddress.ip_address; no hostnames, ranges
     or CIDR), ports go through `validate_port`, proto through
     `validate_session_proto`. The device-side parameter for `proto` is
-    `protocol`.
+    `protocol`. IPv6 address filters add the matching `ip_version` parameter.
 
     Raises:
         ValueError: naming the offending field, never echoing its value.
     """
     params: "dict[str, str]" = {}
+    versions = set()
     for field_name, value in (("srcaddr", srcaddr), ("dstaddr", dstaddr)):
         if value is None:
             continue
         if not isinstance(value, str) or "%" in value:
             raise ValueError(f"{field_name} must be a literal IPv4 or IPv6 address")
         try:
-            params[field_name] = str(ipaddress.ip_address(value))
+            addr = ipaddress.ip_address(value)
         except ValueError:
             raise ValueError(f"{field_name} must be a literal IPv4 or IPv6 address") from None
+        params[field_name] = str(addr)
+        versions.add(addr.version)
+    # FortiOS monitor/firewall/session defaults to ip_version=ipv4 and would
+    # silently return nothing for an IPv6 filter.
+    if 6 in versions:
+        params["ip_version"] = "ipv6" if versions == {6} else "ipboth"
     for field_name, port in (("srcport", srcport), ("dstport", dstport)):
         if port is None:
             continue

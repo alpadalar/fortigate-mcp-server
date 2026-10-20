@@ -423,7 +423,12 @@ class TestSessionFilters:
             "srcport": "1024",
             "dstport": "443",
             "protocol": "tcp",
+            "ip_version": "ipboth",
         }
+
+    def test_ipv6_only_sets_ip_version(self):
+        assert validate_session_filters(None, "2001:db8::1")["ip_version"] == "ipv6"
+        assert "ip_version" not in validate_session_filters("192.0.2.1")
 
     @pytest.mark.parametrize("proto", ["tcp", "udp", "icmp", "sctp", 1, 255, "47", 6])
     def test_proto_accepted(self, proto):
