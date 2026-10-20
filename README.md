@@ -9,7 +9,7 @@ FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for m
 
 ## 🚀 Features
 
-FortiGate MCP Server exposes 47 unique tools, 89 total tool-surface registrations across stdio (44) and HTTP (45) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
+FortiGate MCP Server exposes 50 unique tools, 95 total tool-surface registrations across stdio (47) and HTTP (48) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
 
 - **Device Management**: Add, remove, and test connections to FortiGate devices
 - **Firewall Management**: List, create, update, and delete firewall rules
@@ -19,6 +19,7 @@ FortiGate MCP Server exposes 47 unique tools, 89 total tool-surface registration
 - **Security Visibility**: Read-only insight into security profiles, admin accounts (secret fields redacted), SSL-VPN settings, and IPv4 local-in policies
 - **Config-Object Visibility**: Read-only address groups, service groups, schedules (recurring, one-time, groups), IP pools, and central SNAT maps
 - **Monitor Visibility**: Read-only system resources, license status, HA status (standalone reported as such), ARP table, and DHCP leases
+- **IPsec, Sessions & Policy Hygiene**: Read-only IPsec tunnel status (no pre-shared keys), capped firewall session listing with validated filters, and offline policy hygiene analysis (shadowed, duplicate, any-any, disabled)
 - **HTTP Transport**: MCP protocol over HTTP using FastMCP
 - **Docker Support**: Easy installation and deployment
 - **MCP Client Integration**: Works with Claude Desktop, Claude Code, Cursor, and other MCP-compatible clients
@@ -243,6 +244,9 @@ All take `device_id` and an optional `vdom`. A FortiOS 404 is reported as "not s
 - `get_ha_status` - Get HA peer status (empty result means standalone)
 - `get_arp_table` - Get ARP table (`interface` filter, `limit` default 100, max 500)
 - `list_dhcp_leases` - List DHCP leases (`interface` filter, `limit` default 100, max 500)
+- `get_ipsec_tunnel_status` - IPsec tunnel and phase 2 selector status (never returns pre-shared keys)
+- `list_firewall_sessions` - List active sessions (`count` default 20, max 200; `srcaddr`, `dstaddr`, `srcport`, `dstport`, `proto` filters)
+- `analyze_policy_hygiene` - Offline analysis of shadowed, duplicate, any-any and disabled policies
 
 ### System Commands
 

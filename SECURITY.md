@@ -25,8 +25,8 @@ We will acknowledge new reports and work with you on remediation and disclosure 
 
 ## What Can This Server Do To Your Firewall
 
-This MCP server exposes **47 unique tools**, registered as **89 total tool-surface
-registrations across the stdio (44 tools) and HTTP (45 tools) transports** (three
+This MCP server exposes **50 unique tools**, registered as **95 total tool-surface
+registrations across the stdio (47 tools) and HTTP (48 tools) transports** (three
 create-tools — `create_address_object`, `create_service_object`, `create_static_route` —
 have transport-specific parameter shapes and are therefore counted once per transport; every
 other tool name is schema-identical across both transports). Each tool operates against
@@ -80,6 +80,9 @@ permissions.
 | `get_ha_status` | read |
 | `get_arp_table` | read |
 | `list_dhcp_leases` | read |
+| `get_ipsec_tunnel_status` | read |
+| `list_firewall_sessions` | read |
+| `analyze_policy_hygiene` | read |
 | `add_device` | write |
 | `create_firewall_policy` | write |
 | `update_firewall_policy` | write |
@@ -201,8 +204,10 @@ entry) before binding the HTTP transport to any non-loopback interface.
 **ARP, DHCP-lease, and HA-status output is network-reconnaissance-sensitive.** `get_arp_table`,
 `list_dhcp_leases`, and `get_ha_status` expose MAC addresses, client hostnames/IPs, and HA peer
 serial numbers and hostnames, which map the internal network for an attacker. This is an
-accepted-posture advisory (same as `list_admins`), not a defect. The ARP and DHCP tools are
-output-capped. The HTTP transport is unauthenticated by default (`auth.require_auth=false`):
+accepted-posture advisory (same as `list_admins`), not a defect. `list_firewall_sessions`
+(live source/destination IPs; capped at 200, default 20) and `analyze_policy_hygiene` (policy and
+object names) are in the same class, and `get_ipsec_tunnel_status` never returns pre-shared keys.
+The ARP, DHCP and session tools are output-capped. The HTTP transport is unauthenticated by default (`auth.require_auth=false`):
 set `auth.require_auth=true` (with at least one `auth.api_tokens` entry) or keep the bind on
 loopback before exposing it. The Phase 15 monitor/cmdb response shapes are validated against
 fixtures only; live-device verification items are tracked for the release checklist.

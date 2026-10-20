@@ -4,10 +4,10 @@ These tests capture, per transport, the tool NAME + normalized parameter
 schema (``inputSchema``) of every registered tool and compare it against a
 committed golden file under ``tests/fixtures/``.
 
-Surface composition: 89 transport registrations total (44 stdio + 45 HTTP),
-47 unique tool names (42 names registered on both transports + 2 stdio-only:
+Surface composition: 95 transport registrations total (47 stdio + 48 HTTP),
+50 unique tool names (45 names registered on both transports + 2 stdio-only:
 ``health_check``, ``get_server_info`` + 3 HTTP-only: ``test_connection``,
-``health``, ``get_schema_info``). "89 tools" without qualification is
+``health``, ``get_schema_info``). "95 tools" without qualification is
 misleading -- always use the qualified phrasing above.
 
 Contract decision: the frozen bytes cover exactly tool NAME + normalized
@@ -31,9 +31,9 @@ from plan 01-02 (mcp 1.28.1, fastmcp 2.11.3), re-verified byte-identical
 after plan 06-01's CVE-2026-32871 remediation bumped the fastmcp ceiling --
 mcp 1.28.1, fastmcp 3.4.0 (resolved within the ``mcp>=1.23.0,<2.0`` /
 ``fastmcp>=3.2.0`` PyPI bands). Deliberately regenerated in Phase 11 (plan
-11-01) to the v1.1 surface (34 stdio / 35 HTTP / 37 unique) and again in Phase 15 (plan 15-06) to the v1.2 surface (44 stdio / 45 HTTP / 47 unique) after a
-mechanical additive-only diff proof (removed/changed both empty; evidence
-in the phase's planning records). Re-verified byte-identical in Phase 13
+11-01) to the v1.1 surface (34 stdio / 35 HTTP / 37 unique) and in Phase 15 (plan 15-06) to 44 stdio / 45 HTTP / 47 unique, and in Phase 16 (plan 16-04) to the final v1.2 surface (47 stdio / 48 HTTP / 50 unique) after a
+mechanical additive-only diff proof for each regeneration (removed/changed both empty; evidence
+in the phases' planning records). Re-verified byte-identical in Phase 13
 on fastmcp 4.1.2 (mcp-types 2.3, ``fastmcp>=4.1.2,<5``).
 
 Adapted from the working reference implementation at
@@ -58,12 +58,12 @@ FIXTURES = Path(__file__).parent / "fixtures"
 STDIO_GOLDEN = FIXTURES / "tool_schemas_stdio.json"
 HTTP_GOLDEN = FIXTURES / "tool_schemas_http.json"
 
-# 89 transport registrations total: 44 stdio + 45 HTTP.
-# 47 unique tool names: 42 shared + 2 stdio-only (health_check,
+# 95 transport registrations total: 47 stdio + 48 HTTP.
+# 50 unique tool names: 45 shared + 2 stdio-only (health_check,
 # get_server_info) + 3 HTTP-only (test_connection, health, get_schema_info).
-EXPECTED_STDIO_TOOL_COUNT = 44
-EXPECTED_HTTP_TOOL_COUNT = 45
-EXPECTED_UNIQUE_TOOL_NAMES = 47
+EXPECTED_STDIO_TOOL_COUNT = 47
+EXPECTED_HTTP_TOOL_COUNT = 48
+EXPECTED_UNIQUE_TOOL_NAMES = 50
 
 # Schema-container keys whose VALUES are individually-normalized schema
 # objects but whose own KEYS are user-facing names (parameter names for
@@ -275,17 +275,17 @@ def test_http_schema_matches_golden() -> None:
     _assert_or_update(http_snap, HTTP_GOLDEN)
 
 
-def test_stdio_registers_44_tools() -> None:
+def test_stdio_registers_47_tools() -> None:
     stdio_snap, _ = _snapshots()
     assert len(stdio_snap) == EXPECTED_STDIO_TOOL_COUNT, sorted(stdio_snap)
 
 
-def test_http_registers_45_tools() -> None:
+def test_http_registers_48_tools() -> None:
     _, http_snap = _snapshots()
     assert len(http_snap) == EXPECTED_HTTP_TOOL_COUNT, sorted(http_snap)
 
 
-def test_union_of_tool_names_is_47() -> None:
+def test_union_of_tool_names_is_50() -> None:
     stdio_snap, http_snap = _snapshots()
     assert len(set(stdio_snap) | set(http_snap)) == EXPECTED_UNIQUE_TOOL_NAMES
 

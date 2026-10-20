@@ -2,7 +2,7 @@
 
 Both the stdio server (server.py) and the HTTP server (server_http.py)
 register tools from this single module instead of each hand-duplicating a
-~30-tool ``_setup_tools()`` body. 38 of the 47 unique tool names are
+~30-tool ``_setup_tools()`` body. 41 of the 50 unique tool names are
 schema-identical and share ONE tool definition; ``get_firewall_policy_detail``
 is schema-identical but was dispatch-divergent (sync vs async on the same
 class) -- it is unified here to a single async definition, verified safe

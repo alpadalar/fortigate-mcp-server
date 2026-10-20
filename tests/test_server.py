@@ -36,12 +36,12 @@ async def _call_via_client(server, tool_name, args):
 
 
 def test_stdio_server_constructs_successfully(tmp_config_path):
-    """FortiGateMCPServer constructs without exception and registers 44 tools."""
+    """FortiGateMCPServer constructs without exception and registers 47 tools."""
     server = FortiGateMCPServer(tmp_config_path)
 
     assert server is not None
     tools = asyncio.run(_list_via_client(server))
-    assert len(tools) == 44
+    assert len(tools) == 47
 
 
 # Matrix of (tool_name, tools_attr, method_name, args) covering 27 of the 31

@@ -83,7 +83,7 @@ def test_classification_completeness_matches_registered_tools():
     union = stdio_names | http_names
 
     assert union == set(RISK_CLASSIFICATION)
-    assert len(RISK_CLASSIFICATION) == 47
+    assert len(RISK_CLASSIFICATION) == 50
     assert len(RISK_CLASSIFICATION) == len(set(RISK_CLASSIFICATION))  # no duplicate keys
 
 
