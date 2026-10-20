@@ -387,6 +387,52 @@
       "type": "object"
     }
   },
+  "get_arp_table": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "interface": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "get_device_status": {
     "inputSchema": {
       "properties": {
@@ -428,6 +474,30 @@
       "type": "object"
     }
   },
+  "get_ha_status": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "get_interface_status": {
     "inputSchema": {
       "properties": {
@@ -452,6 +522,30 @@
       "required": [
         "device_id",
         "interface_name"
+      ],
+      "type": "object"
+    }
+  },
+  "get_license_status": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
       ],
       "type": "object"
     }
@@ -538,6 +632,30 @@
       "type": "object"
     }
   },
+  "get_system_resources": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "get_virtual_ip_detail": {
     "inputSchema": {
       "properties": {
@@ -569,6 +687,30 @@
   "health": {
     "inputSchema": {
       "properties": {},
+      "type": "object"
+    }
+  },
+  "list_address_groups": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
       "type": "object"
     }
   },
@@ -620,9 +762,79 @@
       "type": "object"
     }
   },
+  "list_central_snat_maps": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "list_devices": {
     "inputSchema": {
       "properties": {},
+      "type": "object"
+    }
+  },
+  "list_dhcp_leases": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "interface": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
       "type": "object"
     }
   },
@@ -674,6 +886,30 @@
       "type": "object"
     }
   },
+  "list_ip_pools": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "list_local_in_policies": {
     "inputSchema": {
       "properties": {
@@ -698,7 +934,55 @@
       "type": "object"
     }
   },
+  "list_schedules": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "list_security_profiles": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_service_groups": {
     "inputSchema": {
       "properties": {
         "device_id": {
