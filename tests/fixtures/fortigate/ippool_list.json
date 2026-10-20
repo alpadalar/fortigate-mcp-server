@@ -1,0 +1,28 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "POOL-OUT",
+      "type": "overload",
+      "startip": "203.0.113.10",
+      "endip": "203.0.113.20",
+      "comments": "Outbound NAT pool",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    },
+    {
+      "name": "POOL-FIXED",
+      "type": "fixed-port-range",
+      "startip": "203.0.113.30",
+      "endip": "203.0.113.31",
+      "source-startip": "10.1.0.1",
+      "source-endip": "10.1.0.254",
+      "comments": ""
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

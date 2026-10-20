@@ -1,0 +1,18 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "BUSINESS-HOURS",
+      "day": "monday tuesday wednesday thursday friday",
+      "start": "08:00",
+      "end": "17:00",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

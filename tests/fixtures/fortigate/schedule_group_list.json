@@ -1,0 +1,22 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "SCHED-ALL",
+      "member": [
+        {
+          "name": "BUSINESS-HOURS"
+        },
+        {
+          "name": "MAINT-WINDOW"
+        }
+      ]
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

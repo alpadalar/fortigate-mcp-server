@@ -1,0 +1,43 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "policyid": 1,
+      "status": "enable",
+      "srcintf": [
+        {
+          "name": "port1"
+        }
+      ],
+      "dstintf": [
+        {
+          "name": "port2"
+        }
+      ],
+      "orig-addr": [
+        {
+          "name": "LAN-NET"
+        }
+      ],
+      "dst-addr": [
+        {
+          "name": "all"
+        }
+      ],
+      "nat-ippool": [
+        {
+          "name": "POOL-OUT"
+        }
+      ],
+      "protocol": 0,
+      "comments": "LAN to WAN",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

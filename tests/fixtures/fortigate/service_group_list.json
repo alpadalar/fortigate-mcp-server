@@ -1,0 +1,24 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "GRP-WEB",
+      "member": [
+        {
+          "name": "HTTP"
+        },
+        {
+          "name": "HTTPS"
+        }
+      ],
+      "comment": "Web services",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

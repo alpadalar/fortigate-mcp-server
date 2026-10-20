@@ -1,0 +1,6 @@
+{
+  "http_method": "GET",
+  "status": "error",
+  "http_status": 404,
+  "error": "Not Found: raw-device-text-xyz"
+}

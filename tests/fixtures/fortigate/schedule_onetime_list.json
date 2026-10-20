@@ -1,0 +1,17 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "MAINT-WINDOW",
+      "start": "22:00 2026/11/01",
+      "end": "23:00 2026/11/01",
+      "expiration-days": 3
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}

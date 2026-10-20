@@ -1,0 +1,29 @@
+{
+  "http_method": "GET",
+  "status": "success",
+  "vdom": "root",
+  "results": [
+    {
+      "name": "GRP-SERVERS",
+      "member": [
+        {
+          "name": "SRV-WEB"
+        },
+        {
+          "name": "SRV-DB"
+        }
+      ],
+      "comment": "Server tier",
+      "password": "ENC_FAKE_NOT_REAL_PLACEHOLDER"
+    },
+    {
+      "name": "GRP-EMPTY",
+      "member": [],
+      "comment": ""
+    }
+  ],
+  "http_status": 200,
+  "serial": "FGVMEVFAKE0000000",
+  "version": "v7.4.4",
+  "build": 2662
+}
