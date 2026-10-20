@@ -6,12 +6,12 @@ tests with distinct remedies:
 
   - ``test_registry_stdio_output_matches_frozen_golden`` /
     ``test_registry_http_output_matches_frozen_golden``: registry.py's
-    output, on the CURRENT engine for each transport, must equal the frozen
+    output, on the fastmcp engine for each transport, must equal the frozen
     golden contract. FAILURE HERE MEANS registry.py IS WRONG -- fix it,
     never fall back on this cause, never record a decision.
-  - ``test_full_34_tool_schema_diff_across_engines``: only meaningful once
-    the two tests above are green. FAILURE HERE means the two candidate
-    engines genuinely disagree on schema shape -- the fallback trigger.
+  - ``test_stdio_registration_has_34_tools``: the stdio surface keeps its
+    34-tool count. (The SDK-engine comparison was retired in Phase 13: mcp 2
+    removed the SDK's bundled FastMCP; fastmcp is the single engine.)
 
 Golden immutability is enforced independently of git-diff windows via
 embedded SHA-256 hashes -- an accidentally regenerated-and-committed
@@ -31,7 +31,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 from fastmcp import Client
 from fastmcp import FastMCP as PrefectFastMCP
-from mcp.server.fastmcp import FastMCP as SDKFastMCP
 from mcp.types import TextContent
 
 from src.fortigate_mcp.registry import register_tools
@@ -82,16 +81,8 @@ def _fake_tools():
     return fake
 
 
-def _sdk_stdio_snapshot() -> Dict[str, Dict[str, Any]]:
-    """(a) stdio registration on the SDK's mcp.server.fastmcp.FastMCP."""
-    mcp = SDKFastMCP("engine-gate-sdk-stdio")
-    register_tools(mcp, _fake_tools(), transport="stdio")
-    tools = asyncio.run(mcp.list_tools())
-    return {t.name: {"inputSchema": _normalize_schema(t.inputSchema)} for t in tools}
-
-
 def _prefect_stdio_snapshot() -> Dict[str, Dict[str, Any]]:
-    """(b) stdio registration on fastmcp.FastMCP -- the candidate engine.
+    """stdio registration on fastmcp.FastMCP.
 
     fastmcp>=3.2.0 removed the dict-returning ``get_tools()`` in favor of
     the public ``list_tools()`` -> ``list[FunctionTool]``.
@@ -121,9 +112,9 @@ def _prefect_http_snapshot() -> Dict[str, Dict[str, Any]]:
 
 
 @lru_cache(maxsize=1)
-def _snapshots() -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
-    """Build the three registry-driven snapshots once per session."""
-    return _sdk_stdio_snapshot(), _prefect_stdio_snapshot(), _prefect_http_snapshot()
+def _snapshots() -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    """Build the stdio/http registry-driven snapshots once per session."""
+    return _prefect_stdio_snapshot(), _prefect_http_snapshot()
 
 
 def _load_golden(path) -> Dict[str, Dict[str, Any]]:
@@ -146,24 +137,19 @@ def test_http_golden_sha256_frozen() -> None:
 
 def test_registry_stdio_output_matches_frozen_golden() -> None:
     """FAILURE = registry.py bug. Fix registry.py; do NOT fall back; do NOT record a decision."""
-    sdk_stdio, _, _ = _snapshots()
-    assert sdk_stdio == _load_golden(STDIO_GOLDEN)
+    prefect_stdio, _ = _snapshots()
+    assert prefect_stdio == _load_golden(STDIO_GOLDEN)
 
 
 def test_registry_http_output_matches_frozen_golden() -> None:
     """FAILURE = registry.py bug (http transport). Fix registry.py; do NOT fall back; do NOT record a decision."""
-    _, _, prefect_http = _snapshots()
+    _, prefect_http = _snapshots()
     assert prefect_http == _load_golden(HTTP_GOLDEN)
 
 
-def test_full_34_tool_schema_diff_across_engines() -> None:
-    """FAILURE (with the two registry-vs-golden tests green) = engines genuinely
-    disagree -> dual-engine fallback; this test then gets xfail(strict=True)
-    with the divergence as reason."""
-    sdk_stdio, prefect_stdio, _ = _snapshots()
-    assert len(sdk_stdio) == 34
-    assert set(sdk_stdio) == set(prefect_stdio)
-    assert sdk_stdio == prefect_stdio
+def test_stdio_registration_has_34_tools() -> None:
+    prefect_stdio, _ = _snapshots()
+    assert len(prefect_stdio) == 34
 
 
 # --- Runtime compatibility on the REAL, selected-engine production server --

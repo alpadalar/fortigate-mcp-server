@@ -5,9 +5,9 @@ Classification tests (this file's `-k classification` slice) prove
 `RISK_CLASSIFICATION` exactly covers every tool name either transport
 registers, and that its class assignment matches the naming rule
 mechanically (not just by eyeballing the dict). Gate tests prove
-denial/opt-in behaviorally on BOTH MCP engines (SDK stdio + fastmcp HTTP),
-never merely on one, per CONTEXT.md's CVE-2026-46519 lesson: enforcement
-must be proven at dispatch, not assumed from a single engine's behavior.
+denial/opt-in behaviorally at dispatch on the fastmcp engine (both the stdio
+and http registrations), per CONTEXT.md's CVE-2026-46519 lesson: enforcement
+must be proven at dispatch, not assumed.
 """
 import asyncio
 import types
@@ -16,7 +16,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastmcp import Client
 from fastmcp import FastMCP as PrefectFastMCP
-from mcp.server.fastmcp import FastMCP as SDKFastMCP
 from mcp.types import TextContent
 
 from src.fortigate_mcp.registry import RISK_CLASSIFICATION, register_tools
@@ -72,13 +71,11 @@ def _fake_tools():
 def test_classification_completeness_matches_registered_tools():
     """set(RISK_CLASSIFICATION) equals the union of tool names registered by
     register_tools() for both transports -- exactly 37 unique names."""
-    sdk_mcp = SDKFastMCP("classification-stdio")
-    register_tools(sdk_mcp, _fake_tools(), transport="stdio")
-    stdio_names = set(sdk_mcp._tool_manager._tools)
+    # The only tool-name introspection surface is the public async list_tools().
+    stdio_mcp = PrefectFastMCP("classification-stdio")
+    register_tools(stdio_mcp, _fake_tools(), transport="stdio")
+    stdio_names = {tool.name for tool in asyncio.run(stdio_mcp.list_tools())}
 
-    # fastmcp>=3.2.0 removed the private _tool_manager._tools path the SDK
-    # engine (above) still exposes -- the HTTP engine's only remaining
-    # tool-name introspection surface is the public async list_tools().
     http_mcp = PrefectFastMCP("classification-http")
     register_tools(http_mcp, _fake_tools(), transport="http")
     http_names = {tool.name for tool in asyncio.run(http_mcp.list_tools())}
@@ -109,11 +106,6 @@ def test_classification_matches_naming_rule():
 # --- Group 2: dispatch-layer gate (SEC-01) -----------------------------------
 
 
-def _unwrap(result):
-    """Match test_registry.py's tuple-or-list unwrap convention for SDK call_tool."""
-    return result[0] if isinstance(result, tuple) else result
-
-
 def _fake_tools_with(allow_writes: bool):
     """A _fake_tools() variant with explicit sentinel returns for the
     write tool (create_firewall_policy -> firewall_tools.create_policy)
@@ -130,84 +122,52 @@ def _fake_tools_with(allow_writes: bool):
     return fake
 
 
-# -- Denial: proven on both engines, zero calls to the tools layer ----------
+def _call(mcp, name, arguments, raise_on_error=True):
+    """Dispatch a tool call through a real in-memory fastmcp Client session."""
 
-
-def test_write_tool_denied_by_default_sdk_engine(monkeypatch):
-    """SDK stdio engine: awaiting call_tool on a gated write tool in
-    read-only mode raises the SDK's ToolError whose message contains
-    'read-only mode'; the underlying mock is never called."""
-    monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = SDKFastMCP("gate-sdk-denied")
-    fake_tools = _fake_tools_with(allow_writes=False)
-    register_tools(mcp, fake_tools, transport="stdio")
-
-    with pytest.raises(Exception, match="read-only mode"):
-        asyncio.run(
-            mcp.call_tool(
-                "create_firewall_policy", {"device_id": "d", "policy_data": {"name": "p"}}
-            )
-        )
-
-    fake_tools.firewall_tools.create_policy.assert_not_called()
-
-
-def test_write_tool_denied_by_default_fastmcp_engine(monkeypatch):
-    """fastmcp HTTP engine: Client.call_tool(..., raise_on_error=False)
-    returns is_error=True whose content text contains 'read-only mode';
-    the underlying mock is never called. This is a protocol-level tool
-    error, not ordinary success content."""
-    monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = PrefectFastMCP("gate-fastmcp-denied")
-    fake_tools = _fake_tools_with(allow_writes=False)
-    register_tools(mcp, fake_tools, transport="http")
-
-    async def _call():
+    async def _run():
         async with Client(mcp) as client:
-            return await client.call_tool(
-                "create_firewall_policy",
-                {"device_id": "d", "policy_data": {"name": "p"}},
-                raise_on_error=False,
-            )
+            return await client.call_tool(name, arguments, raise_on_error=raise_on_error)
 
-    result = asyncio.run(_call())
+    return asyncio.run(_run())
 
+
+_CREATE_ARGS = {"device_id": "d", "policy_data": {"name": "p"}}
+_DELETE_ARGS = {"device_id": "d", "policy_id": "1"}
+
+
+def _assert_denied(result):
+    """Protocol-level tool error (not ordinary success content)."""
     assert result.is_error is True
     assert "read-only mode" in result.content[0].text
+
+
+# -- Denial: zero calls to the tools layer ----------------------------------
+
+
+@pytest.mark.parametrize("transport", ["stdio", "http"])
+def test_write_tool_denied_by_default(monkeypatch, transport):
+    monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
+    mcp = PrefectFastMCP("gate-denied")
+    fake_tools = _fake_tools_with(allow_writes=False)
+    register_tools(mcp, fake_tools, transport=transport)
+
+    _assert_denied(_call(mcp, "create_firewall_policy", _CREATE_ARGS, raise_on_error=False))
+
     fake_tools.firewall_tools.create_policy.assert_not_called()
 
 
-# -- Opt-in via config.server.allow_writes=True, proven on both engines -----
+# -- Opt-in via config.server.allow_writes=True ------------------------------
 
 
-def test_write_tool_allowed_with_config_opt_in_sdk_engine(monkeypatch):
+@pytest.mark.parametrize("transport", ["stdio", "http"])
+def test_write_tool_allowed_with_config_opt_in(monkeypatch, transport):
     monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = SDKFastMCP("gate-sdk-allowed")
+    mcp = PrefectFastMCP("gate-allowed")
     fake_tools = _fake_tools_with(allow_writes=True)
-    register_tools(mcp, fake_tools, transport="stdio")
+    register_tools(mcp, fake_tools, transport=transport)
 
-    result = asyncio.run(
-        mcp.call_tool("create_firewall_policy", {"device_id": "d", "policy_data": {"name": "p"}})
-    )
-    content = _unwrap(result)
-
-    assert content[0].text == "SENTINEL-create_policy"
-    fake_tools.firewall_tools.create_policy.assert_called_once()
-
-
-def test_write_tool_allowed_with_config_opt_in_fastmcp_engine(monkeypatch):
-    monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = PrefectFastMCP("gate-fastmcp-allowed")
-    fake_tools = _fake_tools_with(allow_writes=True)
-    register_tools(mcp, fake_tools, transport="http")
-
-    async def _call():
-        async with Client(mcp) as client:
-            return await client.call_tool(
-                "create_firewall_policy", {"device_id": "d", "policy_data": {"name": "p"}}
-            )
-
-    result = asyncio.run(_call())
+    result = _call(mcp, "create_firewall_policy", _CREATE_ARGS)
 
     assert result.content[0].text == "SENTINEL-create_policy"
     fake_tools.firewall_tools.create_policy.assert_called_once()
@@ -221,16 +181,13 @@ def test_env_override_enables_writes_when_config_false(monkeypatch):
     config.server.allow_writes is False."""
     monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
     monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", "1")
-    mcp = SDKFastMCP("gate-env-override")
+    mcp = PrefectFastMCP("gate-env-override")
     fake_tools = _fake_tools_with(allow_writes=False)
     register_tools(mcp, fake_tools, transport="stdio")
 
-    result = asyncio.run(
-        mcp.call_tool("create_firewall_policy", {"device_id": "d", "policy_data": {"name": "p"}})
-    )
-    content = _unwrap(result)
+    result = _call(mcp, "create_firewall_policy", _CREATE_ARGS)
 
-    assert content[0].text == "SENTINEL-create_policy"
+    assert result.content[0].text == "SENTINEL-create_policy"
     fake_tools.firewall_tools.create_policy.assert_called_once()
 
 
@@ -242,16 +199,11 @@ def test_env_zero_or_unset_does_not_enable_writes(monkeypatch, env_value):
     if env_value is not None:
         monkeypatch.setenv("FORTIGATE_MCP_ALLOW_WRITES", env_value)
 
-    mcp = SDKFastMCP("gate-env-not-truthy")
+    mcp = PrefectFastMCP("gate-env-not-truthy")
     fake_tools = _fake_tools_with(allow_writes=False)
     register_tools(mcp, fake_tools, transport="stdio")
 
-    with pytest.raises(Exception, match="read-only mode"):
-        asyncio.run(
-            mcp.call_tool(
-                "create_firewall_policy", {"device_id": "d", "policy_data": {"name": "p"}}
-            )
-        )
+    _assert_denied(_call(mcp, "create_firewall_policy", _CREATE_ARGS, raise_on_error=False))
 
     fake_tools.firewall_tools.create_policy.assert_not_called()
 
@@ -261,26 +213,24 @@ def test_env_zero_or_unset_does_not_enable_writes(monkeypatch, env_value):
 
 def test_destructive_tool_denied_by_default(monkeypatch):
     monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = SDKFastMCP("gate-destructive-denied")
+    mcp = PrefectFastMCP("gate-destructive-denied")
     fake_tools = _fake_tools_with(allow_writes=False)
     register_tools(mcp, fake_tools, transport="stdio")
 
-    with pytest.raises(Exception, match="read-only mode"):
-        asyncio.run(mcp.call_tool("delete_firewall_policy", {"device_id": "d", "policy_id": "1"}))
+    _assert_denied(_call(mcp, "delete_firewall_policy", _DELETE_ARGS, raise_on_error=False))
 
     fake_tools.firewall_tools.delete_policy.assert_not_called()
 
 
 def test_destructive_tool_allowed_with_opt_in(monkeypatch):
     monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = SDKFastMCP("gate-destructive-allowed")
+    mcp = PrefectFastMCP("gate-destructive-allowed")
     fake_tools = _fake_tools_with(allow_writes=True)
     register_tools(mcp, fake_tools, transport="stdio")
 
-    result = asyncio.run(mcp.call_tool("delete_firewall_policy", {"device_id": "d", "policy_id": "1"}))
-    content = _unwrap(result)
+    result = _call(mcp, "delete_firewall_policy", _DELETE_ARGS)
 
-    assert content[0].text == "SENTINEL-delete_policy"
+    assert result.content[0].text == "SENTINEL-delete_policy"
     fake_tools.firewall_tools.delete_policy.assert_called_once()
 
 
@@ -290,12 +240,11 @@ def test_destructive_tool_allowed_with_opt_in(monkeypatch):
 @pytest.mark.parametrize("allow_writes", [False, True])
 def test_read_tool_always_dispatches_regardless_of_allow_writes(monkeypatch, allow_writes):
     monkeypatch.delenv("FORTIGATE_MCP_ALLOW_WRITES", raising=False)
-    mcp = SDKFastMCP("gate-read-always")
+    mcp = PrefectFastMCP("gate-read-always")
     fake_tools = _fake_tools_with(allow_writes=allow_writes)
     register_tools(mcp, fake_tools, transport="stdio")
 
-    result = asyncio.run(mcp.call_tool("list_devices", {}))
-    content = _unwrap(result)
+    result = _call(mcp, "list_devices", {})
 
-    assert content[0].text == "SENTINEL-list_devices"
+    assert result.content[0].text == "SENTINEL-list_devices"
     fake_tools.device_tools.list_devices.assert_called_once()

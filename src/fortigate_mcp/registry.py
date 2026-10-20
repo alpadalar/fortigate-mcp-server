@@ -17,9 +17,8 @@ transport-exclusive (``health_check``/``get_server_info`` stdio-only;
 ``test_connection``/``health``/``get_schema_info`` HTTP-only).
 
 ``register_tools`` never constructs a FastMCP instance -- it only decorates
-the ``mcp`` object passed in, so it is duck-typed across whichever engine(s)
-stdio and HTTP end up on (``mcp.server.fastmcp.FastMCP`` and/or
-``fastmcp.FastMCP``).
+the ``mcp`` object passed in. ``fastmcp.FastMCP`` is the single engine for
+both stdio and HTTP.
 """
 import functools
 import inspect
