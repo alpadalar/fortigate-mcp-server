@@ -52,6 +52,8 @@ class FortiGateAPI:
         self.device_id = device_id
         self.config = config
         self.logger = get_logger(f"device.{device_id}")
+        # vdom -> "profile-based" | "policy-based" (see _get_ngfw_mode)
+        self._ngfw_mode_cache: Dict[str, str] = {}
 
         # SEC-04: explicit opt-out of TLS verification is a deliberate,
         # logged operator/caller choice -- fires at construction time for
@@ -307,27 +309,67 @@ class FortiGateAPI:
         )
 
     # Firewall policy endpoints
+    def _get_ngfw_mode(self, vdom: Optional[str] = None) -> str:
+        """Return the vdom's ``ngfw-mode`` ("profile-based" or "policy-based").
+
+        Read from ``cmdb/system/settings`` and cached per vdom for the life of
+        this client. Any failure (permissions, network, malformed body) falls
+        back to "profile-based" -- the FortiOS default -- and is NOT cached,
+        so a transient error does not pin the wrong endpoint.
+        """
+        resolved = self.config.vdom if vdom is None else vdom
+        cached = self._ngfw_mode_cache.get(resolved)
+        if cached is not None:
+            return cached
+        try:
+            response = self._make_request("GET", "cmdb/system/settings", vdom=resolved)
+            results = response.get("results") if isinstance(response, dict) else None
+            if isinstance(results, list) and results:
+                results = results[0]
+            mode = results.get("ngfw-mode") if isinstance(results, dict) else None
+        except Exception as e:
+            self.logger.warning(
+                f"Could not read ngfw-mode for vdom {resolved}; assuming profile-based: {e}"
+            )
+            return "profile-based"
+        if mode not in ("profile-based", "policy-based"):
+            return "profile-based"
+        self._ngfw_mode_cache[resolved] = mode
+        return mode
+
+    def _policy_base(self, vdom: Optional[str] = None) -> str:
+        """cmdb path for IPv4 policies: security-policy in NGFW policy-based vdoms."""
+        if self._get_ngfw_mode(vdom) == "policy-based":
+            return "cmdb/firewall/security-policy"
+        return "cmdb/firewall/policy"
+
+    def _policy_endpoint(self, policy_id: str, vdom: Optional[str]) -> str:
+        # Validate BEFORE the (possibly network-bound) mode lookup so a
+        # malformed id is rejected without any request leaving the client.
+        validate_numeric_id(policy_id, "policy_id")
+        return self._validated_endpoint(self._policy_base(vdom), policy_id, "policy_id", numeric=True)
+
     def get_firewall_policies(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get firewall policies."""
-        return self._make_request("GET", "cmdb/firewall/policy", vdom=vdom)
+        return self._make_request("GET", self._policy_base(vdom), vdom=vdom)
     
     def create_firewall_policy(self, policy_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Create new firewall policy."""
-        return self._make_request("POST", "cmdb/firewall/policy", data=policy_data, vdom=vdom)
+        return self._make_request("POST", self._policy_base(vdom), data=policy_data, vdom=vdom)
     
     def update_firewall_policy(self, policy_id: str, policy_data: Dict[str, Any], vdom: Optional[str] = None) -> Dict[str, Any]:
         """Update existing firewall policy."""
-        endpoint = self._validated_endpoint("cmdb/firewall/policy", policy_id, "policy_id", numeric=True)
+        endpoint = self._policy_endpoint(policy_id, vdom)
         return self._make_request("PUT", endpoint, data=policy_data, vdom=vdom)
 
     def get_firewall_policy_detail(self, policy_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed information for a specific firewall policy."""
-        endpoint = self._validated_endpoint("cmdb/firewall/policy", policy_id, "policy_id", numeric=True)
+        endpoint = self._policy_endpoint(policy_id, vdom)
         return self._make_request("GET", endpoint, vdom=vdom)
 
     def delete_firewall_policy(self, policy_id: str, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Delete firewall policy."""
-        endpoint = self._validated_endpoint("cmdb/firewall/policy", policy_id, "policy_id", numeric=True)
+        endpoint = self._policy_endpoint(policy_id, vdom)
         return self._make_request("DELETE", endpoint, vdom=vdom)
     
     # Address object endpoints

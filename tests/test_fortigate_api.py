@@ -226,6 +226,7 @@ class TestFortiGateAPI:
 
     def test_get_firewall_policies(self):
         """Firewall policy listesi alma testi"""
+        self.api._ngfw_mode_cache["root"] = "profile-based"
         with patch.object(self.api, '_make_request') as mock_request:
             mock_request.return_value = {"results": [{"policyid": 1}]}
 
@@ -1152,3 +1153,96 @@ class TestPhase16ApiMethods:
             with pytest.raises(FortiGateAPIError) as exc_info:
                 self.api.get_firewall_sessions(20)
         assert exc_info.value.status_code == 404
+
+
+# --- Issue #5: NGFW policy-based vdoms use cmdb/firewall/security-policy ----
+
+def _settings_router(mode_by_vdom, base="https://192.168.1.1:443/api/v2"):
+    router = respx.mock(base_url=base, assert_all_mocked=True, assert_all_called=False)
+
+    def settings(request):
+        vdom = request.url.params.get("vdom")
+        mode = mode_by_vdom.get(vdom)
+        if mode is None:
+            return httpx.Response(403, json={"error": "forbidden"})
+        return httpx.Response(200, json={"results": {"ngfw-mode": mode}})
+
+    router.get("/cmdb/system/settings").mock(side_effect=settings)
+    return router
+
+
+class TestNgfwModePolicyRouting:
+    def setup_method(self):
+        self.api = FortiGateAPI(
+            "d", FortiGateDeviceConfig(host="192.168.1.1", api_token="t", vdom="root")
+        )
+
+    def _paths(self, router, prefix="/api/v2/cmdb/firewall/"):
+        return [
+            (c.request.method, c.request.url.path)
+            for c in router.calls
+            if c.request.url.path.startswith(prefix)
+        ]
+
+    def test_policy_based_routes_all_five_operations(self):
+        with _settings_router({"root": "policy-based"}) as router:
+            for verb, path in (
+                ("get", "/cmdb/firewall/security-policy"),
+                ("post", "/cmdb/firewall/security-policy"),
+                ("get", "/cmdb/firewall/security-policy/7"),
+                ("put", "/cmdb/firewall/security-policy/7"),
+                ("delete", "/cmdb/firewall/security-policy/7"),
+            ):
+                getattr(router, verb)(path).mock(return_value=httpx.Response(200, json={"results": []}))
+            self.api.get_firewall_policies()
+            self.api.create_firewall_policy({"name": "x"})
+            self.api.get_firewall_policy_detail("7")
+            self.api.update_firewall_policy("7", {"name": "y"})
+            self.api.delete_firewall_policy("7")
+            assert self._paths(router) == [
+                ("GET", "/api/v2/cmdb/firewall/security-policy"),
+                ("POST", "/api/v2/cmdb/firewall/security-policy"),
+                ("GET", "/api/v2/cmdb/firewall/security-policy/7"),
+                ("PUT", "/api/v2/cmdb/firewall/security-policy/7"),
+                ("DELETE", "/api/v2/cmdb/firewall/security-policy/7"),
+            ]
+
+    def test_profile_based_keeps_firewall_policy(self):
+        with _settings_router({"root": "profile-based"}) as router:
+            router.get("/cmdb/firewall/policy").mock(return_value=httpx.Response(200, json={"results": []}))
+            self.api.get_firewall_policies()
+            assert self._paths(router) == [("GET", "/api/v2/cmdb/firewall/policy")]
+
+    def test_mode_cached_per_vdom(self):
+        with _settings_router({"root": "profile-based", "v2": "policy-based"}) as router:
+            router.get("/cmdb/firewall/policy").mock(return_value=httpx.Response(200, json={}))
+            router.get("/cmdb/firewall/security-policy").mock(return_value=httpx.Response(200, json={}))
+            self.api.get_firewall_policies()
+            self.api.get_firewall_policies()
+            self.api.get_firewall_policies(vdom="v2")
+            self.api.get_firewall_policies(vdom="v2")
+            settings_calls = [c for c in router.calls if c.request.url.path.endswith("system/settings")]
+            assert len(settings_calls) == 2
+            assert self._paths(router) == [
+                ("GET", "/api/v2/cmdb/firewall/policy"),
+                ("GET", "/api/v2/cmdb/firewall/policy"),
+                ("GET", "/api/v2/cmdb/firewall/security-policy"),
+                ("GET", "/api/v2/cmdb/firewall/security-policy"),
+            ]
+
+    def test_settings_failure_defaults_to_profile_based_and_is_not_cached(self):
+        modes = {}
+        with _settings_router(modes) as router:
+            router.get("/cmdb/firewall/policy").mock(return_value=httpx.Response(200, json={}))
+            router.get("/cmdb/firewall/security-policy").mock(return_value=httpx.Response(200, json={}))
+            self.api.get_firewall_policies()
+            assert self._paths(router) == [("GET", "/api/v2/cmdb/firewall/policy")]
+            modes["root"] = "policy-based"  # transient failure recovered
+            self.api.get_firewall_policies()
+            assert self._paths(router)[-1] == ("GET", "/api/v2/cmdb/firewall/security-policy")
+
+    def test_invalid_policy_id_rejected_without_any_request(self):
+        with _settings_router({"root": "policy-based"}) as router:
+            with pytest.raises(ValueError):
+                self.api.get_firewall_policy_detail("../x")
+            assert len(router.calls) == 0
