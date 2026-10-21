@@ -1246,3 +1246,25 @@ class TestNgfwModePolicyRouting:
             with pytest.raises(ValueError):
                 self.api.get_firewall_policy_detail("../x")
             assert len(router.calls) == 0
+
+
+class TestNgfwModeLogSafety:
+    def setup_method(self):
+        self.api = FortiGateAPI(
+            "d", FortiGateDeviceConfig(host="192.168.1.1", api_token="t", vdom="root")
+        )
+
+    def test_crlf_vdom_rejected_and_never_logged(self):
+        with patch.object(self.api.logger, "warning") as warn, \
+                patch.object(self.api, "_make_request") as req:
+            with pytest.raises(ValueError):
+                self.api.get_firewall_policies(vdom="root\r\nFORGED")
+            assert not warn.called and not req.called
+
+    def test_error_text_is_repr_escaped_in_log(self):
+        with patch.object(self.api.logger, "warning") as warn, \
+                patch.object(self.api, "_make_request",
+                             side_effect=[RuntimeError("bad\r\nFORGED"), {"results": []}]):
+            self.api.get_firewall_policies()
+        msg = warn.call_args[0][0]
+        assert "\r" not in msg and "\n" not in msg

@@ -317,7 +317,9 @@ class FortiGateAPI:
         back to "profile-based" -- the FortiOS default -- and is NOT cached,
         so a transient error does not pin the wrong endpoint.
         """
-        resolved = self.config.vdom if vdom is None else vdom
+        # Validate first and outside the try: a malformed (e.g. CR/LF-bearing)
+        # vdom raises here and is never logged.
+        resolved = validate_vdom(self.config.vdom if vdom is None else vdom)
         cached = self._ngfw_mode_cache.get(resolved)
         if cached is not None:
             return cached
@@ -329,7 +331,8 @@ class FortiGateAPI:
             mode = results.get("ngfw-mode") if isinstance(results, dict) else None
         except Exception as e:
             self.logger.warning(
-                f"Could not read ngfw-mode for vdom {resolved}; assuming profile-based: {e}"
+                f"Could not read ngfw-mode for vdom {resolved!r}; "
+                f"assuming profile-based: {scrub_secrets(repr(str(e)), self._own_secrets)}"
             )
             return "profile-based"
         if mode not in ("profile-based", "policy-based"):
@@ -544,6 +547,14 @@ class FortiGateAPI:
     def get_ip_pools(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get IP pools; results is a list of pool objects (type, startip, endip)."""
         return self._make_request("GET", "cmdb/firewall/ippool", vdom=vdom)
+
+    def get_zones(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get firewall zones (cmdb/system/zone)."""
+        return self._make_request("GET", "cmdb/system/zone", vdom=vdom)
+
+    def get_dhcp_servers(self, vdom: Optional[str] = None) -> Dict[str, Any]:
+        """Get DHCP server scopes (cmdb/system.dhcp/server -- note the dotted path)."""
+        return self._make_request("GET", "cmdb/system.dhcp/server", vdom=vdom)
 
     def get_central_snat_maps(self, vdom: Optional[str] = None) -> Dict[str, Any]:
         """Get central SNAT map entries; results is a list of policy-like objects."""
