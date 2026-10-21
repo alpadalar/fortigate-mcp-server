@@ -100,7 +100,8 @@ class FortiGateTool:
                          'security_profiles', 'admin_accounts',
                          'sslvpn_settings', 'local_in_policies',
                          'address_groups', 'service_groups', 'schedules',
-                         'ip_pools', 'central_snat_maps', 'system_resources',
+                         'ip_pools', 'central_snat_maps', 'zones', 'dhcp_servers',
+                         'system_resources',
                          'license_status', 'ha_status', 'arp_table',
                          'dhcp_leases', 'ipsec_tunnels', 'firewall_sessions',
                          'policy_hygiene'
@@ -170,6 +171,10 @@ class FortiGateTool:
             return FortiGateFormatters.format_ip_pools(data)
         elif resource_type == "central_snat_maps":
             return FortiGateFormatters.format_central_snat_maps(data)
+        elif resource_type == "zones":
+            return FortiGateFormatters.format_zones(data)
+        elif resource_type == "dhcp_servers":
+            return FortiGateFormatters.format_dhcp_servers(data)
         elif resource_type == "system_resources":
             return FortiGateFormatters.format_system_resources(data)
         elif resource_type == "license_status":

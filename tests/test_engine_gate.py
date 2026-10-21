@@ -9,8 +9,8 @@ tests with distinct remedies:
     output, on the fastmcp engine for each transport, must equal the frozen
     golden contract. FAILURE HERE MEANS registry.py IS WRONG -- fix it,
     never fall back on this cause, never record a decision.
-  - ``test_stdio_registration_has_47_tools``: the stdio surface keeps its
-    47-tool count. (The SDK-engine comparison was retired in Phase 13: mcp 2
+  - ``test_stdio_registration_has_49_tools``: the stdio surface keeps its
+    49-tool count. (The SDK-engine comparison was retired in Phase 13: mcp 2
     removed the SDK's bundled FastMCP; fastmcp is the single engine.)
 
 Golden immutability is enforced independently of git-diff windows via
@@ -42,8 +42,12 @@ from tests.test_tool_schema_snapshot import HTTP_GOLDEN, STDIO_GOLDEN, _normaliz
 # latter to the final 47/48 v1.2 surface) -- if either assertion below fails at creation time, the
 # goldens changed outside a sanctioned regeneration and the byte-frozen
 # contract is broken.
-STDIO_GOLDEN_SHA256 = "785809c6c92bca57035095d4d7cb5c6010901497fb6c626d28a2d81aa362f999"
-HTTP_GOLDEN_SHA256 = "63104b1a3874ad264117477a9acdc4e297f1014b460dd4f510a5d919de8fdeea"
+# Superseded (v1.2 / 47-48 tools, before list_zones + list_dhcp_servers, issue #9):
+#   STDIO "785809c6c92bca57035095d4d7cb5c6010901497fb6c626d28a2d81aa362f999"
+#   HTTP  "63104b1a3874ad264117477a9acdc4e297f1014b460dd4f510a5d919de8fdeea"
+# Regeneration was additive only (0 removed, 0 changed, 2 added per transport).
+STDIO_GOLDEN_SHA256 = "3df0d7ac036d0b5037ad2bbf4a083f71a6d3907502d0568f55ab8290c9cdcf2d"
+HTTP_GOLDEN_SHA256 = "f59efb88cd948a292dc7db4ef1b4f7569dcb877b709569c8c8cdb29cee439ea8"
 
 
 def _fake_tools():
@@ -147,9 +151,9 @@ def test_registry_http_output_matches_frozen_golden() -> None:
     assert prefect_http == _load_golden(HTTP_GOLDEN)
 
 
-def test_stdio_registration_has_47_tools() -> None:
+def test_stdio_registration_has_49_tools() -> None:
     prefect_stdio, _ = _snapshots()
-    assert len(prefect_stdio) == 47
+    assert len(prefect_stdio) == 49
 
 
 # --- Runtime compatibility on the REAL, selected-engine production server --
@@ -165,7 +169,7 @@ def test_real_stdio_server_serves_full_mcp_session(tmp_config_path) -> None:
         server = FortiGateMCPServer(tmp_config_path)
         async with Client(server.mcp) as client:
             tools = await client.list_tools()
-            assert len(tools) == 47
+            assert len(tools) == 49
             assert {t.name for t in tools} == set(json.loads(STDIO_GOLDEN.read_text()).keys())
 
             result = await client.call_tool("list_devices", {})

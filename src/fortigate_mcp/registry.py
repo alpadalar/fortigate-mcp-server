@@ -2,7 +2,7 @@
 
 Both the stdio server (server.py) and the HTTP server (server_http.py)
 register tools from this single module instead of each hand-duplicating a
-~30-tool ``_setup_tools()`` body. 41 of the 50 unique tool names are
+~30-tool ``_setup_tools()`` body. 43 of the 52 unique tool names are
 schema-identical and share ONE tool definition; ``get_firewall_policy_detail``
 is schema-identical but was dispatch-divergent (sync vs async on the same
 class) -- it is unified here to a single async definition, verified safe
@@ -71,6 +71,8 @@ from .tools.definitions import (
     LIST_SCHEDULES_DESC,
     LIST_IP_POOLS_DESC,
     LIST_CENTRAL_SNAT_MAPS_DESC,
+    LIST_ZONES_DESC,
+    LIST_DHCP_SERVERS_DESC,
     GET_SYSTEM_RESOURCES_DESC,
     GET_LICENSE_STATUS_DESC,
     GET_HA_STATUS_DESC,
@@ -115,6 +117,9 @@ RISK_CLASSIFICATION = {
     "list_schedules": "read",
     "list_ip_pools": "read",
     "list_central_snat_maps": "read",
+    # zone / DHCP scope visibility (issue #9) -- read-only by design
+    "list_zones": "read",
+    "list_dhcp_servers": "read",
     "get_system_resources": "read",
     "get_license_status": "read",
     "get_ha_status": "read",
@@ -698,6 +703,20 @@ def register_tools(mcp: Any, tools: Any, transport: Literal["stdio", "http"]) ->
         vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
     ) -> List[Content]:
         return cast(List[Content], tools.object_tools.list_central_snat_maps(device_id, vdom))
+
+    @_tool(LIST_ZONES_DESC)
+    def list_zones(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_zones(device_id, vdom))
+
+    @_tool(LIST_DHCP_SERVERS_DESC)
+    def list_dhcp_servers(
+        device_id: Annotated[str, Field(description="FortiGate device identifier")],
+        vdom: Annotated[Optional[str], Field(description="Virtual Domain", default=None)] = None
+    ) -> List[Content]:
+        return cast(List[Content], tools.object_tools.list_dhcp_servers(device_id, vdom))
 
     @_tool(GET_SYSTEM_RESOURCES_DESC)
     def get_system_resources(

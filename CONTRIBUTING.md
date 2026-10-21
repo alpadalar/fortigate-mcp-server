@@ -58,7 +58,10 @@ entire `1.0.x` release line, guarded by golden fixtures under
 (`tests/test_tool_schema_snapshot.py`).
 
 **Intentional changes to a tool's name or parameter schema are NOT a normal contributor path
-in this release line and will not be merged.** This includes adding, removing, or renaming a
+in this release line and will not be merged.** Purely additive changes (a new tool; no
+existing name or schema touched) are allowed, but the golden fixtures and the hashes in
+`tests/test_engine_gate.py` must be regenerated and the diff shown to be additive only
+(0 removed, 0 changed). This includes adding, removing, or renaming a
 parameter; changing a parameter's type, default, or required-ness; and renaming a tool. Any
 such change requires a major version bump and a separately-approved process outside the
 scope of a routine pull request.

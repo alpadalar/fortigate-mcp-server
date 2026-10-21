@@ -337,8 +337,9 @@ class FortiGateAPI:
             return "profile-based"
         if mode not in ("profile-based", "policy-based"):
             return "profile-based"
-        self._ngfw_mode_cache[resolved] = mode
-        return mode
+        mode_str = str(mode)
+        self._ngfw_mode_cache[resolved] = mode_str
+        return mode_str
 
     def _policy_base(self, vdom: Optional[str] = None) -> str:
         """cmdb path for IPv4 policies: security-policy in NGFW policy-based vdoms."""

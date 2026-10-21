@@ -293,6 +293,16 @@ class FortiGateFormatters:
         return [Content(type="text", text=FortiGateTemplates.ip_pools(data))]
 
     @staticmethod
+    def format_zones(data: Dict[str, Any]) -> List[Content]:
+        """Format firewall zones response."""
+        return [Content(type="text", text=FortiGateTemplates.zones(data))]
+
+    @staticmethod
+    def format_dhcp_servers(data: Dict[str, Any]) -> List[Content]:
+        """Format DHCP server scopes response."""
+        return [Content(type="text", text=FortiGateTemplates.dhcp_servers(data))]
+
+    @staticmethod
     def format_central_snat_maps(data: Dict[str, Any]) -> List[Content]:
         """Format central snat maps response."""
         return [Content(type="text", text=FortiGateTemplates.central_snat_maps(data))]

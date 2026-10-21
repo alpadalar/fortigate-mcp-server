@@ -59,6 +59,16 @@ class ObjectTools(FortiGateTool):
             "get_central_snat_maps",
         )
 
+    def list_zones(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
+        """List firewall zones, their member interfaces and the interface-to-zone index."""
+        return self._list_single("list zones", "zones", device_id, vdom, "get_zones")
+
+    def list_dhcp_servers(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
+        """List configured DHCP server scopes (not leases)."""
+        return self._list_single(
+            "list DHCP servers", "dhcp_servers", device_id, vdom, "get_dhcp_servers"
+        )
+
     def list_schedules(self, device_id: str, vdom: Optional[str] = None) -> List[Content]:
         """List recurring, one-time and group schedules.
 
@@ -106,6 +116,8 @@ class ObjectTools(FortiGateTool):
             ("list_schedules", "List recurring, one-time and group schedules"),
             ("list_ip_pools", "List IP pools (NAT pools)"),
             ("list_central_snat_maps", "List central SNAT map entries"),
+            ("list_zones", "List firewall zones with member interfaces and interface-to-zone index"),
+            ("list_dhcp_servers", "List configured DHCP server scopes"),
         ]
         return {
             "name": "object_tools",

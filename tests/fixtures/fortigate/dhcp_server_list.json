@@ -1,0 +1,14 @@
+{
+  "http_method": "GET",
+  "results": [
+    {"id": 1, "status": "enable", "interface": "port2", "default-gateway": "10.0.0.1",
+     "netmask": "255.255.255.0", "lease-time": 86400, "dns-service": "specify",
+     "dns-server1": "1.1.1.1", "dns-server2": "0.0.0.0", "domain": "lan.example",
+     "ip-range": [{"id": 1, "start-ip": "10.0.0.100", "end-ip": "10.0.0.200"}],
+     "reserved-address": [{"id": 1, "ip": "10.0.0.50", "mac": "aa:bb:cc:dd:ee:ff"}]},
+    {"id": 2, "status": "disable", "interface": "VLAN_20", "default-gateway": "10.0.20.1",
+     "netmask": "255.255.255.0", "lease-time": 3600, "dns-service": "local",
+     "ip-range": [], "reserved-address": []}
+  ],
+  "vdom": "root", "status": "success", "http_status": 200
+}

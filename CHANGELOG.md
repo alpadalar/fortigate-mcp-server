@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Two read-only tools, bringing the surface to 52 unique tools (49 stdio, 50 HTTP):
+  `list_zones` (`cmdb/system/zone`, with an interface-to-zone index) and `list_dhcp_servers`
+  (`cmdb/system.dhcp/server` scope configuration; leases remain in `list_dhcp_leases`).
+  Existing tool names and parameters are unchanged; the golden schemas changed additively only
+
+### Fixed
+
+- Policy tools (`list_firewall_policies`, `get_firewall_policy_detail`,
+  `create_firewall_policy`, `update_firewall_policy`, `delete_firewall_policy`) now use
+  `cmdb/firewall/security-policy` in VDOMs running NGFW `policy-based` mode. The mode is read
+  per VDOM from `cmdb/system/settings`, cached, and defaults to profile-based on error. Tool
+  names and parameter schemas are unchanged
+
 ## [1.2.0] - 2026-10-20
 
 Not yet tagged; tagging is a separate operator decision.

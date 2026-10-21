@@ -1167,6 +1167,80 @@ class FortiGateTemplates:
         return "\n".join(lines)
 
     @staticmethod
+    def _named_members(value: Any, key: str) -> List[str]:
+        """Names from a FortiOS table field ([{key: name}, ...]); [] when malformed."""
+        if not isinstance(value, list):
+            return []
+        return [str(m[key]) for m in value if isinstance(m, dict) and m.get(key)]
+
+    @staticmethod
+    def zones(data: Dict[str, Any]) -> str:
+        """Format firewall zones plus an interface -> zone reverse index (cmdb/system/zone)."""
+        lines = ["Firewall Zones", ""]
+        zones = FortiGateTemplates._results_list(data)
+        if not zones:
+            lines.append("No zones configured")
+            return "\n".join(lines)
+        zones = FortiGateTemplates._capped(zones, FortiGateTemplates._LIST_CAP, lines, "zones")
+        index: Dict[str, List[str]] = {}
+        for zone in zones:
+            name = str(zone.get("name", "Unnamed"))
+            members = FortiGateTemplates._named_members(zone.get("interface"), "interface-name")
+            for member in members:
+                index.setdefault(member, []).append(name)
+            lines.extend([
+                name,
+                f"  Interfaces: {', '.join(members) if members else 'none'}",
+                f"  Intrazone traffic: {zone.get('intrazone', 'N/A')}",
+            ])
+            if zone.get("description"):
+                lines.append(f"  Description: {zone['description']}")
+            lines.append("")
+        lines.append("Interface to zone index")
+        for iface in sorted(index):
+            lines.append(f"  {iface} -> {', '.join(index[iface])}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def dhcp_servers(data: Dict[str, Any]) -> str:
+        """Format DHCP server scopes (cmdb/system.dhcp/server). Scope config only, no leases."""
+        lines = ["DHCP Servers", ""]
+        servers = FortiGateTemplates._results_list(data)
+        if not servers:
+            lines.append("No DHCP servers configured")
+            return "\n".join(lines)
+        servers = FortiGateTemplates._capped(
+            servers, FortiGateTemplates._LIST_CAP, lines, "DHCP servers"
+        )
+        for srv in servers:
+            ranges = [
+                f"{r.get('start-ip', 'N/A')} - {r.get('end-ip', 'N/A')}"
+                for r in (srv.get("ip-range") or [])
+                if isinstance(r, dict)
+            ]
+            dns = [
+                str(srv[k]) for k in ("dns-server1", "dns-server2", "dns-server3", "dns-server4")
+                if srv.get(k) and srv[k] != "0.0.0.0"
+            ]
+            reserved = srv.get("reserved-address")
+            lines.extend([
+                f"Server {srv.get('id', 'N/A')}",
+                f"  Interface: {srv.get('interface', 'N/A')}",
+                f"  Status: {srv.get('status', 'N/A')}",
+                f"  Gateway: {srv.get('default-gateway', 'N/A')}",
+                f"  Netmask: {srv.get('netmask', 'N/A')}",
+                f"  IP range: {'; '.join(ranges) if ranges else 'none'}",
+                f"  Lease time: {srv.get('lease-time', 'N/A')}",
+                f"  DNS: {', '.join(dns) if dns else srv.get('dns-service', 'N/A')}",
+            ])
+            if srv.get("domain"):
+                lines.append(f"  Domain: {srv['domain']}")
+            if isinstance(reserved, list):
+                lines.append(f"  Reserved addresses: {len(reserved)}")
+            lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
     def central_snat_maps(data: Dict[str, Any]) -> str:
         """Format central SNAT map entries (cmdb/firewall/central-snat-map)."""
         lines = ["Central SNAT Maps", ""]

@@ -662,6 +662,34 @@ Returns:
 - On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
 """
 
+LIST_ZONES_DESC = """
+List firewall zones on a FortiGate device (read-only).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Zone name, member interfaces, intrazone traffic setting and description
+- An interface-to-zone index showing which zone each interface belongs to
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
+LIST_DHCP_SERVERS_DESC = """
+List configured DHCP server scopes of a FortiGate device (read-only).
+
+This lists scope configuration, not leases (use list_dhcp_leases for leases).
+
+Parameters:
+- device_id: Identifier of the FortiGate device
+- vdom: Virtual Domain name (optional, uses device default)
+
+Returns:
+- Per server: id, interface, status, gateway, netmask, IP ranges, lease time, DNS and domain
+- The number of reserved (static) addresses per server
+- On HTTP 404: an error stating the endpoint is not supported on this FortiOS version
+"""
+
 LIST_CENTRAL_SNAT_MAPS_DESC = """
 List central SNAT map entries on a FortiGate device (read-only).
 

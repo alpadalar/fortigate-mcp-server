@@ -9,7 +9,7 @@ FortiGate MCP Server - A comprehensive Model Context Protocol (MCP) server for m
 
 ## 🚀 Features
 
-FortiGate MCP Server exposes 50 unique tools, 95 total tool-surface registrations across stdio (47) and HTTP (48) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
+FortiGate MCP Server exposes 52 unique tools, 99 total tool-surface registrations across stdio (49) and HTTP (50) transports; 3 create-tools have transport-specific parameter shapes. Covered areas:
 
 - **Device Management**: Add, remove, and test connections to FortiGate devices
 - **Firewall Management**: List, create, update, and delete firewall rules
@@ -17,7 +17,7 @@ FortiGate MCP Server exposes 50 unique tools, 95 total tool-surface registration
 - **Routing Management**: Manage static routes and interfaces
 - **Virtual IP Management**: Manage virtual IPs (VIP/DNAT)
 - **Security Visibility**: Read-only insight into security profiles, admin accounts (secret fields redacted), SSL-VPN settings, and IPv4 local-in policies
-- **Config-Object Visibility**: Read-only address groups, service groups, schedules (recurring, one-time, groups), IP pools, and central SNAT maps
+- **Config-Object Visibility**: Read-only address groups, service groups, schedules (recurring, one-time, groups), IP pools, central SNAT maps, firewall zones (with an interface-to-zone index), and DHCP server scopes
 - **Monitor Visibility**: Read-only system resources, license status, HA status (standalone reported as such), ARP table, and DHCP leases
 - **IPsec, Sessions & Policy Hygiene**: Read-only IPsec tunnel status (no pre-shared keys), capped firewall session listing with validated filters, and offline policy hygiene analysis (shadowed, duplicate, any-any, disabled)
 - **HTTP Transport**: MCP protocol over HTTP using FastMCP 4 (`fastmcp>=4.1.2,<5`)

@@ -847,6 +847,30 @@
       "type": "object"
     }
   },
+  "list_dhcp_servers": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
   "list_firewall_policies": {
     "inputSchema": {
       "properties": {
@@ -1154,6 +1178,30 @@
     }
   },
   "list_virtual_ips": {
+    "inputSchema": {
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "vdom": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "device_id"
+      ],
+      "type": "object"
+    }
+  },
+  "list_zones": {
     "inputSchema": {
       "properties": {
         "device_id": {

@@ -1,0 +1,12 @@
+{
+  "http_method": "GET",
+  "results": [
+    {"name": "LAN-ZONE", "intrazone": "allow", "description": "Internal networks",
+     "interface": [{"interface-name": "port2", "q_origin_key": "port2"},
+                   {"interface-name": "VLAN_20", "q_origin_key": "VLAN_20"}]},
+    {"name": "WAN-ZONE", "intrazone": "deny",
+     "interface": [{"interface-name": "port1", "q_origin_key": "port1"}]},
+    {"name": "EMPTY-ZONE", "intrazone": "deny", "interface": []}
+  ],
+  "vdom": "root", "status": "success", "http_status": 200
+}

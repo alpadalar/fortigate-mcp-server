@@ -4,10 +4,10 @@ These tests capture, per transport, the tool NAME + normalized parameter
 schema (``inputSchema``) of every registered tool and compare it against a
 committed golden file under ``tests/fixtures/``.
 
-Surface composition: 95 transport registrations total (47 stdio + 48 HTTP),
-50 unique tool names (45 names registered on both transports + 2 stdio-only:
+Surface composition: 99 transport registrations total (49 stdio + 50 HTTP),
+52 unique tool names (47 names registered on both transports + 2 stdio-only:
 ``health_check``, ``get_server_info`` + 3 HTTP-only: ``test_connection``,
-``health``, ``get_schema_info``). "95 tools" without qualification is
+``health``, ``get_schema_info``). "99 tools" without qualification is
 misleading -- always use the qualified phrasing above.
 
 Contract decision: the frozen bytes cover exactly tool NAME + normalized
@@ -58,12 +58,12 @@ FIXTURES = Path(__file__).parent / "fixtures"
 STDIO_GOLDEN = FIXTURES / "tool_schemas_stdio.json"
 HTTP_GOLDEN = FIXTURES / "tool_schemas_http.json"
 
-# 95 transport registrations total: 47 stdio + 48 HTTP.
-# 50 unique tool names: 45 shared + 2 stdio-only (health_check,
+# 99 transport registrations total: 49 stdio + 50 HTTP.
+# 52 unique tool names: 47 shared + 2 stdio-only (health_check,
 # get_server_info) + 3 HTTP-only (test_connection, health, get_schema_info).
-EXPECTED_STDIO_TOOL_COUNT = 47
-EXPECTED_HTTP_TOOL_COUNT = 48
-EXPECTED_UNIQUE_TOOL_NAMES = 50
+EXPECTED_STDIO_TOOL_COUNT = 49
+EXPECTED_HTTP_TOOL_COUNT = 50
+EXPECTED_UNIQUE_TOOL_NAMES = 52
 
 # Schema-container keys whose VALUES are individually-normalized schema
 # objects but whose own KEYS are user-facing names (parameter names for
@@ -275,17 +275,17 @@ def test_http_schema_matches_golden() -> None:
     _assert_or_update(http_snap, HTTP_GOLDEN)
 
 
-def test_stdio_registers_47_tools() -> None:
+def test_stdio_registers_49_tools() -> None:
     stdio_snap, _ = _snapshots()
     assert len(stdio_snap) == EXPECTED_STDIO_TOOL_COUNT, sorted(stdio_snap)
 
 
-def test_http_registers_48_tools() -> None:
+def test_http_registers_50_tools() -> None:
     _, http_snap = _snapshots()
     assert len(http_snap) == EXPECTED_HTTP_TOOL_COUNT, sorted(http_snap)
 
 
-def test_union_of_tool_names_is_50() -> None:
+def test_union_of_tool_names_is_52() -> None:
     stdio_snap, http_snap = _snapshots()
     assert len(set(stdio_snap) | set(http_snap)) == EXPECTED_UNIQUE_TOOL_NAMES
 

@@ -26,8 +26,8 @@ We will acknowledge new reports and work with you on remediation and disclosure 
 
 ## What Can This Server Do To Your Firewall
 
-This MCP server exposes **50 unique tools**, registered as **95 total tool-surface
-registrations across the stdio (47 tools) and HTTP (48 tools) transports** (three
+This MCP server exposes **52 unique tools**, registered as **99 total tool-surface
+registrations across the stdio (49 tools) and HTTP (50 tools) transports** (three
 create-tools — `create_address_object`, `create_service_object`, `create_static_route` —
 have transport-specific parameter shapes and are therefore counted once per transport; every
 other tool name is schema-identical across both transports). Each tool operates against
@@ -76,6 +76,8 @@ permissions.
 | `list_schedules` | read |
 | `list_ip_pools` | read |
 | `list_central_snat_maps` | read |
+| `list_zones` | read |
+| `list_dhcp_servers` | read |
 | `get_system_resources` | read |
 | `get_license_status` | read |
 | `get_ha_status` | read |

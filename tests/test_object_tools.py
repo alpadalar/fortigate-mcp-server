@@ -174,12 +174,70 @@ class TestListSchedules:
         assert "failed" in text and "Schedules" not in text.split("\n")[0]
 
 
-def test_schema_info_lists_five_operations():
+def test_schema_info_lists_seven_operations():
     info = ObjectTools(_manager()).get_schema_info()
     assert info["name"] == "object_tools"
     assert [o["name"] for o in info["operations"]] == [
         "list_address_groups", "list_service_groups", "list_schedules",
-        "list_ip_pools", "list_central_snat_maps",
+        "list_ip_pools", "list_central_snat_maps", "list_zones", "list_dhcp_servers",
     ]
     for op in info["operations"]:
         assert [p["name"] for p in op["parameters"]] == ["device_id", "vdom"]
+
+
+# --- Issue #9: zones and DHCP server scopes ---------------------------------
+
+NEW = [
+    ("list_zones", "/cmdb/system/zone", "zone_list.json"),
+    ("list_dhcp_servers", "/cmdb/system.dhcp/server", "dhcp_server_list.json"),
+]
+
+
+class TestZoneAndDhcpServerTools:
+    def setup_method(self):
+        self.tools = ObjectTools(_manager())
+
+    def test_zones_render_with_reverse_index(self):
+        with _router() as router:
+            router.get("/cmdb/system/zone").mock(
+                return_value=httpx.Response(200, json=load_fixture("zone_list.json")))
+            text = self.tools.list_zones(device_id="test_device")[0].text
+        assert "LAN-ZONE" in text and "port2, VLAN_20" in text
+        assert "Interfaces: none" in text
+        assert "Interface to zone index" in text
+        assert "  port1 -> WAN-ZONE" in text
+        assert "  VLAN_20 -> LAN-ZONE" in text
+
+    def test_dhcp_servers_render_scope_not_macs(self):
+        with _router() as router:
+            router.get("/cmdb/system.dhcp/server").mock(
+                return_value=httpx.Response(200, json=load_fixture("dhcp_server_list.json")))
+            text = self.tools.list_dhcp_servers(device_id="test_device")[0].text
+        assert "10.0.0.100 - 10.0.0.200" in text
+        assert "Gateway: 10.0.0.1" in text and "DNS: 1.1.1.1" in text
+        assert "Reserved addresses: 1" in text
+        assert "aa:bb:cc:dd:ee:ff" not in text
+        assert "Interface: VLAN_20" in text and "Status: disable" in text
+
+    @pytest.mark.parametrize("method,path,fixture", NEW)
+    def test_empty_404_401_vdom(self, method, path, fixture):
+        call = getattr(self.tools, method)
+        with _router() as router:
+            router.get(path).mock(return_value=httpx.Response(200, json={"results": []}))
+            assert "No " in call(device_id="test_device")[0].text
+            call(device_id="test_device", vdom="vd1")
+            assert router.calls.last.request.url.params["vdom"] == "vd1"
+        with _router() as router:
+            router.get(path).mock(
+                return_value=httpx.Response(404, json=load_fixture("error_404.json")))
+            assert NOT_SUPPORTED in call(device_id="test_device")[0].text
+        with _router() as router:
+            router.get(path).mock(
+                return_value=httpx.Response(401, json=load_fixture("error_401.json")))
+            assert "Authentication failed" in call(device_id="test_device")[0].text
+
+    @pytest.mark.parametrize("method,path,fixture", NEW)
+    def test_unknown_device_and_bad_vdom(self, method, path, fixture):
+        call = getattr(self.tools, method)
+        assert "failed" in call(device_id="nope")[0].text
+        assert "failed" in call(device_id="test_device", vdom="../x")[0].text
