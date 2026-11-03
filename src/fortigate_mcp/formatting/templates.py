@@ -1508,7 +1508,8 @@ class FortiGateTemplates:
         filters = data.get("filters")
         if isinstance(filters, dict) and filters:
             lines.append("Filters: " + ", ".join(f"{k}={filters[k]}" for k in sorted(filters)))
-        if data.get("filters_ignored_by_device"):
+        ignored = bool(data.get("filters_ignored_by_device"))
+        if ignored:
             inspected = data.get("inspected")
             lines.append(
                 f"WARNING: the device did not apply the filters; they were applied "
@@ -1516,6 +1517,7 @@ class FortiGateTemplates:
                 "Sessions beyond those were not inspected, so a missing session "
                 "here does NOT prove it does not exist."
             )
+            lines.append(f"{total} of the {inspected} inspected session(s) match the filters")
         device_matched = data.get("device_matched")
         if isinstance(device_matched, int) and not isinstance(device_matched, bool):
             scope = (
@@ -1524,7 +1526,7 @@ class FortiGateTemplates:
             )
             lines.append(f"Device reported {device_matched} session(s) matching the {scope}")
         if (isinstance(total, int) and not isinstance(total, bool) and total > returned
-                and device_matched is None):
+                and device_matched is None and not ignored):
             lines.append(f"Device reported {total} matching session(s)")
         lines.append("")
         if not entries:

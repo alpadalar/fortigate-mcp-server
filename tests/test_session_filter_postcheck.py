@@ -167,12 +167,16 @@ class TestFiltersIgnoredByDevice:
         assert ":443" not in text.split(IGNORED_WARNING)[1]
         assert "Requested up to 20 session(s); showing 20" in text
         assert "matching the filters" not in text
+        # The count is the server's, over what the device returned -- never "Device reported".
+        assert "125 of the 250 inspected session(s) match the filters" in text
+        assert "Device reported" not in text
 
     def test_no_matching_session_is_not_conclusive(self):
         text = self._list(load_fixture("firewall_session_list.json"),
                           count=20, dstaddr="10.115.38.55", dstport=6067)
         assert IGNORED_WARNING in text
         assert "does NOT prove it does not exist" in text
+        assert "0 of the 250 inspected session(s) match the filters" in text
         assert "No sessions found" in text
 
     def test_without_filters_nothing_is_dropped(self):
