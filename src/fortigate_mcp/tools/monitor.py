@@ -17,6 +17,50 @@ MAX_RESULT_LIMIT = 500
 SESSION_DEFAULT_COUNT = 20
 SESSION_MAX_COUNT = 200
 
+# Protocol names accepted by validate_session_proto, as IP protocol numbers.
+_PROTO_NUMBERS = {"icmp": 1, "tcp": 6, "udp": 17, "sctp": 132}
+
+# Session entry keys checked for each wire filter, in order of preference.
+_SESSION_FILTER_KEYS = {
+    "srcaddr": ("saddr", "srcaddr"),
+    "dstaddr": ("daddr", "dstaddr"),
+    "srcport": ("sport", "srcport"),
+    "dstport": ("dport", "dstport"),
+    "protocol": ("proto", "protocol"),
+}
+
+
+def _proto_number(value: Any) -> Optional[int]:
+    """Normalize a protocol name or number to its IP protocol number."""
+    text = str(value).strip().lower()
+    if text in _PROTO_NUMBERS:
+        return _PROTO_NUMBERS[text]
+    try:
+        return int(text)
+    except ValueError:
+        return None
+
+
+def _session_matches(entry: Dict[str, Any], filters: Dict[str, str]) -> bool:
+    """Return whether a session entry satisfies every supplied filter.
+
+    Some FortiOS versions ignore the session filter query parameters and
+    return unfiltered sessions, so results are always checked client-side.
+    An entry missing a filtered field does not match.
+    """
+    for name, keys in _SESSION_FILTER_KEYS.items():
+        if name not in filters:
+            continue
+        value = next((entry[k] for k in keys if entry.get(k) is not None), None)
+        if value is None:
+            return False
+        if name == "protocol":
+            if _proto_number(value) != _proto_number(filters[name]):
+                return False
+        elif str(value).strip().lower() != filters[name].lower():
+            return False
+    return True
+
 
 class MonitorTools(FortiGateTool):
     """Read-only tools for FortiGate monitor-API visibility."""
@@ -151,17 +195,37 @@ class MonitorTools(FortiGateTool):
                 api_client.get_firewall_sessions(cap, filters, vdom=vdom)
             )
             results = data.get("results") if isinstance(data, dict) else None
+            device_matched = None
             if isinstance(results, dict):
-                # Some FortiOS versions wrap sessions as {"summary": ..., "details": [...]}.
+                # monitor/firewall/sessions (and some FortiOS versions of
+                # monitor/firewall/session) wrap sessions as {"summary": ..., "details": [...]}.
+                summary = results.get("summary")
+                if isinstance(summary, dict):
+                    device_matched = summary.get("matched_count")
                 results = results.get("details")
             entries = [e for e in results if isinstance(e, dict)] if isinstance(results, list) else []
+            # Address/port filters are applied by the device; re-check them to
+            # detect a device that ignored them. The protocol filter is never
+            # applied device-side by monitor/firewall/sessions, so it is always
+            # applied here and does not count as "ignored by the device".
+            device_filters = {k: v for k, v in filters.items() if k != "protocol"}
+            device_ok = [e for e in entries if _session_matches(e, device_filters)]
+            matched = [e for e in device_ok if _session_matches(e, filters)]
             payload = {
-                "results": entries[:cap],
-                "total": len(entries),
+                "results": matched[:cap],
+                "total": len(matched),
                 "limit": cap,
                 "truncated": len(entries) >= cap,
                 "filters": filters,
             }
+            if len(device_ok) < len(entries):
+                # The device ignored (some of) the filters: only the first
+                # `cap` sessions it returned were inspected.
+                payload["filters_ignored_by_device"] = True
+                payload["inspected"] = len(entries)
+            elif isinstance(device_matched, int) and not isinstance(device_matched, bool):
+                payload["device_matched"] = device_matched
+                payload["protocol_filtered_locally"] = "protocol" in filters
             return self._format_response(payload, "firewall_sessions")
         except Exception as e:
             return self._handle_visibility_error("list firewall sessions", device_id, e)

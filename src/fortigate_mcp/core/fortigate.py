@@ -104,16 +104,18 @@ class FortiGateAPI:
         endpoint: str,
         params: Optional[Dict] = None,
         data: Optional[Dict] = None,
-        vdom: Optional[str] = None
+        vdom: Optional[str] = None,
+        extra_headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Make HTTP request to FortiGate API.
-        
+
         Args:
             method: HTTP method (GET, POST, PUT, DELETE)
             endpoint: API endpoint path (without /api/v2 prefix)
             params: Query parameters
             data: Request body data
             vdom: Virtual Domain (uses device default if not specified)
+            extra_headers: Additional request headers (never authentication)
             
         Returns:
             API response as dictionary
@@ -149,7 +151,7 @@ class FortiGateAPI:
                 response = client.request(
                     method=method,
                     url=url,
-                    headers=self.headers,
+                    headers={**(extra_headers or {}), **self.headers},
                     params=params,
                     json=data if data else None
                 )
@@ -588,6 +590,11 @@ class FortiGateAPI:
         """Get IPsec tunnel status; results is a list of tunnels with proxyid lists."""
         return self._make_request("GET", "monitor/vpn/ipsec", vdom=vdom)
 
+    # Session filters honored by the monitor/firewall/sessions json_filter
+    # (verified on FortiOS 7.4.12). "protocol" is not filterable there and is
+    # applied client-side by MonitorTools.
+    _SESSION_JSON_FILTER_KEYS = ("srcaddr", "dstaddr", "srcport", "dstport")
+
     def get_firewall_sessions(
         self,
         count: int,
@@ -596,14 +603,56 @@ class FortiGateAPI:
     ) -> Dict[str, Any]:
         """Get active firewall sessions.
 
-        `count` and `filters` are sent as query parameters (never concatenated
-        into the URL). Callers must pass pre-validated values; see
+        FortiOS 7.x filters sessions only through monitor/firewall/sessions,
+        queried the way the GUI does it: POST with a json_filter body and
+        "X-HTTP-Method-Override: GET" (a read, not a write). The query
+        parameters of the legacy monitor/firewall/session endpoint are
+        silently ignored by FortiOS 7.4, so that endpoint is used only as a
+        fallback when the new one does not exist (404/405, e.g. FortiOS 6.0).
+
+        Callers must pass pre-validated values; see
         validation.validate_session_filters.
         """
+        filters = dict(filters or {})
+        try:
+            return self._get_firewall_sessions_json_filter(count, filters, vdom)
+        except FortiGateAPIError as e:
+            if e.status_code not in (404, 405):
+                raise
         params: Dict[str, Any] = {"count": count}
-        if filters:
-            params.update(filters)
+        params.update(filters)
         return self._make_request("GET", "monitor/firewall/session", params=params, vdom=vdom)
+
+    def _get_firewall_sessions_json_filter(
+        self, count: int, filters: Dict[str, str], vdom: Optional[str]
+    ) -> Dict[str, Any]:
+        """Query monitor/firewall/sessions with device-side json_filter groups (ANDed)."""
+        params: Dict[str, Any] = {
+            "ip_version": filters.get("ip_version", "ipv4"),
+            "start": 0,
+            "count": count,
+            "summary": "true",
+        }
+        groups = []
+        for key in self._SESSION_JSON_FILTER_KEYS:
+            if key not in filters:
+                continue
+            wire_key = key
+            if key in ("srcaddr", "dstaddr") and ":" in filters[key]:
+                wire_key = f"{key}6"
+            groups.append({
+                "filters": [{"key": wire_key, "operator": "exact",
+                             "pattern": filters[key], "negate": False}],
+                "logic": "or",
+            })
+        return self._make_request(
+            "POST",
+            "monitor/firewall/sessions",
+            params=params,
+            data={"json_filter": groups},
+            vdom=vdom,
+            extra_headers={"X-HTTP-Method-Override": "GET"},
+        )
 
 
 class FortiGateManager:

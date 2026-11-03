@@ -1139,17 +1139,43 @@ class TestPhase16ApiMethods:
             req = r.calls.last.request
         assert req.url.params["vdom"] == "vd1"
 
-    def test_sessions_send_count_and_filters_as_params(self):
-        with self._router("monitor/firewall/session", httpx.Response(200, json={"results": []})) as r:
+    def _sessions_router(self, new_response, legacy_response=None):
+        """monitor/firewall/sessions (POST + method override) and, optionally, the legacy GET."""
+        router = respx.mock(assert_all_mocked=True, assert_all_called=True)
+        router.route(method="POST", path__regex=r"^/api/v2/monitor/firewall/sessions$").mock(
+            return_value=new_response
+        )
+        if legacy_response is not None:
+            router.route(method="GET", path__regex=r"^/api/v2/monitor/firewall/session$").mock(
+                return_value=legacy_response
+            )
+        return router
+
+    def test_sessions_use_json_filter_with_method_override(self):
+        with self._sessions_router(httpx.Response(200, json={"results": []})) as r:
+            self.api.get_firewall_sessions(20, {"srcaddr": "192.0.2.1", "dstport": "443",
+                                                "protocol": "tcp"})
+            req = r.calls.last.request
+        assert req.headers["X-HTTP-Method-Override"] == "GET"
+        assert req.url.params["count"] == "20"
+        assert req.url.params["vdom"] == "root"
+        assert "srcaddr" not in req.url.params
+        keys = [g["filters"][0]["key"] for g in json.loads(req.content)["json_filter"]]
+        assert keys == ["srcaddr", "dstport"]
+
+    def test_sessions_legacy_fallback_sends_filters_as_params(self):
+        with self._sessions_router(httpx.Response(405, json={}),
+                                   httpx.Response(200, json={"results": []})) as r:
             self.api.get_firewall_sessions(20, {"srcaddr": "192.0.2.1", "dstport": "443"})
             req = r.calls.last.request
+        assert req.method == "GET"
         assert req.url.params["count"] == "20"
         assert req.url.params["srcaddr"] == "192.0.2.1"
         assert req.url.params["dstport"] == "443"
         assert req.url.params["vdom"] == "root"
 
     def test_sessions_404_raises_with_status(self):
-        with self._router("monitor/firewall/session", httpx.Response(404, json={})):
+        with self._sessions_router(httpx.Response(404, json={}), httpx.Response(404, json={})):
             with pytest.raises(FortiGateAPIError) as exc_info:
                 self.api.get_firewall_sessions(20)
         assert exc_info.value.status_code == 404
