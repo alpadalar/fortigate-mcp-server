@@ -12,6 +12,7 @@ from tests.support.fake_fortigate import load_fixture
 BASE_URL = "https://198.51.100.10:443/api/v2"
 IPSEC_PATH = "/monitor/vpn/ipsec"
 SESSION_PATH = "/monitor/firewall/session"
+SESSIONS_PATH = "/monitor/firewall/sessions"
 NOT_SUPPORTED = "not supported on this FortiOS version"
 PSK_SENTINELS = [
     "FAKE-PSK-SENTINEL-TOP-1", "FAKE-PSK-SENTINEL-TOP-2",
@@ -104,6 +105,15 @@ class TestIpsecTunnelStatus:
 
 
 class TestFirewallSessions:
+    """Legacy monitor/firewall/session path: the new endpoint answers 404 (e.g. FortiOS 6.0)."""
+
+    def _router(self):
+        router = _router()
+        router.post(SESSIONS_PATH).mock(
+            return_value=httpx.Response(404, json=load_fixture("error_404.json"))
+        )
+        return router
+
     def setup_method(self):
         self.tools = MonitorTools(_manager())
 
@@ -116,7 +126,7 @@ class TestFirewallSessions:
         assert len(load_fixture("firewall_session_list.json")["results"]) == 250
 
     def test_default_count_is_20_and_truncated(self):
-        with _router() as router:
+        with self._router() as router:
             route = self._serve(router)
             text = self.tools.list_firewall_sessions(device_id="test_device")[0].text
             assert route.calls.last.request.url.params["count"] == "20"
@@ -125,7 +135,7 @@ class TestFirewallSessions:
         assert text.count("policy 3") == 20
 
     def test_max_count_200_sent_and_enforced_client_side(self):
-        with _router() as router:
+        with self._router() as router:
             route = self._serve(router)
             text = self.tools.list_firewall_sessions(device_id="test_device", count=200)[0].text
             assert route.calls.last.request.url.params["count"] == "200"
@@ -133,7 +143,7 @@ class TestFirewallSessions:
 
     @pytest.mark.parametrize("count", [0, -1, 201, 500, True, "20"])
     def test_invalid_count_rejected_without_http(self, count):
-        with _router() as router:
+        with self._router() as router:
             route = self._serve(router)
             text = self.tools.list_firewall_sessions(device_id="test_device", count=count)[0].text
             assert not route.called
@@ -149,14 +159,14 @@ class TestFirewallSessions:
         ],
     )
     def test_bad_filters_rejected_with_no_http_call(self, kwargs):
-        with _router() as router:
+        with self._router() as router:
             route = self._serve(router)
             text = self.tools.list_firewall_sessions(device_id="test_device", **kwargs)[0].text
             assert not route.called
         assert "failed" in text.lower()
 
     def test_valid_filters_in_outbound_query(self):
-        with _router() as router:
+        with self._router() as router:
             route = self._serve(router)
             self.tools.list_firewall_sessions(
                 device_id="test_device", srcaddr="192.0.2.5", dstaddr="198.51.100.50",
@@ -170,19 +180,19 @@ class TestFirewallSessions:
     def test_details_wrapped_results_supported(self):
         wrapped = {"results": {"summary": {}, "details": load_fixture(
             "firewall_session_list.json")["results"][:3]}}
-        with _router() as router:
+        with self._router() as router:
             router.get(SESSION_PATH).mock(return_value=httpx.Response(200, json=wrapped))
             text = self.tools.list_firewall_sessions(device_id="test_device")[0].text
         assert "showing 3" in text and "Result limit" not in text
 
     def test_empty_results(self):
-        with _router() as router:
+        with self._router() as router:
             router.get(SESSION_PATH).mock(return_value=httpx.Response(200, json={"results": []}))
             text = self.tools.list_firewall_sessions(device_id="test_device")[0].text
         assert "No sessions found" in text
 
     def test_404_maps_to_not_supported(self):
-        with _router() as router:
+        with self._router() as router:
             router.get(SESSION_PATH).mock(
                 return_value=httpx.Response(404, json=load_fixture("error_404.json"))
             )
@@ -192,7 +202,7 @@ class TestFirewallSessions:
     @pytest.mark.parametrize("status,expected", [(401, "Authentication failed"),
                                                  (403, "Permission denied")])
     def test_auth_errors_render_fixed_text(self, status, expected):
-        with _router() as router:
+        with self._router() as router:
             router.get(SESSION_PATH).mock(
                 return_value=httpx.Response(status, json=load_fixture("error_401.json"))
             )
